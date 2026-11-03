@@ -1,4 +1,4 @@
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // Written by scripts/sync-openapi.mjs: the API reference's C# samples, compiled in CI. Do not edit.
 #pragma warning disable CS8321, CS0168, CS8625, CS0219
 using OhrTech.Management;

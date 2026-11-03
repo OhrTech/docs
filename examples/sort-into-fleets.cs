@@ -1,4 +1,4 @@
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // Puts devices into fleets from your own inventory: a CSV of serial number and fleet name.
 //   OHR_TOKEN=ohrs_… dotnet run sort-into-fleets.cs -- inventory.csv           show what would move
 //   OHR_TOKEN=ohrs_… dotnet run sort-into-fleets.cs -- inventory.csv --apply   move them

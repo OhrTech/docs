@@ -7,6 +7,13 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-03: corrections
+
+- `os.securityPatch` is the Android security patch level the device runs now, as `YYYY-MM-DD`,
+  reported at every check-in. It was the level the device's enrolment attested, as `YYYYMM`, which
+  did not follow OS updates.
+- `takeOver`, when opening a remote control session, is optional (default `false`).
+
 ## 2026-11-03: v1
 
 The first public version:

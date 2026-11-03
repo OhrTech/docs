@@ -1,4 +1,4 @@
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // Posts a summary of devices that need attention to a Slack or Microsoft Teams channel.
 // Run it on a schedule (cron, a scheduled task, a GitHub Actions schedule).
 //   OHR_TOKEN=ohrs_… ALERT_WEBHOOK_URL=https://hooks.slack.com/… dotnet run fleet-health-alerts.cs

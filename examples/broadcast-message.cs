@@ -1,4 +1,4 @@
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // Shows a message on every device in a fleet and the fleets below it.
 //   OHR_TOKEN=ohrs_… dotnet run broadcast-message.cs -- "Downtown store" "We close in 15 minutes."
 // Needs ViewDevices and SendMessages. A device that is offline shows it when it next checks in.

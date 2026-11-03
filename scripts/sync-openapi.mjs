@@ -108,7 +108,7 @@ const compiled = Object.entries(samples)
 	.join('\n\n');
 await writeFile(
 	new URL('../examples/reference-samples.cs', import.meta.url),
-	`#:package OhrTech.Management@1.0.1\n// Written by scripts/sync-openapi.mjs: the API reference's C# samples, compiled in CI. Do not edit.\n` +
+	`#:package OhrTech.Management@*\n// Written by scripts/sync-openapi.mjs: the API reference's C# samples, compiled in CI. Do not edit.\n` +
 		`#pragma warning disable CS8321, CS0168, CS8625, CS0219\nusing OhrTech.Management;\n\n` +
 		`await Task.CompletedTask;\n\n${compiled}\n\nstatic async Task SignIn()\n{\n${signIn.replace(/^/gm, '    ')}\n}\n`,
 );

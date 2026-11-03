@@ -12,8 +12,11 @@ It uses no reflection-based serialization, so it works in .NET 10 single-file pr
 (`dotnet run script.cs`), and in trimmed and native AOT apps. In a single-file program:
 
 ```csharp
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 ```
+
+`@*` takes the latest release, which is what every example on this site uses. Name a version
+instead (`@1.0.1`) when a program must build the same way every time.
 
 ## Create a client
 

@@ -10,7 +10,7 @@ import { join, relative } from 'node:path';
 const root = new URL('..', import.meta.url).pathname;
 const sdk = process.env.OHR_SDK_PROJECT
 	? `#:project ${process.env.OHR_SDK_PROJECT}`
-	: `#:package OhrTech.Management@${process.env.OHR_SDK_VERSION ?? '1.0.1'}`;
+	: `#:package OhrTech.Management@${process.env.OHR_SDK_VERSION ?? '*'}`;
 
 async function* files(dir) {
 	for (const entry of await readdir(dir, { withFileTypes: true })) {

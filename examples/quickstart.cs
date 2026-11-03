@@ -1,4 +1,4 @@
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // Lists your devices, then shows a message on one of them.
 //   OHR_TOKEN=ohrs_… dotnet run quickstart.cs            list devices
 //   OHR_TOKEN=ohrs_… dotnet run quickstart.cs -- 42      …and show a message on device 42

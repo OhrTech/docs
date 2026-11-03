@@ -1,6 +1,6 @@
 #:sdk Microsoft.NET.Sdk.Web
 #:property PublishAot=false
-#:package OhrTech.Management@1.0.1
+#:package OhrTech.Management@*
 // A minimal help desk: a list of your devices with a Connect button that opens the device's
 // screen right in the page.
 //   OHR_TOKEN=ohrs_… dotnet run help-desk-connect.cs     then open http://localhost:5000
