@@ -1,0 +1,48 @@
+---
+title: Fleet health alerts
+description: Post devices that need attention (offline, low battery, failed settings, pending updates) to Slack or Microsoft Teams.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import program from '../../../../../examples/fleet-health-alerts.cs?raw';
+
+Find out about the tablet with a dead battery before the morning shift does. This program checks
+every device and posts one message listing the ones that need attention. Run it every hour.
+
+**Needs:** a service account with `ViewDevices`, a Slack incoming webhook or Microsoft Teams workflow
+webhook, and .NET 10.
+
+```sh
+OHR_TOKEN=ohrs_… ALERT_WEBHOOK_URL=https://hooks.slack.com/services/… dotnet run fleet-health-alerts.cs
+```
+
+```text
+3 device alert(s):
+• A0000A00043 (Airport kiosk) has not checked in for 11 hours
+• A0000A00070 (Downtown store) is at 9% battery and not charging
+• A0000A00081 (Downtown store) could not apply 1 setting(s)
+```
+
+<Code code={program} lang="csharp" title="fleet-health-alerts.cs" />
+
+## How it works
+
+One call, `GET /v1/devices`, returns every device's last check-in, battery and charging state,
+settings errors and whether the OhrTech Agent is behind. The program applies your thresholds and
+posts only when something needs attention.
+
+## Run it on a schedule
+
+```sh title="crontab"
+0 * * * * OHR_TOKEN=ohrs_… ALERT_WEBHOOK_URL=https://hooks.slack.com/… dotnet run /opt/ohr/fleet-health-alerts.cs
+```
+
+Or as a GitHub Actions schedule, a Windows scheduled task or a Kubernetes CronJob. Pin the service
+account to the networks it runs from.
+
+## Make it yours
+
+- Change `offlineAfter` and `lowBattery`, or alert per fleet to the team that owns it.
+- Before alerting that a device is offline, ask it to check in (`POST /v1/devices/{id}/check-in`)
+  and look again a minute later.
+- Open a ticket in your help desk instead of posting a message.

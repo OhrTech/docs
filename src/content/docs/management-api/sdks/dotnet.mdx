@@ -1,0 +1,77 @@
+---
+title: .NET SDK
+description: OhrTech.Management on NuGet. Typed calls for every operation, sign-in and token refresh handled for you.
+---
+
+```sh
+dotnet add package OhrTech.Management
+```
+
+For `netstandard2.0` and `net10.0`, MIT licensed, [source on GitHub](https://github.com/OhrTech/management-sdk-dotnet).
+It uses no reflection-based serialization, so it works in .NET 10 single-file programs
+(`dotnet run script.cs`), and in trimmed and native AOT apps. In a single-file program:
+
+```csharp
+#:package OhrTech.Management@1.0.1
+```
+
+## Create a client
+
+```csharp
+using OhrTech.Management;
+
+// A service account: servers, integrations, scheduled jobs
+using var api = OhrManagementClient.ForServiceAccount(Environment.GetEnvironmentVariable("OHR_TOKEN")!);
+
+// A person, signed in with the device code flow (the access token is refreshed for you)
+var session = await OhrUserSession.SignInAsync(p => Console.WriteLine($"Open {p.VerificationUri} and enter {p.UserCode}"));
+using var asPerson = OhrManagementClient.ForUser(session);
+
+// Whoever is signed in to the ohr CLI on this computer (development and quick scripts)
+using var asMe = OhrManagementClient.ForUser(OhrUserSession.FromOhrCli());
+```
+
+See [sign in](/management-api/sign-in/) for when to use which.
+
+## Call the API
+
+Every operation is a method named after its operation ID in the
+[reference](/management-api/reference/), with typed requests and responses:
+
+```csharp
+var devices = await api.ListDevicesAsync(online: true);
+var device = await api.GetDeviceAsync(42);
+await api.RequestCheckInAsync(42);
+await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });
+await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });
+var settings = await api.GetDeviceSettingsAsync(42);
+var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest
+{
+    EmbedOrigins = ["https://support.example.com"],
+});
+```
+
+`IOhrManagementClient` is the interface, for mocking in your tests.
+
+## With IHttpClientFactory
+
+In an ASP.NET Core app, register the client with your own `HttpClient` and the handler that adds
+the token:
+
+```csharp nocheck
+builder.Services.AddHttpClient<IOhrManagementClient, OhrManagementClient>(http =>
+        http.BaseAddress = OhrManagementClient.DefaultBaseUrl)
+    .AddHttpMessageHandler(() => new OhrServiceTokenHandler(builder.Configuration["Ohr:Token"]!));
+```
+
+For a person, use `OhrUserSessionHandler` with their `OhrUserSession` instead.
+
+## Errors
+
+Every error is an `OhrApiException` with the HTTP `StatusCode`; catch
+`OhrApiException<ProblemDetails>` to read its `Title` and `Detail`. See [errors](/management-api/guides/errors/).
+
+## Versions
+
+The SDK follows the API: within Management API v1, new SDK versions only add. See its
+[changelog](https://github.com/OhrTech/management-sdk-dotnet/blob/main/CHANGELOG.md).

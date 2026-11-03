@@ -1,0 +1,152 @@
+---
+title: Sign in
+description: Service accounts for servers and integrations; the device code flow for tools people run.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Every call except `/v1/auth/*` takes a bearer token:
+
+```http
+Authorization: Bearer <token>
+```
+
+There are two kinds of caller. Pick by who the work is for.
+
+| | Service account | Person |
+|---|---|---|
+| Use it for | Servers, integrations, scheduled jobs | Tools your staff run on their own computers |
+| Acts as | Your organisation, with its own permissions | The person, with their permissions |
+| Token | `ohrs_…`, lasts 30 days to a year | Access token for 1 hour, refreshed for 30 days from its last use |
+| Get one | OhrTech Portal → Service accounts | Device code flow: the person approves in the OhrTech Portal |
+
+Either way, a token only identifies the caller. What it may do is
+[checked on every call](/management-api/permissions/), so removing a permission, disabling a service
+account or locking a person out takes effect at once.
+
+## Service accounts
+
+In the OhrTech Portal, open **Service accounts** (you need the ManageMembers permission), create an
+account per integration and grant it only what it needs. Then choose **New token**: a token is shown
+once, and lasts 30, 90 or 180 days or a year.
+
+An account can have several tokens, so you can rotate without downtime: make a new token, deploy
+it, then revoke the old one. The portal shows when and from which address each token was last used.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/me -H "Authorization: Bearer ohrs_…"
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using var api = OhrManagementClient.ForServiceAccount(Environment.GetEnvironmentVariable("OHR_TOKEN")!);
+var me = await api.GetMeAsync(); // its organisation, permissions and limits
+```
+
+</TabItem>
+</Tabs>
+
+:::caution
+A service account token is a password for your organisation's devices. Keep it in your secret store
+or environment, never in source code or a web page. To limit the damage of a leak,
+[narrow the account](/management-api/permissions/#limit-a-service-account) to the fleets, networks
+and embed sites it needs.
+:::
+
+## People: the device code flow
+
+For tools people run, such as an internal command line tool or a desktop app, sign the person in
+with the [OAuth device authorization flow](https://www.rfc-editor.org/rfc/rfc8628). They approve in
+their browser with their usual OhrTech Portal sign-in, including two-factor authentication or
+Microsoft. Your tool never sees their password.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+The SDK runs the whole flow and refreshes the access token for you:
+
+```csharp
+var session = await OhrUserSession.SignInAsync(prompt =>
+    Console.WriteLine($"Open {prompt.VerificationUri} and enter {prompt.UserCode}"));
+
+using var api = OhrManagementClient.ForUser(session);
+```
+
+To skip signing in next time, keep `session.RefreshToken` somewhere safe (it is a secret), save it
+again whenever `session.TokensRefreshed` fires, and resume with
+`OhrUserSession.Resume(savedRefreshToken)`.
+
+</TabItem>
+<TabItem label="HTTP">
+
+**1. Start.** Name your tool: the person sees the name when they approve.
+
+```http
+POST /v1/auth/device
+Content-Type: application/json
+
+{"clientName": "Acme asset tool"}
+```
+
+```json
+{
+  "deviceCode": "…",
+  "userCode": "BCDF-GHJK",
+  "verificationUri": "https://portal.ohrtech.net/activate",
+  "verificationUriComplete": "https://portal.ohrtech.net/activate?code=BCDF-GHJK",
+  "expiresIn": 600,
+  "interval": 5
+}
+```
+
+Show the person `userCode` and `verificationUri`, or open `verificationUriComplete` for them (or
+show it as a QR code). The code works for 10 minutes.
+
+**2. Poll** every `interval` seconds until they decide:
+
+```http
+POST /v1/auth/token
+Content-Type: application/json
+
+{"deviceCode": "…"}
+```
+
+While they haven't, the answer is 400 with `{"error": "authorization_pending"}` (or `slow_down`:
+poll less often). `access_denied` means they declined, `expired_token` that the code ran out. Once
+they approve:
+
+```json
+{"tokenType": "Bearer", "accessToken": "…", "expiresIn": 3600, "refreshToken": "…"}
+```
+
+**3. Refresh** before the hour is up, or when a call returns 401:
+
+```http
+POST /v1/auth/refresh
+Content-Type: application/json
+
+{"refreshToken": "…"}
+```
+
+Each refresh returns a new refresh token; use it next time. A refresh token lasts 30 days from its
+last use.
+
+</TabItem>
+</Tabs>
+
+## For your own scripts: the `ohr` CLI's sign-in
+
+If you use the `ohr` command line tool, a script on the same computer can act as you without a sign-in
+prompt. The .NET SDK reads the CLI's saved sign-in (and never changes it):
+
+```csharp
+using var api = OhrManagementClient.ForUser(OhrUserSession.FromOhrCli());
+```
+
+This is for development and quick scripts. Anything that runs unattended should use a service
+account.

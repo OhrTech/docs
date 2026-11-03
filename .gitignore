@@ -1,0 +1,19 @@
+# build output
+dist/
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+
+# environment
+.env
+.env.production
+
+# written by scripts/check-snippets.mjs
+examples/.page-snippets.cs
+
+.DS_Store
+.idea/

@@ -1,0 +1,45 @@
+---
+title: Other languages
+description: Call the Management API from any language over plain HTTPS, or generate a client from its OpenAPI document.
+---
+
+The API is plain JSON over HTTPS with a bearer token, so any HTTP client works. Every page of
+these docs shows the requests, and the [API reference](/management-api/reference/) has examples in
+Python, JavaScript, Go, Java, PHP, Ruby and more for every operation.
+
+## Python
+
+```python
+import os, requests
+
+api = requests.Session()
+api.headers["Authorization"] = f"Bearer {os.environ['OHR_TOKEN']}"
+
+for d in api.get("https://api.ohrtech.net/v1/devices", params={"online": "true"}).json():
+    print(d["deviceId"], d.get("serial"), d.get("fleetName"), d.get("batteryLevel"))
+```
+
+## JavaScript (Node.js 18+, Deno, Bun)
+
+```js
+const res = await fetch("https://api.ohrtech.net/v1/devices?online=true", {
+  headers: { Authorization: `Bearer ${process.env.OHR_TOKEN}` },
+});
+for (const d of await res.json()) console.log(d.deviceId, d.serial, d.fleetName, d.batteryLevel);
+```
+
+Call the API from your server, never from a browser: a token in a web page is a token anyone can
+copy. To show remote control in a browser, [embed](/management-api/guides/embed-remote-control/) it.
+
+## Generate a client
+
+The [OpenAPI document](https://github.com/OhrTech/management-api/blob/main/openapi.json) describes
+every operation and type. Any OpenAPI 3 generator turns it into a typed client, for example:
+
+```sh
+npx @openapitools/openapi-generator-cli generate \
+  -i https://raw.githubusercontent.com/OhrTech/management-api/main/openapi.json \
+  -g python -o ohrtech-management
+```
+
+Official SDKs for more languages will be listed here as they are published.

@@ -1,0 +1,93 @@
+---
+title: Build on OhrTech devices
+description: The OhrTech SDK, for developers. The Management API runs your fleets from your own servers and tools; the Device SDK lets your app work with the device it runs on.
+template: splash
+editUrl: false
+lastUpdated: false
+hero:
+  title: Your fleet, from your own code
+  tagline: Everything the OhrTech Portal does to a device, your servers and tools can do too. List and configure devices, message them, and open a live, controllable screen inside your own app, with access you can limit to the fleets, networks and sites you choose.
+  actions:
+    - text: Start in 5 minutes
+      link: /management-api/quickstart/
+      variant: primary
+    - text: API reference
+      link: /management-api/reference/
+      variant: secondary
+---
+
+import Products from '../../components/Products.astro';
+import Features from '../../components/Features.astro';
+import Feature from '../../components/Feature.astro';
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+<p class="ohr-eyebrow">Two parts, one SDK</p>
+
+## Where does your code run?
+
+The OhrTech SDK has two parts. The **Management API** is for code that runs on your servers and
+desktops and manages many devices at once. The **Device SDK** is for the app you ship on the device
+itself.
+
+<Products />
+
+<p class="ohr-eyebrow">Management API</p>
+
+## What you can build with it
+
+<Features>
+<Feature title="Remote support inside your own help desk" href="/management-api/guides/embed-remote-control/">
+
+One call opens a session and returns a link you put in an `<iframe>`. Your support staff see the
+device's screen and control it from your app, without an OhrTech Portal account. Your page hears
+what happens (waiting, the person allowed it, connected, ended) and can press keys or end the
+session.
+
+</Feature>
+<Feature title="Every device setting, with inheritance" href="/management-api/guides/settings/">
+
+Wi-Fi networks, screen lock, brightness and volume, home screen layout, allowed keyboards, USB and
+Bluetooth: nearly 50 settings, each set (the person may change it) or locked. Fleets pass them
+down; a device can override. Every change is validated before it is stored, and you see what each
+device reports back.
+
+</Feature>
+<Feature title="Fleets that follow your inventory" href="/management-api/recipes/sort-into-fleets/">
+
+Move devices between fleets from your own systems, by serial number. A device moved into a fleet
+gets that fleet's settings at once.
+
+</Feature>
+<Feature title="Know before your users call" href="/management-api/recipes/fleet-health-alerts/">
+
+Every device's last check-in, battery, network, OS build, installed apps and whether its settings
+applied. Ask any device to check in now. Turn it into alerts, reports and audit evidence.
+
+</Feature>
+</Features>
+
+<p class="ohr-eyebrow">Access</p>
+
+## Made to pass your security review
+
+- **A service account per integration.** Each has only the permissions you grant it, can be limited
+  to particular fleets or devices, to the networks it may call from, and to the web sites that may
+  show its remote control sessions.
+- **Checked on every call.** A token only says who is calling. Remove a permission, disable an
+  account or lock a person out, and the next call fails, not the next hour's.
+- **Secrets stay put.** Wi-Fi passwords and screen lock codes go in and never come back out.
+- **People sign in as themselves.** Tools your staff run use the device code flow, with the OhrTech
+  Portal's own sign-in and two-factor authentication.
+
+[How permissions and limits work →](/management-api/permissions/)
+
+<p class="ohr-eyebrow">Start</p>
+
+## Pick your way in
+
+<CardGrid>
+	<LinkCard title="Quickstart" description="A service account, your device list and a message on a screen, in 5 minutes." href="/management-api/quickstart/" />
+	<LinkCard title="Recipes" description="Complete programs for real jobs: a help desk, inventory sync, alerts, a compliance report." href="/management-api/recipes/help-desk-connect/" />
+	<LinkCard title=".NET SDK" description="dotnet add package OhrTech.Management. Typed calls, sign-in and token refresh handled for you." href="/management-api/sdks/dotnet/" />
+	<LinkCard title="API reference" description="Every operation, with examples in your language and a Try it button." href="/management-api/reference/" />
+</CardGrid>

@@ -1,0 +1,45 @@
+---
+title: Sort devices into fleets
+description: Put devices into fleets from your own inventory, by serial number, with a dry run first.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import program from '../../../../../examples/sort-into-fleets.cs?raw';
+
+Your inventory system already knows which store, vehicle or team each device belongs to. This
+program reads that as a CSV and moves each device into the matching fleet, so it gets that fleet's
+settings at once. Run it after each delivery, or on a schedule.
+
+**Needs:** a service account with `ViewDevices` and `MoveDevices`, and .NET 10.
+
+```csv title="inventory.csv"
+serial,fleet
+A0000A00042,Downtown store
+A0000A00043,Airport kiosk
+```
+
+```sh
+OHR_TOKEN=ohrs_… dotnet run sort-into-fleets.cs -- inventory.csv           # what would move
+OHR_TOKEN=ohrs_… dotnet run sort-into-fleets.cs -- inventory.csv --apply   # move them
+```
+
+```text
+A0000A00042: (no fleet) → Downtown store
+A0000A00043: Warehouse → Airport kiosk
+Would move 2, already in place 0, problems 0. Run again with --apply to move them.
+```
+
+<Code code={program} lang="csharp" title="sort-into-fleets.cs" />
+
+## How it works
+
+- Fleets are matched by name (ignoring case), devices by serial number. A name that matches no
+  fleet, or more than one, is reported and skipped.
+- Devices already in the right fleet are left alone, so running it again changes nothing.
+- A service account [scoped](/management-api/permissions/#limit-a-service-account) to some fleets
+  can only move devices among them.
+
+## Make it yours
+
+Read from your inventory system's API instead of a CSV, or take the fleet from a field you already
+have, such as a store number.

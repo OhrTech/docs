@@ -1,0 +1,39 @@
+---
+title: Compliance report
+description: A CSV of every device against your bar (recent check-in, settings applied, Agent current, your app installed) for audits and reviews.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import program from '../../../../../examples/compliance-report.cs?raw';
+
+Auditors and customers ask the same questions: are all devices reporting, configured as required,
+up to date, and running your app? This program answers for every device, in a CSV you can open in a
+spreadsheet or attach to your evidence.
+
+**Needs:** a service account with `ViewDevices`, and .NET 10.
+
+```sh
+OHR_TOKEN=ohrs_… dotnet run compliance-report.cs -- com.example.yourapp > devices.csv
+```
+
+```csv
+device,serial,fleet,last_check_in,os_build,agent,agent_current,settings_in_sync,settings_errors,app_version,compliant,reasons
+6,A0000A00042,Downtown store,2026-11-03 16:43:05Z,OhrTech/aleph/aleph:…,1037,True,True,0,4.2.0,True,
+8,A0000A00043,Airport kiosk,2026-11-03 05:36:07Z,OhrTech/aleph/aleph:…,1037,True,True,1,4.2.0,False,1 setting(s) failed
+```
+
+<Code code={program} lang="csharp" title="compliance-report.cs" />
+
+## How it works
+
+For each device, `GET /v1/devices/{id}` gives its last check-in, OS build, OhrTech Agent version and
+whether its settings applied, and `GET /v1/devices/{id}/apps` its installed apps. A device is
+compliant when it checked in within 24 hours, applied its current settings without errors, runs the
+current Agent and, if you name one, has your app installed. `reasons` says why not.
+
+## Make it yours
+
+- Require a minimum version of your app by comparing `app_version`.
+- Check particular settings: `GET /v1/devices/{id}/settings` shows each one's `reported` value and
+  status.
+- Keep the CSV from each month, as a record of your fleet's state over time.

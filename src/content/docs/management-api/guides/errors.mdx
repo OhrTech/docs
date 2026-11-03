@@ -1,0 +1,46 @@
+---
+title: Errors
+description: Problem details with a title and a detail that says what to change, and what each status means.
+---
+
+Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details, sent as
+`application/problem+json`. The `title` names the problem and the `detail` says what to change:
+
+```json
+{
+  "title": "Permission required",
+  "status": 403,
+  "detail": "This needs the EditSettings permission in Acme."
+}
+```
+
+| Status | Means | What to do |
+|---|---|---|
+| 400 | The request is invalid. Settings errors are listed per setting under `errors`. | Fix the request; nothing was changed |
+| 401 | No token, an expired or revoked one, or a service account token used outside its networks | Sign in again, or check the token and the account's networks |
+| 403 | You can reach the device but lack the permission for this call | Ask an admin to grant the permission named in `detail` |
+| 404 | No such device or session, or not one you can reach | Check the ID, and the service account's device scope |
+| 409 | A conflict, such as someone else's remote control session (`blockingSession`) | Show who is connected; retry with `takeOver: true` if you mean to |
+| 429 | Too many sign-in attempts from your address | Wait, then retry |
+
+A device outside your organisations or your service account's scope is always 404, never 403, so
+the API never tells a caller which devices exist elsewhere.
+
+In C#, every error is an `OhrApiException`. Catch `OhrApiException<ProblemDetails>` to read the
+problem, and `OhrApiException<HttpValidationProblemDetails>` for per-setting errors:
+
+```csharp
+try
+{
+    await api.UpdateDeviceSettingsAsync(42, patch);
+}
+catch (OhrApiException<HttpValidationProblemDetails> e)
+{
+    foreach (var (setting, messages) in e.Result.Errors)
+        Console.WriteLine($"{setting}: {string.Join(" ", messages)}");
+}
+catch (OhrApiException<ProblemDetails> e)
+{
+    Console.WriteLine($"{e.StatusCode} {e.Result.Title}: {e.Result.Detail}");
+}
+```

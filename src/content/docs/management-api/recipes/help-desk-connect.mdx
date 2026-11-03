@@ -1,0 +1,44 @@
+---
+title: Help desk connect button
+description: A web page listing your devices with a Connect button that opens the device's live screen right in the page.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import program from '../../../../../examples/help-desk-connect.cs?raw';
+
+Your support agent finds the device, clicks **Connect**, and the device's screen opens next to the
+ticket. They tap, type and press Home on it as if it were in their hand. Nobody needs an OhrTech
+Portal account, and the person at the device is asked first if your policy says so.
+
+This is a complete web app in one file: a server that holds the service account token and opens
+sessions, and a page that shows the viewer and its state.
+
+**Needs:** a service account with `ViewDevices` and `RemoteControl`, and .NET 10.
+
+```sh
+OHR_TOKEN=ohrs_… dotnet run help-desk-connect.cs
+```
+
+Then open http://localhost:5000.
+
+<Code code={program} lang="csharp" title="help-desk-connect.cs" />
+
+## How it works
+
+- **The token stays on your server.** The browser asks your server to connect; your server opens the
+  session and hands back only the embed link, which works for 10 minutes.
+- **Only your site can show it.** The session names this site as its only embed origin, so the link
+  is useless in a frame anywhere else. In production, also set the service account's **Embed sites**
+  in the OhrTech Portal.
+- **The page knows what is happening.** The viewer posts its state (waiting for the device, waiting
+  for the person to allow it, connected, ended) and the page shows it to the agent.
+- **Someone else already connected?** The API answers 409 with their session. This page shows the
+  message; yours could offer to take over (`TakeOver = true`).
+
+## Make it yours
+
+- Check, in the connect endpoint, that the signed-in agent may support this device.
+- Store `sessionId` with the ticket: `GET /v1/devices/{id}/remote-control-sessions` later shows who
+  connected, when, and how each session ended.
+- Add your own buttons that send the viewer [commands](/management-api/guides/embed-remote-control/#control-it-from-your-page),
+  such as Home, Back or a canned text.

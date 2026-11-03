@@ -1,0 +1,83 @@
+---
+// The OhrTech SDK's two parts, side by side: where the code runs is what tells them apart.
+---
+
+<div class="products not-content">
+	<a class="product" href="/management-api/">
+		<span class="ohr-badge live">Available</span>
+		<h3>Management API</h3>
+		<p class="where">From your servers and tools</p>
+		<p>
+			Manage every device in your fleets over HTTPS: status, settings, messages, remote control in
+			your own app, and remote ADB. Sign in as a service account or as a person.
+		</p>
+		<p class="meta"><code>api.ohrtech.net</code> · .NET SDK · OpenAPI</p>
+		<span class="go">Read the docs →</span>
+	</a>
+	<a class="product" href="/device-sdk/">
+		<span class="ohr-badge soon">Coming soon</span>
+		<h3>Device SDK</h3>
+		<p class="where">From your app, on the device</p>
+		<p>
+			Let the app you ship on OhrTech devices work with the OhrTech Agent: change device settings,
+			manage network and power, lock the screen to one app, reboot on a schedule and install its own
+			updates.
+		</p>
+		<p class="meta">Android library</p>
+		<span class="go">What's coming →</span>
+	</a>
+</div>
+
+<style>
+	.products {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+		gap: 1.25rem;
+	}
+	.product {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: 1.5rem;
+		border: 1px solid var(--ohr-card-line);
+		border-radius: var(--ohr-radius);
+		background: var(--ohr-card-bg);
+		color: var(--sl-color-gray-2);
+		text-decoration: none;
+		transition: border-color 0.15s;
+	}
+	.product:hover {
+		border-color: var(--sl-color-accent);
+	}
+	h3 {
+		margin: 0.35rem 0 0;
+		font-size: 1.5rem;
+		color: var(--sl-color-white);
+	}
+	.where {
+		margin: 0;
+		font-family: var(--sl-font-mono);
+		font-size: 0.8rem;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ohr-eyebrow);
+	}
+	p {
+		margin: 0;
+	}
+	.meta {
+		font-size: 0.9rem;
+		color: var(--sl-color-gray-3);
+	}
+	.meta code {
+		font-size: 0.85em;
+	}
+	.go {
+		margin-top: auto;
+		padding-top: 0.5rem;
+		font-weight: 650;
+		color: var(--sl-color-text-accent);
+	}
+</style>

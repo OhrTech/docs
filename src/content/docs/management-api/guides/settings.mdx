@@ -1,0 +1,145 @@
+---
+title: Settings
+description: Read and change device settings, set or locked, inherited through fleets, validated before they are stored, and confirmed by the device.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+These are the same settings as the OhrTech Portal's Settings tab: Wi-Fi networks, private DNS,
+screen lock, brightness, volumes, screen timeout, home screen layout, default apps, keyboards,
+languages and time zone, USB, Bluetooth, location, developer options, remote support and more.
+There are nearly 50 of them.
+
+## How a device's settings are decided
+
+Each setting a policy manages has a **mode**:
+
+| Mode | On the device |
+|---|---|
+| `Set` | Applied, and the person using the device may change it afterwards |
+| `Locked` | Applied, and the person using the device can't change it |
+| `Unmanaged` | Left alone (only seen in what devices report) |
+
+A device follows, from lowest to highest priority: OhrTech's platform defaults, then its fleets
+from the top fleet down, then its own overrides. The API changes a device's **own overrides**.
+
+## The catalog
+
+`GET /v1/settings/catalog` describes every setting: its key, label, category, description,
+`kind` (`bool`, `percent`, `choice`, `app`, `wifiNetworks`, `deviceLock`, …), default and options.
+Build your UI from it, or look up a value's format.
+
+```json
+{
+  "key": "display.timeout",
+  "category": "Display",
+  "label": "Screen timeout",
+  "description": "Inactivity before the screen turns off.",
+  "kind": "choice",
+  "defaultValue": "300",
+  "options": [
+    { "value": "15", "label": "15 seconds" },
+    { "value": "60", "label": "1 minute" },
+    { "value": "300", "label": "5 minutes" }
+  ]
+}
+```
+
+## Read a device's settings
+
+`GET /v1/devices/{deviceId}/settings` (needs `ViewSettings`) shows the whole picture:
+
+```json
+{
+  "own": { "dev.usb_debugging": { "mode": "Set", "value": true } },
+  "inherited": { "display.brightness": { "mode": "Locked", "value": 70 } },
+  "inheritedFrom": { "display.brightness": "Downtown store" },
+  "effective": {
+    "dev.usb_debugging": { "mode": "Set", "value": true },
+    "display.brightness": { "mode": "Locked", "value": 70 }
+  },
+  "revision": "b0d8a1fbfcb3b310",
+  "reported": {
+    "revision": "b0d8a1fbfcb3b310",
+    "inSync": true,
+    "reportedAt": "2026-11-03T16:28:09Z",
+    "settings": {
+      "display.brightness": { "value": 70, "status": "ok", "error": null, "mode": "Locked" }
+    }
+  }
+}
+```
+
+- `own`: this device's overrides. `inherited`: what its fleets manage, and `inheritedFrom`: the name of
+  the fleet each comes from. `effective`: what the device must follow.
+- `revision` fingerprints the effective policy. `reported` is what the device last applied: when its
+  `revision` matches, `inSync` is `true`, and each setting has a `status` and, if it failed, an
+  `error`.
+
+## Change settings
+
+Needs `EditSettings`. `PATCH` changes the keys you send and leaves the rest. `null` removes an
+override, so the device falls back to its fleets. `PUT` replaces all of the device's overrides.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl -X PATCH https://api.ohrtech.net/v1/devices/42/settings \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "settings": {
+      "display.brightness": { "mode": "Locked", "value": 80 },
+      "display.timeout":    { "mode": "Set",    "value": "600" },
+      "dev.usb_debugging":  null
+    }
+  }'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto
+{
+    Settings = new()
+    {
+        ["display.brightness"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },
+        ["display.timeout"] = new SettingPolicy { Mode = SettingMode.Set, Value = "600" },
+        ["dev.usb_debugging"] = null,
+    }
+});
+```
+
+</TabItem>
+</Tabs>
+
+Everything is validated first. If anything is wrong, nothing is stored and the answer says what,
+per setting:
+
+```json
+{
+  "title": "Some settings are not valid",
+  "status": 400,
+  "errors": { "display.brightness": ["Must be between 0 and 100."] }
+}
+```
+
+Otherwise the change is stored and sent to the device straight away, and the response is the
+device's settings as above. Follow `reported` to see it applied.
+
+### Secrets
+
+Wi-Fi passwords, WEP keys and enterprise Wi-Fi credentials read back as `"*"`, and a screen lock's
+code is left out. They are encrypted before they are stored and never come back out of the API. To keep a stored secret when you change something else, send the `"*"` back
+unchanged.
+
+## Push again
+
+`POST /v1/devices/{deviceId}/settings/push` sends the device its policy again. Settings in `Set` mode
+are applied once; if the person using the device has changed some since, name them in `reapply` to
+apply them again:
+
+```json
+{ "reapply": ["display.brightness", "sound.media_volume"] }
+```

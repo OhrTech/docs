@@ -1,0 +1,12 @@
+<div class="features not-content-spacing"><slot /></div>
+
+<style>
+	.features {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+		gap: 2rem 2.5rem;
+	}
+	.features > :global(*) {
+		margin: 0 !important;
+	}
+</style>

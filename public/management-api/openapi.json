@@ -1,0 +1,3940 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "OhrTech Management API",
+    "description": "Manage your organisation's OhrTech devices: status, settings, fleets, tasks, remote control and remote ADB. Every call takes `Authorization: Bearer <token>`: either a person's access token (sign in with the device flow under /v1/auth) or a service account token (`ohrs_…`, created in the portal under Service accounts).",
+    "contact": {
+      "name": "OhrTech",
+      "url": "https://ohrtech.net"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "https://api.ohrtech.net"
+    }
+  ],
+  "paths": {
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Who am I",
+        "operationId": "GetMe",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Who the caller is, and their organisations and permissions",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar me = await api.GetMeAsync();"
+          }
+        ]
+      }
+    },
+    "/v1/devices": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List devices",
+        "operationId": "ListDevices",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "Only this organisation's devices.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fleetId",
+            "in": "query",
+            "description": "Only devices directly in this fleet.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "online",
+            "in": "query",
+            "description": "Only devices that are (true) or are not (false) online.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The devices of the caller's organisations",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar devices = await api.ListDevicesAsync(online: true);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Get device",
+        "operationId": "GetDevice",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetailDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "One device: identity, status, settings sync, capabilities",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar device = await api.GetDeviceAsync(42);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/fleet": {
+      "put": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Move device",
+        "operationId": "MoveDevice",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveDeviceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Moves the device to another fleet of its organisation (null: out of every fleet), then sends it its new policy.",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/enrolments": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List enrolments",
+        "operationId": "ListEnrolments",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnrolmentDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every enrolment of the device, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar enrolments = await api.ListEnrolmentsAsync(42);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/apps": {
+      "get": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "List installed apps",
+        "operationId": "ListInstalledApps",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The apps installed on the device, as it last reported them",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListInstalledAppsAsync(42);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/check-in": {
+      "post": {
+        "tags": [
+          "Devices"
+        ],
+        "summary": "Request a check-in",
+        "operationId": "RequestCheckIn",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckInDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Sends the device a ping; it answers with a check-in (fresh status) within seconds when it is\nreachable. A device on mobile data may only hear it at its next scheduled check-in.",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar checkIn = await api.RequestCheckInAsync(42);"
+          }
+        ]
+      }
+    },
+    "/v1/fleets": {
+      "get": {
+        "tags": [
+          "Fleets"
+        ],
+        "summary": "List fleets",
+        "operationId": "ListFleets",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "Only this organisation's fleets.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FleetDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The fleets of the caller's organisations",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar fleets = await api.ListFleetsAsync();"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/adb-sessions": {
+      "get": {
+        "tags": [
+          "Remote ADB"
+        ],
+        "summary": "List ADB sessions",
+        "operationId": "ListAdbSessions",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-100, default 20).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdbSessionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's remote ADB sessions, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListAdbSessionsAsync(42);"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Remote ADB"
+        ],
+        "summary": "Open ADB session",
+        "operationId": "OpenAdbSession",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenAdbSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAdbSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Open a remote ADB session (the ohr CLI does this, and runs the end-to-end tunnel)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line tool opens ADB sessions and runs the encrypted tunnel:\n//   ohr adb connect 42\nvar session = await api.OpenAdbSessionAsync(42, new OpenAdbSessionRequest\n{\n    AdbPublicKey = adbPublicKey,\n    ClientKey = clientKey,\n});"
+          }
+        ]
+      }
+    },
+    "/v1/adb-sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Remote ADB"
+        ],
+        "summary": "Get ADB session",
+        "operationId": "GetAdbSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "One remote ADB session",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar session = await api.GetAdbSessionAsync(sessionId);"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Remote ADB"
+        ],
+        "summary": "Close ADB session",
+        "operationId": "CloseAdbSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Close a remote ADB session",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nawait api.CloseAdbSessionAsync(sessionId);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/remote-control-sessions": {
+      "get": {
+        "tags": [
+          "Remote control"
+        ],
+        "summary": "List remote control sessions",
+        "operationId": "ListRemoteControlSessions",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-100, default 20).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RemoteControlSessionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's remote control sessions, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListRemoteControlSessionsAsync(42);"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Remote control"
+        ],
+        "summary": "Open remote control session",
+        "operationId": "OpenRemoteControlSession",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenRemoteControlRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteControlDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Start seeing and controlling the device's screen",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest\n{\n    EmbedOrigins = [\"https://support.example.com\"],\n});\n// <iframe src=\"{rc.Embed.Url}\" allow=\"fullscreen; clipboard-read\"></iframe>"
+          }
+        ]
+      }
+    },
+    "/v1/remote-control-sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Remote control"
+        ],
+        "summary": "Get remote control session",
+        "operationId": "GetRemoteControlSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteControlSessionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "One remote control session",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar session = await api.GetRemoteControlSessionAsync(sessionId);"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Remote control"
+        ],
+        "summary": "Close remote control session",
+        "operationId": "CloseRemoteControlSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Ends the session: your own, or anyone's on a device you may control (the same permission lets you take it over).",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nawait api.CloseRemoteControlSessionAsync(sessionId);"
+          }
+        ]
+      }
+    },
+    "/v1/remote-control-sessions/{sessionId}/join": {
+      "post": {
+        "tags": [
+          "Remote control"
+        ],
+        "summary": "Join remote control session",
+        "operationId": "JoinRemoteControlSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemoteControlDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "A fresh viewer token and embed link for your own open session",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar rc = await api.JoinRemoteControlSessionAsync(sessionId);"
+          }
+        ]
+      }
+    },
+    "/v1/settings/catalog": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Settings catalog",
+        "operationId": "GetSettingsCatalog",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SettingDefinitionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Every setting that can be managed: key, value kind, default and options",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar catalog = await api.GetSettingsCatalogAsync();"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Get device settings",
+        "operationId": "GetDeviceSettings",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's own overrides, what it inherits, what it must follow, and what it reported",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.GetDeviceSettingsAsync(42);"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Replace device settings",
+        "operationId": "ReplaceDeviceSettings",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Replace the device's own overrides, then send the device its policy",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.ReplaceDeviceSettingsAsync(42, new PolicyDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n    }\n});"
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Update device settings",
+        "operationId": "UpdateDeviceSettings",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyPatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceSettingsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change some of the device's own overrides (null removes one), then send the device its policy",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n        [\"dev.usb_debugging\"] = null, // remove the override\n    }\n});"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/settings/push": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Push settings again",
+        "operationId": "PushDeviceSettings",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSettingsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Send the device its policy now, optionally re-applying Set settings",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.PushDeviceSettingsAsync(42, new PushSettingsRequest { Reapply = [\"display.brightness\"] });"
+          }
+        ]
+      }
+    },
+    "/v1/auth/device": {
+      "post": {
+        "tags": [
+          "Sign-in"
+        ],
+        "summary": "Start a sign-in",
+        "operationId": "StartDeviceLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceLoginResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Start a person's sign-in: show them the user code and verification URL",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\n// The SDK runs the device code flow and refreshes the access token for you.\nvar session = await OhrUserSession.SignInAsync(p =>\n    Console.WriteLine($\"Open {p.VerificationUri} and enter {p.UserCode}\"));\nusing var api = OhrManagementClient.ForUser(session);"
+          }
+        ]
+      }
+    },
+    "/v1/auth/token": {
+      "post": {
+        "tags": [
+          "Sign-in"
+        ],
+        "summary": "Finish a sign-in",
+        "operationId": "PollDeviceLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenError"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Poll until the person approves the code; then returns their tokens",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\n// The SDK runs the device code flow and refreshes the access token for you.\nvar session = await OhrUserSession.SignInAsync(p =>\n    Console.WriteLine($\"Open {p.VerificationUri} and enter {p.UserCode}\"));\nusing var api = OhrManagementClient.ForUser(session);"
+          }
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Sign-in"
+        ],
+        "summary": "Refresh tokens",
+        "operationId": "RefreshLogin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessTokenResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Trade a refresh token for new tokens",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\n// The SDK runs the device code flow and refreshes the access token for you.\nvar session = await OhrUserSession.SignInAsync(p =>\n    Console.WriteLine($\"Open {p.VerificationUri} and enter {p.UserCode}\"));\nusing var api = OhrManagementClient.ForUser(session);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "List tasks",
+        "operationId": "ListTasks",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-200, default 50).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "description": "Only tasks with a smaller id: pass the last taskId of the previous page.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's tasks, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar tasks = await api.ListTasksAsync(42, limit: 50);"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Create task",
+        "operationId": "CreateTask",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a task and send it to the device",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.CreateTaskAsync(42, new CreateTaskRequest\n{\n    TaskClass = \"ShowToast\",\n    Parameters = [\"Please plug me in\"],\n});"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/tasks/{taskId}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get task",
+        "operationId": "GetTask",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "One task, with what the device reported",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.GetTaskAsync(42, 9131);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/messages": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Show a message",
+        "operationId": "ShowMessage",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShowMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Show a message on the device's screen (a ShowToast task)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = \"Please plug me in\" });"
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccessTokenResponse": {
+        "required": [
+          "accessToken",
+          "expiresIn",
+          "refreshToken",
+          "tokenType"
+        ],
+        "type": "object",
+        "properties": {
+          "tokenType": {
+            "type": "string",
+            "readOnly": true
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AdbSessionDto": {
+        "required": [
+          "bytesDown",
+          "bytesUp",
+          "createdAt",
+          "deviceId",
+          "expiresAt",
+          "sessionId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closeReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "bytesUp": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytesDown": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentDto": {
+        "required": [
+          "outdated"
+        ],
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "offered": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "outdated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppDto": {
+        "required": [
+          "package"
+        ],
+        "type": "object",
+        "properties": {
+          "package": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "versionCode": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BatteryDto": {
+        "required": [
+          "charging"
+        ],
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "charging": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CapabilitiesDto": {
+        "required": [
+          "remoteAdb",
+          "remoteControl",
+          "yourPermissions"
+        ],
+        "type": "object",
+        "properties": {
+          "remoteControl": {
+            "type": "boolean",
+            "description": "The device's Agent supports remote control."
+          },
+          "remoteAdb": {
+            "type": "boolean",
+            "description": "The device supports remote ADB."
+          },
+          "yourPermissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the caller may do to this device."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CheckInDto": {
+        "required": [
+          "requested"
+        ],
+        "type": "object",
+        "properties": {
+          "requested": {
+            "type": "boolean"
+          },
+          "lastCheckIn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientDto": {
+        "required": [
+          "clientId",
+          "clientName",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConnectionDto": {
+        "required": [
+          "token",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string",
+            "description": "A LiveKit participant token; it can be used to join for 10 minutes."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTaskRequest": {
+        "required": [
+          "taskClass"
+        ],
+        "type": "object",
+        "properties": {
+          "taskClass": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceDetailDto": {
+        "required": [
+          "agent",
+          "battery",
+          "capabilities",
+          "clientId",
+          "clientName",
+          "createdAt",
+          "deviceId",
+          "imei",
+          "network",
+          "online",
+          "os",
+          "settings",
+          "typeName"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "imei": {
+            "type": "string"
+          },
+          "serial": {
+            "type": "string",
+            "nullable": true
+          },
+          "typeName": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fleetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastCheckIn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "timeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "agent": {
+            "$ref": "#/components/schemas/AgentDto"
+          },
+          "os": {
+            "$ref": "#/components/schemas/OsDto"
+          },
+          "network": {
+            "$ref": "#/components/schemas/NetworkDto"
+          },
+          "battery": {
+            "$ref": "#/components/schemas/BatteryDto"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/SettingsStatusDto"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/CapabilitiesDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceDto": {
+        "required": [
+          "agentOutdated",
+          "charging",
+          "clientId",
+          "clientName",
+          "deviceId",
+          "imei",
+          "online",
+          "remoteAdb",
+          "remoteControl",
+          "settingsErrors",
+          "typeName"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "imei": {
+            "type": "string"
+          },
+          "serial": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fleetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastCheckIn": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "agentVersion": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "osFingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "remoteAdb": {
+            "type": "boolean"
+          },
+          "typeName": {
+            "type": "string"
+          },
+          "remoteControl": {
+            "type": "boolean"
+          },
+          "network": {
+            "type": "string",
+            "nullable": true
+          },
+          "batteryLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "charging": {
+            "type": "boolean"
+          },
+          "simOperator": {
+            "type": "string",
+            "nullable": true
+          },
+          "settingsInSync": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "settingsErrors": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "agentOutdated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "description": "One row of GET /v1/devices. The first twelve fields are what ohr 1.0 reads; the rest were added later."
+      },
+      "DeviceLoginRequest": {
+        "type": "object",
+        "properties": {
+          "clientName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceLoginResponse": {
+        "required": [
+          "deviceCode",
+          "expiresIn",
+          "interval",
+          "userCode",
+          "verificationUri",
+          "verificationUriComplete"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceCode": {
+            "type": "string"
+          },
+          "userCode": {
+            "type": "string"
+          },
+          "verificationUri": {
+            "type": "string"
+          },
+          "verificationUriComplete": {
+            "type": "string"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "interval": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceSettingsDto": {
+        "required": [
+          "effective",
+          "inherited",
+          "inheritedFrom",
+          "own",
+          "revision"
+        ],
+        "type": "object",
+        "properties": {
+          "own": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingPolicy"
+            },
+            "description": "This device's overrides."
+          },
+          "inherited": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingPolicy"
+            },
+            "description": "What the device's fleets manage, merged root first."
+          },
+          "inheritedFrom": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The fleet each inherited key comes from."
+          },
+          "effective": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingPolicy"
+            },
+            "description": "What the device must follow: platform defaults, fleets, then its own overrides."
+          },
+          "revision": {
+            "type": "string",
+            "description": "A fingerprint of the effective policy; the device reports the one it applied."
+          },
+          "reported": {
+            "$ref": "#/components/schemas/ReportedDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceTokenRequest": {
+        "required": [
+          "deviceCode"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceCode": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EmbedDto": {
+        "required": [
+          "expiresAt",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Show it in an iframe, or open it. It carries its credential after '#': treat it like a password."
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "The link opens the viewer until then; a viewer that is already showing stays connected.",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EnrolmentDto": {
+        "required": [
+          "at",
+          "current",
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "agentVersion": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "osPatch": {
+            "type": "string",
+            "nullable": true
+          },
+          "anchor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FleetDto": {
+        "required": [
+          "clientId",
+          "deviceCount",
+          "fleetId",
+          "fleetName"
+        ],
+        "type": "object",
+        "properties": {
+          "fleetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fleetName": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "parentFleetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "deviceCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "HttpValidationProblemDetails": {
+        "required": [
+          "errors"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "additionalProperties": {}
+      },
+      "MeDto": {
+        "required": [
+          "clients",
+          "email",
+          "globalAdmin",
+          "globalPermissions"
+        ],
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "serviceAccountId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "globalAdmin": {
+            "type": "boolean"
+          },
+          "globalPermissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientDto"
+            },
+            "description": "The caller's organisations, each with every permission the caller holds there (a person holds the\n            device permissions through membership alone)."
+          },
+          "serviceAccount": {
+            "$ref": "#/components/schemas/ServiceAccountLimitsDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MoveDeviceRequest": {
+        "required": [
+          "fleetId"
+        ],
+        "type": "object",
+        "properties": {
+          "fleetId": {
+            "type": "integer",
+            "description": "The fleet to move the device to, or null for none. Required, so that a missing value never moves it.",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NetworkDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "string",
+            "nullable": true
+          },
+          "wifiSignalDbm": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "mobileState": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobileOperator": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobileSignalLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "simOperator": {
+            "type": "string",
+            "nullable": true
+          },
+          "iccid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAdbSessionRequest": {
+        "required": [
+          "adbPublicKey",
+          "clientKey"
+        ],
+        "type": "object",
+        "properties": {
+          "adbPublicKey": {
+            "type": "string"
+          },
+          "clientKey": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenAdbSessionResponse": {
+        "required": [
+          "clientToken",
+          "deviceKey",
+          "expiresAt",
+          "relayUrl",
+          "sessionId"
+        ],
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "relayUrl": {
+            "type": "string"
+          },
+          "clientToken": {
+            "type": "string"
+          },
+          "deviceKey": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenRemoteControlRequest": {
+        "type": "object",
+        "properties": {
+          "consent": {
+            "type": "string",
+            "description": "unattended, notify or confirm. Only stricter than the device's setting takes effect.",
+            "nullable": true
+          },
+          "takeOver": {
+            "type": "boolean",
+            "description": "End another open session on this device first (default false).",
+            "nullable": true
+          },
+          "embedOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Web origins (https://app.example.com) that may show the viewer page in an iframe. At most 5. A service account limited to some sites may name only those; naming none then means all of them.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OsDto": {
+        "type": "object",
+        "properties": {
+          "fingerprint": {
+            "type": "string",
+            "description": "The Foundation OS build fingerprint, as last reported.",
+            "nullable": true
+          },
+          "vendorFingerprint": {
+            "type": "string",
+            "nullable": true
+          },
+          "buildId": {
+            "type": "string",
+            "nullable": true
+          },
+          "buildDate": {
+            "type": "string",
+            "description": "When that build was made, as last reported.",
+            "nullable": true
+          },
+          "securityPatch": {
+            "type": "string",
+            "description": "The security patch level (YYYYMM) the device's hardware attestation stated when it last enrolled. Later OS updates do not change it; the fingerprint and build date are current.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PolicyDto": {
+        "required": [
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingPolicy"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "Settings by key, each with how it is managed and the value to apply."
+      },
+      "PolicyPatchDto": {
+        "required": [
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingPolicy"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "description": "For PATCH: a key set to null stops overriding it on this device."
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "nullable": true
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": {}
+      },
+      "PushSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "reapply": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Set settings to apply again now, overwriting what the person at the device changed them to.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RefreshRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemoteControlDto": {
+        "required": [
+          "connection",
+          "embed",
+          "session"
+        ],
+        "type": "object",
+        "properties": {
+          "session": {
+            "$ref": "#/components/schemas/RemoteControlSessionDto"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionDto"
+          },
+          "embed": {
+            "$ref": "#/components/schemas/EmbedDto"
+          },
+          "policyConsent": {
+            "type": "string",
+            "description": "The consent the device's own settings require.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RemoteControlSessionDto": {
+        "required": [
+          "actor",
+          "consent",
+          "createdAt",
+          "deviceId",
+          "expiresAt",
+          "sessionId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "status": {
+            "type": "string"
+          },
+          "consent": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closeReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReportedDto": {
+        "required": [
+          "inSync",
+          "reportedAt",
+          "settings"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "nullable": true
+          },
+          "inSync": {
+            "type": "boolean",
+            "description": "The device applied the current revision."
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SettingStateDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ServiceAccountLimitsDto": {
+        "type": "object",
+        "properties": {
+          "fleetIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The fleets it may act on, each with every fleet below it; null for the whole organisation.",
+            "nullable": true
+          },
+          "deviceIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Devices it may act on outside those fleets.",
+            "nullable": true
+          },
+          "embedOrigins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The only web origins its remote control sessions may be embedded in; null for any.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SettingDefinitionDto": {
+        "required": [
+          "category",
+          "description",
+          "key",
+          "kind",
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "defaultValue": {},
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingOptionDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SettingMode": {
+        "enum": [
+          "Unmanaged",
+          "Set",
+          "Locked"
+        ],
+        "type": "string"
+      },
+      "SettingOptionDto": {
+        "required": [
+          "label",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SettingPolicy": {
+        "required": [
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/SettingMode"
+          },
+          "value": {}
+        },
+        "additionalProperties": false
+      },
+      "SettingStateDto": {
+        "required": [
+          "mode",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {},
+          "status": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SettingMode"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SettingsStatusDto": {
+        "required": [
+          "errors",
+          "revision"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "string",
+            "description": "The policy the device must follow, as a fingerprint."
+          },
+          "appliedRevision": {
+            "type": "string",
+            "description": "What the device last reported applying.",
+            "nullable": true
+          },
+          "inSync": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "errors": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShowMessageRequest": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskDto": {
+        "required": [
+          "createdAt",
+          "deviceId",
+          "messages",
+          "modifiedAt",
+          "parameters",
+          "priority",
+          "status",
+          "taskClass",
+          "taskId"
+        ],
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taskClass": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "pending, running, success, failed or cancelled."
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "result": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskMessageDto"
+            },
+            "description": "What the device reported while running it, oldest first."
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskMessageDto": {
+        "required": [
+          "at",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TokenError": {
+        "required": [
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "description": "A person's access token from /v1/auth/token, or a service account token (ohrs_…).",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Devices"
+    },
+    {
+      "name": "Fleets"
+    },
+    {
+      "name": "Remote ADB"
+    },
+    {
+      "name": "Remote control"
+    },
+    {
+      "name": "Settings"
+    },
+    {
+      "name": "Sign-in"
+    },
+    {
+      "name": "Tasks"
+    }
+  ]
+}

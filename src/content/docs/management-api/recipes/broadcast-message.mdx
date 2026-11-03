@@ -1,0 +1,32 @@
+---
+title: Broadcast a message
+description: Show a message on every device in a fleet and the fleets below it.
+---
+
+import { Code } from '@astrojs/starlight/components';
+import program from '../../../../../examples/broadcast-message.cs?raw';
+
+Closing early, a system outage, a shift change: tell everyone holding a device at once.
+
+**Needs:** a service account with `ViewDevices` and `SendMessages`, and .NET 10.
+
+```sh
+OHR_TOKEN=ohrs_… dotnet run broadcast-message.cs -- "Downtown store" "We close in 15 minutes."
+```
+
+```text
+Sent to 14 device(s).
+```
+
+<Code code={program} lang="csharp" title="broadcast-message.cs" />
+
+## How it works
+
+`GET /v1/fleets` gives each fleet's parent, so the program collects the fleet and every fleet below
+it, then sends `POST /v1/devices/{id}/messages` to each of their devices. Online devices show the
+message within seconds; offline ones show it when they next check in.
+
+## Make it yours
+
+Send to devices with low battery only, to one store's devices from your point-of-sale system, or
+from a button in your own admin page.

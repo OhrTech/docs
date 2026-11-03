@@ -1,0 +1,21 @@
+---
+title: Changelog
+description: Changes to the Management API. Within v1 the API only adds.
+---
+
+**Our promise:** within `v1`, the API only adds: new operations, new optional fields, new values.
+Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
+[management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
+
+## 2026-11-03: v1
+
+The first public version:
+
+- Devices and fleets: live status, details, installed apps, enrolments, check-in on demand, moving
+  devices between fleets
+- Settings: the catalog, reading, `PUT` and `PATCH` with validation, pushing again
+- Messages and tasks
+- Remote control, with the embeddable viewer and its `postMessage` interface
+- Remote ADB sessions
+- Sign-in: service accounts with permissions, device scope, network allowlist and embed sites; and
+  the device code flow for people

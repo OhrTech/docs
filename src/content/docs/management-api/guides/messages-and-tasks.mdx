@@ -1,0 +1,64 @@
+---
+title: Messages and tasks
+description: Show a message on a device's screen and follow the tasks OhrTech runs on it.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Show a message
+
+Needs `SendMessages`. The text (up to 1,000 characters) appears on the device's screen.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices/42/messages \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"text": "Please bring this tablet to the front desk."}'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please bring this tablet to the front desk." });
+```
+
+</TabItem>
+</Tabs>
+
+A device that is online shows it within seconds; one that is offline shows it when it next checks
+in. To message a whole fleet, see the [broadcast](/management-api/recipes/broadcast-message/) recipe.
+
+## Tasks
+
+A message is delivered as a **task**, and so is everything else OhrTech does on a device: OS and
+app updates, OhrTech Agent updates, settings. The 201 response to a message is its task:
+
+```json
+{
+  "taskId": 9131,
+  "deviceId": 42,
+  "taskClass": "ShowToast",
+  "parameters": ["Please bring this tablet to the front desk."],
+  "status": "pending",
+  "priority": 1000,
+  "createdAt": "2026-11-03T17:02:11Z",
+  "modifiedAt": "2026-11-03T17:02:11Z",
+  "messages": []
+}
+```
+
+`status` goes `pending` → `running` → `success` (or `failed`, `cancelled`). `messages` holds what the
+device reported along the way, and `result` its final answer.
+
+| Call | |
+|---|---|
+| `GET /v1/devices/{deviceId}/tasks?limit=50&before={taskId}` | A device's tasks, newest first; page with `before` set to the last `taskId` you have |
+| `GET /v1/devices/{deviceId}/tasks/{taskId}` | One task |
+| `POST /v1/devices/{deviceId}/tasks` | Create a task: `{"taskClass": "ShowToast", "parameters": ["…"]}` |
+
+Reading tasks needs `ViewDevices`, creating them `SendMessages`. The tasks you can create are `ShowToast` (the same as a message);
+OhrTech creates the rest. Download links inside update tasks have their signature replaced with
+`REDACTED`.

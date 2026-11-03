@@ -1,0 +1,108 @@
+---
+title: Devices and fleets
+description: List devices with live status, read their details and apps, ask one to check in, and move devices between fleets.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Every OhrTech device checks in with OhrTech regularly and reports its state. The API gives you that
+state, and lets you organise devices into **fleets**: groups that pass their settings down to their
+devices and to the fleets below them.
+
+## List devices
+
+`GET /v1/devices` returns every device you can reach. Narrow it with `fleetId` (devices directly in
+that fleet), `online=true` or `false` (checked in within the last 20 minutes), or `clientId` if you
+belong to more than one organisation. Needs `ViewDevices`.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl "https://api.ohrtech.net/v1/devices?fleetId=7&online=true" -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var devices = await api.ListDevicesAsync(fleetId: 7, online: true);
+```
+
+</TabItem>
+</Tabs>
+
+Each device comes with what you need for a dashboard: `serial`, `fleetName`, `online` and
+`lastCheckIn`, `batteryLevel` and `charging`, `network` (`WiFi` or `Mobile`), `simOperator`,
+`agentVersion` and `agentOutdated`, `settingsInSync` and `settingsErrors`, and whether it supports
+`remoteControl` and `remoteAdb`.
+
+## One device in detail
+
+`GET /v1/devices/{deviceId}` adds:
+
+| Section | What it holds |
+|---|---|
+| `agent` | The OhrTech Agent's version, the version offered to it, and whether it is behind |
+| `os` | The Foundation OS build fingerprint, build ID and build date |
+| `network` | The active network, Wi-Fi signal, mobile state, operator and signal, SIM operator and ICCID |
+| `battery` | Level, status and whether it is charging |
+| `settings` | The policy revision it must follow and the one it applied, whether they match, and how many settings failed |
+| `capabilities` | Whether it supports remote control and remote ADB, and `yourPermissions` on it |
+
+## Installed apps and enrolments
+
+- `GET /v1/devices/{deviceId}/apps` lists the installed packages as the device last reported them:
+  `package`, `name`, `version` and `versionCode`. Use it to check that your app is installed, at the
+  right version, everywhere.
+- `GET /v1/devices/{deviceId}/enrolments` lists every time the device enrolled, newest first. Each
+  enrolment is backed by the device's hardware-rooted attestation; `kind: "re-enrolled"` means the
+  device made new keys, which usually means it was factory reset.
+
+## Ask a device to check in now
+
+Devices check in on their own schedule. When you need fresh status (before a support call, after a
+change), ask:
+
+```sh
+curl -X POST https://api.ohrtech.net/v1/devices/42/check-in -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+The answer is `202 Accepted`. A reachable device checks in within seconds; read it again with
+`GET /v1/devices/42`. A device on mobile data may only hear the request at its next scheduled
+check-in.
+
+## Fleets
+
+`GET /v1/fleets` lists your fleets with `parentFleetId` and `deviceCount`. Fleets nest: a device
+follows the settings of its fleet and of every fleet above it, top first, then its own overrides
+(see [settings](/management-api/guides/settings/)).
+
+### Move a device
+
+Needs `MoveDevices`. The device gets its new fleet's settings at once.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/devices/42/fleet \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"fleetId": 7}'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });
+```
+
+</TabItem>
+</Tabs>
+
+`{"fleetId": null}` takes the device out of every fleet. `fleetId` is required, so a request that
+leaves it out by mistake is refused instead of moving the device.
+
+To sort many devices at once from your own inventory, see the
+[sort into fleets](/management-api/recipes/sort-into-fleets/) recipe.

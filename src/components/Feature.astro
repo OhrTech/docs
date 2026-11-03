@@ -1,0 +1,40 @@
+---
+// One thing the API does: a short claim, the proof underneath (slot), and where to read more.
+interface Props {
+	title: string;
+	href: string;
+	more?: string;
+}
+const { title, href, more = 'How it works' } = Astro.props;
+---
+
+<section class="feature">
+	<h3>{title}</h3>
+	<div class="body"><slot /></div>
+	<a href={href}>{more} →</a>
+</section>
+
+<style>
+	.feature {
+		display: flex;
+		flex-direction: column;
+		gap: 0.6rem;
+		padding-top: 1rem;
+		border-top: 2px solid var(--ohr-flame);
+	}
+	h3 {
+		margin: 0;
+		font-size: 1.25rem;
+	}
+	.body :global(p) {
+		margin: 0;
+	}
+	.body :global(.expressive-code) {
+		margin-top: 0.75rem;
+	}
+	a {
+		margin-top: auto;
+		font-weight: 650;
+		text-decoration: none;
+	}
+</style>

@@ -1,0 +1,135 @@
+---
+// The Management API reference: Scalar, rendered from the OpenAPI document scripts/sync-openapi.mjs
+// copies into public/ (with the C# SDK samples), inside the docs' own header.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage
+	frontmatter={{
+		title: 'API reference',
+		description: 'Every Management API operation, with examples in curl, C#, Python, JavaScript and more, and a Try it button.',
+		template: 'splash',
+		tableOfContents: false,
+		editUrl: false,
+		lastUpdated: false,
+		pagefind: false,
+	}}
+>
+	<div class="reference-intro">
+		<p>
+			Every operation of the Management API. Choose <strong>Test request</strong> to call the real API
+			with your own token: paste a service account token (<code>ohrs_…</code>) under Authentication. It
+			stays in this page and goes only to <code>api.ohrtech.net</code>.
+		</p>
+	</div>
+	<div id="api-reference" class="not-content"></div>
+</StarlightPage>
+
+<script>
+	import { createApiReference } from '@scalar/api-reference';
+	import '@scalar/api-reference/style.css';
+
+	const stored = (() => {
+		try {
+			return localStorage.getItem('starlight-theme');
+		} catch {
+			return null;
+		}
+	})();
+	const dark = stored === 'dark' || (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+
+	createApiReference('#api-reference', {
+		url: '/management-api/openapi.json',
+		theme: 'none',
+		withDefaultFonts: false,
+		forceDarkModeState: dark ? 'dark' : 'light',
+		hideDarkModeToggle: true,
+		layout: 'modern',
+		defaultHttpClient: { targetKey: 'shell', clientKey: 'curl' },
+		featuredClients: ['shell/curl', 'csharp/httpclient', 'python/requests', 'node/fetch', 'go/native'],
+		documentDownloadType: 'json',
+		showDeveloperTools: 'never',
+		agent: { disabled: true },
+		mcp: { disabled: true },
+		telemetry: false,
+		persistAuth: false,
+		authentication: { preferredSecurityScheme: 'bearer' },
+		defaultOpenFirstTag: true,
+		orderSchemaPropertiesBy: 'preserve',
+		metaData: { title: 'API reference | OhrTech Developers' },
+	});
+</script>
+
+<style is:global>
+	/* Full width: the reference has its own sidebar. */
+	.content-panel:has(#api-reference) > .sl-container {
+		max-width: none;
+	}
+	.content-panel:has(#api-reference) {
+		padding-inline: 0;
+	}
+	/* Lined up with the page title above (Starlight's splash container: 1080px, centred). */
+	.reference-intro {
+		box-sizing: content-box;
+		max-width: 1080px;
+		margin-inline: auto;
+		padding: 0 var(--sl-content-pad-x) 1.25rem;
+		color: var(--sl-color-gray-3);
+	}
+	.reference-intro p {
+		max-width: 46rem;
+	}
+	.reference-intro p {
+		margin: 0;
+	}
+
+	/* Scalar in the OhrTech palette (tokens from src/styles/theme.css). Scalar puts its mode class on <body>. */
+	body.light-mode,
+	body.dark-mode {
+		--scalar-font: var(--sl-font);
+		--scalar-font-code: var(--sl-font-mono);
+		--scalar-radius: 6px;
+		--scalar-radius-lg: 10px;
+		--scalar-radius-xl: 10px;
+	}
+	body.light-mode {
+		--scalar-color-1: #1c2029;
+		--scalar-color-2: #4a5263;
+		--scalar-color-3: #6b7385;
+		--scalar-color-accent: #0a2e77;
+		--scalar-background-1: #ffffff;
+		--scalar-background-2: #f4f5f7;
+		--scalar-background-3: #e9ecf1;
+		--scalar-background-accent: #e2e8f4;
+		--scalar-border-color: #dde1e8;
+		--scalar-button-1: #f88024;
+		--scalar-button-1-color: #212121;
+		--scalar-button-1-hover: #ff9640;
+		--scalar-color-green: #067647;
+		--scalar-color-red: #b42318;
+		--scalar-color-yellow: #a15c07;
+		--scalar-color-blue: #0a2e77;
+		--scalar-color-orange: #d46921;
+		--scalar-color-purple: #5b4bb7;
+	}
+	body.dark-mode {
+		--scalar-color-1: #f4f5f7;
+		--scalar-color-2: #c3c9d6;
+		--scalar-color-3: #8f97a8;
+		--scalar-color-accent: #ffb27a;
+		--scalar-background-1: #1c2029;
+		--scalar-background-2: #232833;
+		--scalar-background-3: #2b313d;
+		--scalar-background-accent: #3d2511;
+		--scalar-border-color: rgba(255, 255, 255, 0.1);
+		--scalar-button-1: #f88024;
+		--scalar-button-1-color: #212121;
+		--scalar-button-1-hover: #ff9640;
+		--scalar-color-green: #3ccb7f;
+		--scalar-color-red: #f97066;
+		--scalar-color-yellow: #fdb022;
+		--scalar-color-blue: #84adff;
+		--scalar-color-orange: #f88024;
+		--scalar-color-purple: #b692f6;
+	}
+</style>

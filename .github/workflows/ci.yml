@@ -1,0 +1,48 @@
+name: CI
+
+# Cloudflare Pages builds and deploys the site itself; this checks that it builds, that its links
+# work, and that every C# example and snippet compiles against the published SDK.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      - name: The reference matches the API's OpenAPI document
+        run: |
+          node scripts/sync-openapi.mjs
+          git diff --exit-code -- public/management-api/openapi.json examples/reference-samples.cs
+
+      - name: Every example and page snippet compiles
+        run: |
+          node scripts/check-snippets.mjs
+          for f in examples/*.cs examples/.page-snippets.cs; do
+            echo "::group::$f"
+            dotnet build "$f"
+            echo "::endgroup::"
+          done

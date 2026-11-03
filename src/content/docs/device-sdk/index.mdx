@@ -1,0 +1,28 @@
+---
+title: Device SDK
+description: For the app you ship on OhrTech devices, to work with the OhrTech Agent on the device it runs on. Coming soon.
+---
+
+<p><span class="ohr-badge soon">Coming soon</span></p>
+
+The Device SDK is the other half of the OhrTech SDK. Where the [Management API](/management-api/)
+runs on your servers and manages many devices, the Device SDK is an Android library for **your app,
+on the device**: it lets your app work with the OhrTech Agent on the device it runs on.
+
+With it, your app will be able to change device settings, manage network and power, lock the screen
+to one app, reboot on a schedule and install its own updates.
+
+## Which one do I need?
+
+| | Management API | Device SDK |
+|---|---|---|
+| Runs | On your servers, scripts and desktop tools | Inside your app, on the device |
+| Acts on | Any device in your fleets | The device it runs on |
+| Talks to | `api.ohrtech.net` | The OhrTech Agent, on the device |
+| Typical jobs | Help desks, inventory sync, reports, alerts, fleet-wide changes | Kiosk and single-app setups, your app's own updates, on-device settings |
+| Status | [Available](/management-api/) | Coming soon |
+
+Many products use both: the app on the device uses the Device SDK, and your back office uses the
+Management API.
+
+Its documentation will be published here. Questions in the meantime: [info@ohrtech.net](mailto:info@ohrtech.net).

@@ -1,0 +1,251 @@
+/*
+ * OhrTech Developers theme. Tokens come from ohrtech.net (site/src/styles/global.css): navy and
+ * flame on white, charcoal header, Source Sans 3 and JetBrains Mono. ohrtech.net is light only; the
+ * dark theme here is built from its dark-section tokens.
+ */
+
+:root {
+	/* Brand */
+	--ohr-charcoal: #212121;
+	--ohr-navy: #0a2e77;
+	--ohr-navy-deep: #071f52;
+	--ohr-flame: #f88024;
+	--ohr-flame-hover: #ff9640;
+	--ohr-flame-base: #d46921;
+	--ohr-flame-text: #b25317;
+	--ohr-flame-upper: #fbba14;
+	--ohr-off-white: #f4f5f7;
+	--ohr-ink: #1c2029;
+	--ohr-ink-soft: #4a5263;
+	--ohr-line: #dde1e8;
+	--ohr-on-dark: #f4f5f7;
+	--ohr-on-dark-soft: #c3c9d6;
+	--ohr-line-dark: rgba(255, 255, 255, 0.14);
+	--ohr-ok: #067647;
+	--ohr-radius: 10px;
+	--ohr-radius-sm: 6px;
+	--ohr-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.06);
+
+	/* Per theme (dark values; light below) */
+	--ohr-eyebrow: var(--ohr-flame);
+	--ohr-card-bg: #232833;
+	--ohr-card-line: var(--ohr-line-dark);
+	--ohr-muted-bg: #232833;
+
+	--sl-font: 'Source Sans 3 Variable', 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--sl-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+	--sl-text-body: 1.0625rem;
+	--sl-text-body-sm: 0.9375rem;
+	--sl-line-height: 1.6;
+	--sl-text-h1: clamp(2rem, 3.6vw, 2.6rem);
+	--sl-text-h2: clamp(1.45rem, 2.4vw, 1.85rem);
+	--sl-text-h3: 1.25rem;
+	--sl-text-h4: 1.0625rem;
+	--sl-content-width: 46rem;
+	--sl-nav-height: 4.5rem;
+
+	/* Dark: built from ohrtech.net's dark-section tokens */
+	--sl-color-accent-low: #3d2511;
+	--sl-color-accent: var(--ohr-flame);
+	--sl-color-accent-high: #ffb27a;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: var(--ohr-on-dark);
+	--sl-color-gray-2: #dde1e8;
+	--sl-color-gray-3: var(--ohr-on-dark-soft);
+	--sl-color-gray-4: #8f97a8;
+	--sl-color-gray-5: #5b6375;
+	--sl-color-gray-6: #343a46;
+	--sl-color-gray-7: #262b35;
+	--sl-color-black: var(--ohr-ink);
+	--sl-color-bg-nav: var(--ohr-charcoal);
+	--sl-color-bg-sidebar: var(--ohr-ink);
+	--sl-color-hairline-light: var(--ohr-line-dark);
+	--sl-color-hairline: rgba(255, 255, 255, 0.1);
+	--sl-color-hairline-shade: rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme='light'] {
+	--ohr-eyebrow: var(--ohr-flame-text);
+	--ohr-card-bg: #ffffff;
+	--ohr-card-line: var(--ohr-line);
+	--ohr-muted-bg: var(--ohr-off-white);
+
+	--sl-color-accent-low: #e2e8f4;
+	--sl-color-accent: var(--ohr-navy);
+	--sl-color-accent-high: var(--ohr-navy-deep);
+	--sl-color-white: #14171f;
+	--sl-color-gray-1: var(--ohr-ink);
+	--sl-color-gray-2: #2f3542;
+	--sl-color-gray-3: var(--ohr-ink-soft);
+	--sl-color-gray-4: #6b7385;
+	--sl-color-gray-5: #b9c0cc;
+	--sl-color-gray-6: var(--ohr-line);
+	--sl-color-gray-7: var(--ohr-off-white);
+	--sl-color-black: #ffffff;
+	--sl-color-bg-nav: var(--ohr-charcoal);
+	--sl-color-bg-sidebar: #ffffff;
+	--sl-color-bg-inline-code: var(--ohr-off-white);
+	--sl-color-hairline-light: var(--ohr-line);
+	--sl-color-hairline: var(--ohr-line);
+	--sl-color-hairline-shade: #c9ced8;
+}
+
+/* The header is charcoal in both themes, like ohrtech.net: give it the dark palette. */
+.header {
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: var(--ohr-on-dark);
+	--sl-color-gray-2: #dde1e8;
+	--sl-color-gray-3: var(--ohr-on-dark-soft);
+	--sl-color-gray-4: #8f97a8;
+	--sl-color-gray-5: #5b6375;
+	--sl-color-gray-6: #3a3a3a;
+	--sl-color-black: var(--ohr-charcoal);
+	--sl-color-hairline-shade: rgba(255, 255, 255, 0.08);
+	--sl-color-accent: var(--ohr-flame);
+	--sl-color-accent-high: #ffb27a;
+	--sl-color-text-accent: #ffb27a;
+	border-bottom-color: rgba(255, 255, 255, 0.08);
+	color-scheme: dark;
+}
+
+body {
+	background: var(--sl-color-black);
+}
+
+h1,
+h2,
+h3,
+h4,
+.sl-markdown-content :is(h1, h2, h3, h4) {
+	font-weight: 700;
+	line-height: 1.15;
+	letter-spacing: -0.015em;
+	text-wrap: balance;
+}
+.sl-markdown-content h3 {
+	letter-spacing: -0.005em;
+}
+
+/* Links: navy (flame-light on dark), underlined like ohrtech.net */
+.sl-markdown-content a:not(:where(.not-content *, .sl-link-button, .card-link)) {
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.18em;
+}
+.sl-markdown-content a:not(:where(.not-content *, .sl-link-button, .card-link)):hover {
+	text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+	outline: 3px solid var(--ohr-flame);
+	outline-offset: 2px;
+}
+
+/* Buttons: flame with charcoal text */
+.sl-link-button.primary,
+.ohr-button.primary {
+	background: var(--ohr-flame);
+	border-color: var(--ohr-flame);
+	color: var(--ohr-charcoal);
+	font-weight: 650;
+}
+.sl-link-button.primary:hover,
+.ohr-button.primary:hover {
+	background: var(--ohr-flame-hover);
+	border-color: var(--ohr-flame-hover);
+	color: var(--ohr-charcoal);
+}
+
+/* Inline code like ohrtech.net */
+.sl-markdown-content :not(pre) > code {
+	font-size: 0.9em;
+	border-radius: 4px;
+	padding: 0.1em 0.35em;
+}
+
+/* Small mono label above a heading */
+.ohr-eyebrow {
+	font-family: var(--sl-font-mono);
+	font-size: 0.8rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ohr-eyebrow);
+	margin: 0;
+}
+
+/* A section label: room above, tight to its heading */
+.sl-markdown-content p.ohr-eyebrow {
+	margin-top: 3.5rem;
+}
+.sl-markdown-content .ohr-eyebrow + :is(h2, .sl-heading-wrapper) {
+	margin-top: 0.4rem;
+}
+.sl-markdown-content .ohr-eyebrow + .sl-heading-wrapper h2 {
+	margin-top: 0;
+}
+
+/* Status pill, like the bulletin badges on ohrtech.net */
+.ohr-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	font-family: var(--sl-font-mono);
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	border: 1px solid currentColor;
+	border-radius: 999px;
+	padding: 0.15em 0.65em;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+.ohr-badge::before {
+	content: '';
+	width: 0.45em;
+	height: 0.45em;
+	border-radius: 50%;
+	background: currentColor;
+}
+.ohr-badge.live {
+	color: #3ccb7f;
+}
+:root[data-theme='light'] .ohr-badge.live {
+	color: var(--ohr-ok);
+}
+.ohr-badge.soon {
+	color: var(--sl-color-gray-3);
+}
+
+/* Sidebar: the API reference link opens a full-width page */
+a[data-reference]::after {
+	content: ' ↗';
+	font-size: 0.85em;
+	color: var(--sl-color-gray-4);
+}
+
+/* Tables: tabular figures, no awkward wrapping of code */
+.sl-markdown-content table {
+	font-variant-numeric: tabular-nums;
+}
+.sl-markdown-content td code {
+	white-space: nowrap;
+}
+.sl-markdown-content td:has(code) {
+	min-width: 9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition: none !important;
+		animation: none !important;
+	}
+}
+
+/* Code shows exactly what to type: no ligatures (=> stays =>). */
+code,
+pre,
+.expressive-code {
+	font-variant-ligatures: none;
+	font-feature-settings: 'liga' 0, 'calt' 0;
+}

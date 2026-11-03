@@ -1,0 +1,87 @@
+---
+title: Quickstart
+description: Create a service account, list your devices and show a message on one, in about five minutes.
+---
+
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import quickstart from '../../../../examples/quickstart.cs?raw';
+
+You need an OhrTech organisation with at least one device, and permission to manage its members
+(ManageMembers) in the OhrTech Portal.
+
+<Steps>
+
+1. **Create a service account.** In the [OhrTech Portal](https://portal.ohrtech.net), open
+   **Service accounts** and create one named, say, `quickstart`.
+
+2. **Grant it two permissions:** `ViewDevices` and `SendMessages`. Leave its devices, networks and
+   embed sites unlimited for now. You can [narrow them](/management-api/permissions/) later.
+
+3. **Make a token.** Choose **New token**, pick how long it lasts (30 days to a year), and copy it.
+   It starts with `ohrs_` and is shown only once. Keep it in an environment variable:
+
+   ```sh
+   export OHR_TOKEN=ohrs_…
+   ```
+
+4. **List your devices.**
+
+   <Tabs syncKey="lang">
+   <TabItem label="curl">
+
+   ```sh
+   curl https://api.ohrtech.net/v1/devices -H "Authorization: Bearer $OHR_TOKEN"
+   ```
+
+   </TabItem>
+   <TabItem label="C#">
+
+   ```sh
+   dotnet run quickstart.cs
+   ```
+
+   With [`quickstart.cs`](#the-whole-program) below. .NET 10 runs a single `.cs` file directly; there is
+   no project to create.
+
+   </TabItem>
+   </Tabs>
+
+   Each device has a `deviceId`. Pick one that is `online`.
+
+5. **Show a message on its screen.**
+
+   <Tabs syncKey="lang">
+   <TabItem label="curl">
+
+   ```sh
+   curl https://api.ohrtech.net/v1/devices/42/messages \
+     -H "Authorization: Bearer $OHR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "Hello from the Management API"}'
+   ```
+
+   </TabItem>
+   <TabItem label="C#">
+
+   ```sh
+   dotnet run quickstart.cs -- 42
+   ```
+
+   </TabItem>
+   </Tabs>
+
+   The message appears on the device within seconds. The response is the task that carries it:
+   `GET /v1/devices/42/tasks/{taskId}` shows it go from `pending` to `success`.
+
+</Steps>
+
+## The whole program
+
+<Code code={quickstart} lang="csharp" title="quickstart.cs" />
+
+## Where next
+
+- [Sign in](/management-api/sign-in/) as a person, for tools your staff run.
+- Give each integration [only the access it needs](/management-api/permissions/).
+- Run a [recipe](/management-api/recipes/help-desk-connect/): a help desk with remote control, an
+  inventory sync, health alerts.

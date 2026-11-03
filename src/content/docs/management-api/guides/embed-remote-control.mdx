@@ -1,0 +1,113 @@
+---
+title: Embed remote control
+description: Put a device's live, controllable screen inside your own web app, such as your help desk, in one API call and one iframe.
+---
+
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your support staff work in your help desk, not in the OhrTech Portal. Embedding puts the device's
+screen right there: they see it live and control it with mouse and keyboard, without an OhrTech
+account of their own.
+
+<Steps>
+
+1. **Your server opens a session** for the device, naming your site as an embed origin.
+
+   ```csharp
+   var rc = await api.OpenRemoteControlSessionAsync(deviceId, new OpenRemoteControlRequest
+   {
+       EmbedOrigins = ["https://support.example.com"],
+   });
+   ```
+
+2. **Your page shows `rc.Embed.Url` in an iframe.**
+
+   ```html
+   <iframe src="EMBED_URL" allow="fullscreen; clipboard-read"
+           style="width: 100%; height: 720px; border: 0"></iframe>
+   ```
+
+3. **Your page listens**, and can send keys, text or end the session (optional, below).
+
+</Steps>
+
+For a complete, runnable help desk page, see the
+[help desk connect button](/management-api/recipes/help-desk-connect/) recipe.
+
+## What keeps it safe
+
+- **Only your sites can frame it.** The viewer may only be shown in a frame on the `embedOrigins`
+  named when the session was opened: up to 5, each `https://host[:port]` (or `http://localhost` while
+  developing). Browsers enforce this; any other site sees nothing. A session opened without any can
+  only be opened in its own tab.
+- **A service account can be pinned to its sites.** Set its **Embed sites** in the OhrTech Portal and
+  it can only name those; a session that names none gets all of them.
+- **The link is a short-lived credential.** It works for 10 minutes. Treat it like a password until
+  then and hand it only to the page that shows it. Its token sits after the `#`, the part of a URL that
+  browsers never send to a server or put in a `Referer` header.
+- **Access is checked again when the viewer connects.** If the caller lost `RemoteControl` since
+  opening the session, the viewer can't connect.
+- **The person at the device is asked**, if your policy says so (see
+  [consent](/management-api/guides/remote-control/#consent)).
+
+Reloading the page within those 10 minutes reconnects. After that, get a fresh link with
+`POST /v1/remote-control-sessions/{sessionId}/join`. A viewer that is connected stays connected.
+When the viewer has been gone for 60 seconds, the session ends.
+
+## Options
+
+Add them to the link's fragment, after the token:
+
+| Option | |
+|---|---|
+| `&toolbar=0` | Hide the toolbar (Back, Home, Recents, volume, Power, Refresh, Full screen, End) |
+| `&end=0` | Keep the toolbar but hide its End button |
+
+**Input:** a click or drag is a touch, right click is Back, the mouse wheel scrolls. Typing and
+pasting go to the device while the screen has focus.
+
+## Hear what happens
+
+The viewer tells your page what is happening with `postMessage`, only ever to the session's embed
+origins:
+
+```js
+window.addEventListener("message", (e) => {
+  if (e.origin !== "https://api.ohrtech.net" || e.data?.source !== "ohrtech-remote-control") return;
+
+  switch (e.data.type) {
+    case "state":
+      // e.data.state: waiting | awaiting_consent | active | ended | error, and e.data.detail
+      break;
+    case "video":
+      // e.data.width, e.data.height: the device screen's size
+      break;
+    case "device":
+      // the device's own report: state, consent, width, height, reason
+      break;
+  }
+});
+```
+
+Every message also carries `session`, the session's ID. Use `state` to tell your agent what is
+going on: waiting for the device, waiting for the person to allow it, connected, ended.
+
+## Control it from your page
+
+Your page can send the viewer commands (accepted only from the embed origins):
+
+```js
+const viewer = document.querySelector("iframe").contentWindow;
+const api = "https://api.ohrtech.net";
+
+viewer.postMessage({ type: "key", key: "home" }, api);
+viewer.postMessage({ type: "text", text: "hello" }, api);  // type into the focused field
+viewer.postMessage({ type: "refresh" }, api);             // ask for a full frame
+viewer.postMessage({ type: "focus" }, api);               // give the screen keyboard focus
+viewer.postMessage({ type: "end" }, api);                 // end the session
+```
+
+Keys: `back` `home` `recents` `power` `volume_up` `volume_down` `notifications` `enter` `backspace`
+`delete` `tab` `escape` `left` `right` `up` `down` `page_up` `page_down` `move_home` `move_end`.
+
+Build your own buttons, such as "Open settings" or "Go home", or bind keyboard shortcuts in your app.

@@ -1,0 +1,102 @@
+---
+title: Remote control
+description: See a device's screen and control it, with the consent your policy requires, from the OhrTech Portal, your own app, or your own viewer.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+A remote control session streams a device's screen live and sends it touches, keys and text. It
+works over Wi-Fi or mobile data, wherever the device is, without a VPN or an open port.
+
+Most apps [embed the viewer](/management-api/guides/embed-remote-control/): one call, one
+`<iframe>`. This page covers sessions themselves.
+
+## Consent
+
+The device's `remote_control.consent` [setting](/management-api/guides/settings/) decides what the
+person holding it sees:
+
+| Value | On the device |
+|---|---|
+| `unattended` | Nothing: the session starts at once. For kiosks and unattended devices. |
+| `notify` | "Remote control started" over everything, dismissed by the person or after 15 seconds |
+| `confirm` | "Allow remote control?" with Decline and Allow; declines on its own after 45 seconds |
+
+A device without a policy asks (`confirm`). When opening a session you may ask for a **stricter**
+level than the policy, never a looser one, and the device itself enforces that.
+
+## Open a session
+
+Needs `RemoteControl` on the device.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices/42/remote-control-sessions \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"embedOrigins": ["https://support.example.com"]}'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest
+{
+    EmbedOrigins = ["https://support.example.com"],
+});
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `embedOrigins` | The web sites that may show the viewer in a frame. See [embedding](/management-api/guides/embed-remote-control/). |
+| `consent` | `notify` or `confirm` to ask for more than the device's policy for this session |
+| `takeOver` | `true` to end someone else's open session on this device and start yours |
+
+The answer, `201 Created`:
+
+```json
+{
+  "session": {
+    "sessionId": "8a3c6f0e-…",
+    "deviceId": 42,
+    "status": "pending",
+    "consent": "confirm",
+    "actor": "service:help-desk",
+    "createdAt": "2026-11-03T17:10:00Z",
+    "expiresAt": "2026-11-03T19:10:00Z"
+  },
+  "connection": { "url": "wss://live.ohrtech.net", "token": "…" },
+  "embed": {
+    "url": "https://api.ohrtech.net/embed/v1/remote-control/8a3c6f0e-…#token=…",
+    "expiresAt": "2026-11-03T17:20:00Z"
+  },
+  "policyConsent": "confirm"
+}
+```
+
+- `embed.url` is the viewer, ready for an `<iframe>`, valid for 10 minutes.
+- `connection` is for building your own viewer instead. Most apps don't need it.
+- `policyConsent` is what the device's settings require; `session.consent` is what applies.
+
+**Someone else is connected?** The answer is `409 Conflict` with the open session in
+`blockingSession`. Show who it is (`actor`) and offer to take over with `takeOver: true`.
+
+## Follow and end it
+
+| Call | |
+|---|---|
+| `GET /v1/remote-control-sessions/{sessionId}` | Its `status`, `startedAt`, `closedAt` and `closeReason` |
+| `POST /v1/remote-control-sessions/{sessionId}/join` | A fresh embed link and token, for the caller who opened it |
+| `DELETE /v1/remote-control-sessions/{sessionId}` | End it (anyone with `RemoteControl` on the device) |
+| `GET /v1/devices/{deviceId}/remote-control-sessions` | The device's sessions, newest first: who connected, when, and how each ended |
+
+`status` goes `pending` → `notified` → `awaiting_consent` (when the person is asked) → `active`, and
+ends as `closed`, `denied` (declined at the device) or `failed`.
+
+A session ends when either side ends it, when the person declines, when the viewer has been gone
+for 60 seconds, or after two hours.

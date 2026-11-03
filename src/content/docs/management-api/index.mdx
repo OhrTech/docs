@@ -1,0 +1,88 @@
+---
+title: Management API
+description: Manage your organisation's OhrTech devices from your own servers and tools, over HTTPS.
+---
+
+import { LinkCard, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+The Management API is how your own systems manage your OhrTech devices: everything a member of your
+organisation can do to a device in the [OhrTech Portal](https://portal.ohrtech.net), plus remote ADB
+and a remote control viewer you can put in your own web app.
+
+- **Base URL:** `https://api.ohrtech.net`, versioned under `/v1`
+- **Format:** JSON over HTTPS, errors as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details
+- **Reference:** [every operation](/management-api/reference/), also as an
+  [OpenAPI document](https://github.com/OhrTech/management-api/blob/main/openapi.json)
+- **SDK:** [.NET](/management-api/sdks/dotnet/) (`OhrTech.Management` on NuGet). From any other
+  language, call it directly or [generate a client](/management-api/sdks/other-languages/).
+
+:::note[Management API or Device SDK?]
+Use the Management API from code that runs **off** the device: your servers, scripts and desktop
+tools, managing many devices at once. Code in an app running **on** an OhrTech device will use the
+[Device SDK](/device-sdk/) instead.
+:::
+
+## What it covers
+
+| Area | What you can do |
+|---|---|
+| [Devices and fleets](/management-api/guides/devices-and-fleets/) | List devices with live status (online, battery, network, OS, Agent version, settings state), read installed apps and enrolment history, ask a device to check in now, move devices between fleets |
+| [Settings](/management-api/guides/settings/) | Read and change nearly 50 device settings, each set or locked; see what each device applied; push them again |
+| [Messages and tasks](/management-api/guides/messages-and-tasks/) | Show a message on a device's screen; follow every task OhrTech runs on it |
+| [Remote control](/management-api/guides/remote-control/) | Open a session on a device and [show it in your own app](/management-api/guides/embed-remote-control/), with the consent your policy requires |
+| [Remote ADB](/management-api/guides/remote-adb/) | Open ADB sessions to devices anywhere, for your engineers |
+
+## A first call
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices?online=true \
+  -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using OhrTech.Management;
+
+using var api = OhrManagementClient.ForServiceAccount(token);
+var devices = await api.ListDevicesAsync(online: true);
+```
+
+</TabItem>
+</Tabs>
+
+Each device in the response, shortened:
+
+```json
+[
+  {
+    "deviceId": 42,
+    "serial": "A0000A00042",
+    "fleetId": 7,
+    "fleetName": "Downtown store",
+    "online": true,
+    "lastCheckIn": "2026-11-03T16:43:05Z",
+    "batteryLevel": 74,
+    "charging": false,
+    "network": "WiFi",
+    "agentVersion": 1037,
+    "settingsInSync": true,
+    "settingsErrors": 0,
+    "remoteControl": true,
+    "remoteAdb": true
+  }
+]
+```
+
+## Next
+
+<CardGrid>
+	<LinkCard title="Quickstart" description="Create a service account and make your first calls." href="/management-api/quickstart/" />
+	<LinkCard title="Sign in" description="Service accounts for servers; the device code flow for people." href="/management-api/sign-in/" />
+	<LinkCard title="Permissions and limits" description="Grant only what each integration needs." href="/management-api/permissions/" />
+	<LinkCard title="Recipes" description="Complete programs you can run today." href="/management-api/recipes/help-desk-connect/" />
+</CardGrid>

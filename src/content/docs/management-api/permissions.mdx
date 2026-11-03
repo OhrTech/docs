@@ -1,0 +1,72 @@
+---
+title: Permissions and limits
+description: Grant each integration only what it needs, on only the devices it works with, from only the networks it runs on.
+---
+
+Access is per organisation and checked on every call, never cached in the token: change a
+permission in the OhrTech Portal and the very next call follows it.
+
+## Permissions
+
+| Permission | Lets the caller | People | Service accounts |
+|---|---|---|---|
+| `ViewDevices` | See devices and fleets: status, installed apps, enrolments, tasks, sessions. Ask a device to check in. | Every member | When granted |
+| `ViewSettings` | See devices' managed settings and what the devices applied | Every member | When granted |
+| `EditSettings` | Change devices' settings, push and re-apply them | Every member | When granted |
+| `MoveDevices` | Move devices between fleets | Every member | When granted |
+| `SendMessages` | Show messages on devices' screens | Every member | When granted |
+| `RemoteControl` | Open, join and end remote control sessions | When granted | When granted |
+| `RemoteAdb` | Open and end remote ADB sessions | When granted | When granted |
+
+A person can do through the API exactly what they can do in the OhrTech Portal: every member holds
+the first five, and `RemoteControl` and `RemoteAdb` are granted per member. A service account holds
+only what you grant it.
+
+## Limit a service account
+
+Beyond permissions, a service account can be limited in three ways, set in the OhrTech Portal under
+Service accounts. The limits belong to the account, so every one of its tokens has exactly the same
+access.
+
+**Devices.** Pick fleets and single devices. A fleet includes every fleet below it, including fleets
+you create later. With none picked, the account reaches the whole organisation. A device outside
+its scope looks like it doesn't exist (404), and the account can't move a device out of its scope.
+
+**Networks.** CIDR ranges its tokens may be used from, such as `203.0.113.0/24`, `2001:db8::/32`
+or a single address. With none, it may call from anywhere. A token used from anywhere else is
+refused (401, saying why). A leaked token is then useless outside your network.
+
+**Embed sites.** The only web origins that may show its remote control sessions, such as
+`https://support.example.com`. See [embedding remote control](/management-api/guides/embed-remote-control/).
+
+## Check what a caller can do
+
+`GET /v1/me` returns the caller, each organisation it belongs to with its effective permissions, and
+for a service account its limits:
+
+```json
+{
+  "serviceAccountId": 12,
+  "email": "service:help-desk",
+  "globalAdmin": false,
+  "globalPermissions": [],
+  "clients": [{ "clientId": 3, "clientName": "Acme", "permissions": ["ViewDevices", "RemoteControl"] }],
+  "serviceAccount": {
+    "fleetIds": [7],
+    "deviceIds": [],
+    "embedOrigins": ["https://support.example.com"]
+  }
+}
+```
+
+`GET /v1/devices/{id}` lists, under `capabilities.yourPermissions`, what the caller may do to that
+one device, so your UI can show only the buttons that will work.
+
+## A pattern that works
+
+- **One service account per integration** (the help desk, the inventory sync, the reporting job),
+  named after it. Its tokens' last use shows in the portal, so you always know which system did what.
+- **Grant the least.** A report needs `ViewDevices` only; a help desk `ViewDevices` and
+  `RemoteControl`.
+- **Scope it to its fleets** and **pin it to your networks** whenever it runs from known addresses.
+- **Rotate tokens** by making a new one before revoking the old.
