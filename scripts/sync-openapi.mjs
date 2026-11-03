@@ -56,6 +56,9 @@ const samples = {
 		'var task = await api.CreateTaskAsync(42, new CreateTaskRequest\n{\n    TaskClass = "ShowToast",\n    Parameters = ["Please plug me in"],\n});',
 	GetTask: 'var task = await api.GetTaskAsync(42, 9131);',
 	ShowMessage: 'var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });',
+	RunShellCommand:
+		'var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });\n' +
+		'task = await api.WaitForTaskAsync(task);\nConsole.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");',
 };
 
 const signIn =
@@ -74,6 +77,7 @@ const titles = {
 	ShowMessage: 'Show a message',
 	GetSettingsCatalog: 'Settings catalog',
 	PushDeviceSettings: 'Push settings again',
+	RunShellCommand: 'Run a shell command',
 };
 const title = (id) =>
 	titles[id] ?? id.replace(/(?!^)([A-Z])/g, ' $1').replace(/ (\w)/g, (m) => m.toLowerCase()).replace(/\badb\b/, 'ADB');

@@ -2,9 +2,9 @@
 #:property PublishAot=false
 #:package OhrTech.Management@*
 // A minimal help desk: a list of your devices with a Connect button that opens the device's
-// screen right in the page.
+// screen right in the page, and buttons that press Home and open Wi-Fi settings on it.
 //   OHR_TOKEN=ohrs_… dotnet run help-desk-connect.cs     then open http://localhost:5000
-// Needs ViewDevices and RemoteControl.
+// Needs ViewDevices and RemoteControl; the Wi-Fi settings button also needs RemoteAdb.
 using OhrTech.Management;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -39,6 +39,25 @@ app.MapPost("/devices/{deviceId:long}/connect", async (long deviceId, HttpReques
     }
 });
 
+// What the viewer's keys can't do: open a particular settings screen, with a shell command.
+app.MapPost("/devices/{deviceId:long}/wifi-settings", async (long deviceId, OhrManagementClient api) =>
+{
+    try
+    {
+        var task = await api.RunShellCommandAsync(deviceId, new RunShellCommandRequest
+        {
+            Command = "am start -a android.settings.WIFI_SETTINGS",
+            ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(1), // pointless once the agent has moved on
+        });
+        task = await api.WaitForTaskAsync(task, TimeSpan.FromSeconds(30));
+        return Results.Ok(new { task.Status, task.Shell?.Error });
+    }
+    catch (OhrApiException<ProblemDetails> e)
+    {
+        return Results.Json(new { e.Result.Title, e.Result.Detail }, statusCode: e.StatusCode);
+    }
+});
+
 app.MapDelete("/sessions/{sessionId}", async (Guid sessionId, OhrManagementClient api) =>
 {
     await api.CloseRemoteControlSessionAsync(sessionId);
@@ -60,19 +79,26 @@ static class HelpDesk
     aside { border-right: 1px solid #dde1e8; overflow: auto; padding: 1rem; }
     li { display: flex; justify-content: space-between; align-items: center; padding: .5rem 0; border-bottom: 1px solid #eef0f3; }
     main { display: grid; grid-template-rows: auto 1fr; }
-    #status { padding: .75rem 1rem; border-bottom: 1px solid #dde1e8; }
+    header { display: flex; gap: .5rem; align-items: center; padding: .75rem 1rem; border-bottom: 1px solid #dde1e8; }
+    #status { flex: 1; }
     iframe { width: 100%; height: 100%; border: 0; background: #111; }
   </style>
 </head>
 <body>
   <aside><h2>Devices</h2><ul id="devices" style="list-style:none;padding:0"></ul></aside>
   <main>
-    <div id="status">Pick a device.</div>
+    <header>
+      <span id="status">Pick a device.</span>
+      <button id="home" disabled>Home</button>
+      <button id="wifi" disabled>Wi-Fi settings</button>
+    </header>
     <iframe id="viewer" allow="fullscreen; clipboard-read" title="Device screen"></iframe>
   </main>
   <script>
     const list = document.getElementById("devices"), viewer = document.getElementById("viewer");
     const status = document.getElementById("status");
+    const home = document.getElementById("home"), wifi = document.getElementById("wifi");
+    let current = null;
 
     fetch("/devices").then(r => r.json()).then(devices => {
       for (const d of devices) {
@@ -93,7 +119,17 @@ static class HelpDesk
       const body = await r.json();
       if (!r.ok) { status.textContent = body.detail ?? body.title; return; }
       viewer.src = body.url;
+      current = deviceId;
+      home.disabled = wifi.disabled = false;
     }
+
+    // A key goes straight to the viewer; anything else goes through your server.
+    home.onclick = () => viewer.contentWindow.postMessage({ type: "key", key: "home" }, "https://api.ohrtech.net");
+    wifi.onclick = async () => {
+      const r = await fetch(`/devices/${current}/wifi-settings`, { method: "POST" });
+      const body = await r.json();
+      if (!r.ok || body.status !== "success") status.textContent = body.detail ?? body.error ?? "Could not open Wi-Fi settings.";
+    };
 
     // The viewer reports what is happening on the device.
     window.addEventListener("message", e => {

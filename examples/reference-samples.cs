@@ -167,6 +167,13 @@ static async Task ShowMessage(OhrManagementClient api, string adbPublicKey, stri
     var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });
 }
 
+static async Task RunShellCommand(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });
+    task = await api.WaitForTaskAsync(task);
+    Console.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");
+}
+
 static async Task SignIn()
 {
     // The SDK runs the device code flow and refreshes the access token for you.

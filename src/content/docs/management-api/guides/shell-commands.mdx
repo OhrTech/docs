@@ -1,0 +1,125 @@
+---
+title: Shell commands
+description: Run any command on a device as adb shell would, from your own code, and get its exit code and output. No cable, no session to open.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Anything you would type after `adb shell`, your code can run on a device wherever it is: open a
+settings screen, read a property, check the battery, start an app, collect diagnostics from a
+whole fleet. The device runs the command as the shell user, as `adb shell` does, and sends back
+its exit code and output.
+
+## Run a command
+
+Needs `RemoteAdb` on the device. The call returns the command's task at once (201); the device runs
+it as soon as it gets it, within seconds when it is online.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest
+{
+    Command = "dumpsys battery | grep level",
+});
+task = await api.WaitForTaskAsync(task);
+Console.WriteLine(task.Shell!.Stdout); // "  level: 87"
+```
+
+`WaitForTaskAsync` asks for the task until it has finished.
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices/42/shell \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"command": "dumpsys battery | grep level"}'
+```
+
+Then `GET /v1/devices/42/tasks/{taskId}` until `status` is `success` or `failed`.
+
+</TabItem>
+</Tabs>
+
+The finished task carries the result under `shell`:
+
+```json
+{
+  "taskId": 9200,
+  "deviceId": 42,
+  "taskClass": "ExecuteShellCmd",
+  "status": "success",
+  "createdBy": "ops@example.com",
+  "shell": {
+    "exitCode": 0,
+    "stdout": "  level: 87\n",
+    "stderr": "",
+    "truncated": false,
+    "timedOut": false,
+    "durationMs": 212
+  }
+}
+```
+
+`status` is `success` when the command exits with 0. It is `failed` for any other exit code, when
+the command ran out of time (`timedOut`), or when it could not run at all (`error` says why).
+
+## Options
+
+| Field | |
+|---|---|
+| `command` | Up to 4,000 characters, run with `sh -c`, so pipes, `;` and `&&` work. It runs in `/` with nothing on stdin. |
+| `timeoutSeconds` | 1 to 600, default 60. A command still running then is stopped, with everything it started. |
+| `expiresAt` | Don't run it if the device gets it after this time. Without it, a device that is offline runs the command when it next connects. |
+
+The task keeps the first 64 KiB of stdout and of stderr; `truncated` says when there was more.
+
+## Things to run
+
+| To | Command |
+|---|---|
+| Open the Settings app | `am start -a android.settings.SETTINGS` |
+| Open Wi-Fi settings | `am start -a android.settings.WIFI_SETTINGS` |
+| Go to the home screen | `input keyevent KEYCODE_HOME` |
+| Start an app | `monkey -p com.example.app 1` |
+| Read the battery | `dumpsys battery` |
+| Read a system property | `getprop ro.build.fingerprint` |
+| List the apps you installed | `pm list packages -3` |
+| See free storage | `df -h /data` |
+| Collect recent logs | `logcat -d -t 500` |
+
+## Run it on a fleet
+
+Start the command on every device, then wait for them all:
+
+```csharp
+var devices = await api.ListDevicesAsync(fleetId: 7, online: true);
+var started = await Task.WhenAll(devices
+    .Where(d => d.ShellCommands)
+    .Select(d => api.RunShellCommandAsync(d.DeviceId,
+        new RunShellCommandRequest { Command = "df -h /data | tail -1" })));
+
+foreach (var task in await Task.WhenAll(started.Select(t => api.WaitForTaskAsync(t))))
+    Console.WriteLine($"{task.DeviceId}: {task.Shell?.Stdout.Trim()}");
+```
+
+`shellCommands` on a device (in the device list, and under `capabilities` in its details) says
+whether it can run shell commands. It needs a recent OhrTech OS.
+
+## What a command can do
+
+It runs as the shell user, with the same rights as `adb shell` on a production device: it can start
+activities, send key events, read logs and system state, and install or remove apps. It is not
+root: it can't read other apps' private data or change the system itself.
+
+That is the same power as a [remote ADB](/management-api/guides/remote-adb/) session, so it needs
+the same permission:
+
+- **`RemoteAdb` only.** Grant it to the people and service accounts that need it, and limit those
+  service accounts to their fleets and networks (see [permissions](/management-api/permissions/)).
+- **Every command is on the record.** Its task keeps what ran, who ran it (`createdBy`), when, and
+  what it printed. Read it with `GET /v1/devices/{deviceId}/tasks`.
+- **Only from OhrTech.** A device runs only commands that OhrTech's servers signed and addressed to
+  that device.

@@ -69,6 +69,7 @@ export default defineConfig({
 										'management-api/guides/messages-and-tasks',
 										'management-api/guides/remote-control',
 										'management-api/guides/embed-remote-control',
+										'management-api/guides/shell-commands',
 										'management-api/guides/remote-adb',
 										'management-api/guides/errors',
 									],

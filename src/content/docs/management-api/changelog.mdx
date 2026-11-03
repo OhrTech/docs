@@ -7,6 +7,15 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-03: shell commands
+
+- `POST /v1/devices/{deviceId}/shell` runs a [shell command](/management-api/guides/shell-commands/)
+  on a device, as `adb shell` would. It needs `RemoteAdb`. The finished task's `shell` holds the
+  exit code and output.
+- Tasks have `createdBy`: the person or service account that created them.
+- Devices have `shellCommands` (in the list, and under `capabilities`) and, in the list,
+  `securityPatch`.
+
 ## 2026-11-03: corrections
 
 - `os.securityPatch` is the Android security patch level the device runs now, as `YYYY-MM-DD`,

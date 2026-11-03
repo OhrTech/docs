@@ -1,6 +1,6 @@
 ---
 title: Help desk connect button
-description: A web page listing your devices with a Connect button that opens the device's live screen right in the page.
+description: A web page listing your devices with a Connect button that opens the device's live screen right in the page, and buttons that act on it.
 ---
 
 import { Code } from '@astrojs/starlight/components';
@@ -13,7 +13,8 @@ Portal account, and the person at the device is asked first if your policy says 
 This is a complete web app in one file: a server that holds the service account token and opens
 sessions, and a page that shows the viewer and its state.
 
-**Needs:** a service account with `ViewDevices` and `RemoteControl`, and .NET 10.
+**Needs:** a service account with `ViewDevices` and `RemoteControl` (and `RemoteAdb` for the Wi-Fi
+settings button), and .NET 10.
 
 ```sh
 OHR_TOKEN=ohrs_… dotnet run help-desk-connect.cs
@@ -34,6 +35,9 @@ Then open http://localhost:5000.
   for the person to allow it, connected, ended) and the page shows it to the agent.
 - **Someone else already connected?** The API answers 409 with their session. This page shows the
   message; yours could offer to take over (`TakeOver = true`).
+- **Two kinds of button.** **Home** is a key: the page sends it straight to the viewer. **Wi-Fi
+  settings** is something no key does, so the page asks your server, which runs a
+  [shell command](/management-api/guides/shell-commands/) on the device and waits for it.
 
 ## Make it yours
 
@@ -41,4 +45,5 @@ Then open http://localhost:5000.
 - Store `sessionId` with the ticket: `GET /v1/devices/{id}/remote-control-sessions` later shows who
   connected, when, and how each session ended.
 - Add your own buttons that send the viewer [commands](/management-api/guides/embed-remote-control/#control-it-from-your-page),
-  such as Home, Back or a canned text.
+  such as Back or a canned text, or that run [shell commands](/management-api/guides/shell-commands/),
+  such as opening your app.

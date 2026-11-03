@@ -111,4 +111,9 @@ Keys: `back` `home` `recents` `power` `volume_up` `volume_down` `notifications` 
 `delete` `tab` `escape` `left` `right` `up` `down` `page_up` `page_down` `move_home` `move_end`.
 
 Put these behind your own buttons, such as **Home** or **Back**, or bind them to keyboard shortcuts
-in your app.
+in your app. For anything the keys can't do, such as opening a particular settings screen, your
+server can run a [shell command](/management-api/guides/shell-commands/) on the device:
+
+```csharp
+await api.RunShellCommandAsync(deviceId, new RunShellCommandRequest { Command = "am start -a android.settings.WIFI_SETTINGS" });
+```

@@ -6,7 +6,7 @@ editUrl: false
 lastUpdated: false
 hero:
   title: Your fleet, from your own code
-  tagline: Everything the OhrTech Portal does to a device, your servers and tools can do too. List and configure devices, message them, and open a live, controllable screen inside your own app, with access you can limit to the fleets, networks and sites you choose.
+  tagline: Everything the OhrTech Portal does to a device, your servers and tools can do too. List and configure devices, message them, run shell commands on them, and open a live, controllable screen inside your own app, with access you can limit to the fleets, networks and sites you choose.
   actions:
     - text: Start in 5 minutes
       link: /management-api/quickstart/
@@ -58,6 +58,19 @@ Move devices between fleets from your own systems, by serial number. A device mo
 gets that fleet's settings at once.
 
 </Feature>
+<Feature title="A shell on every device" href="/management-api/guides/shell-commands/">
+
+Run any command you would type after `adb shell` on a device anywhere, from your own code, and get
+its exit code and output back: open a settings screen, read a property, collect diagnostics from a
+whole fleet at once. Every command is recorded with who ran it.
+
+</Feature>
+<Feature title="ADB from anywhere" href="/management-api/guides/remote-adb/">
+
+Your engineers use their own `adb` and Android Studio on a device in a store, a vehicle or on
+mobile data. The connection is end-to-end encrypted, and the device needs no open port or VPN.
+
+</Feature>
 <Feature title="Know before your users call" href="/management-api/recipes/fleet-health-alerts/">
 
 Every device's last check-in, battery, network, OS build, installed apps and whether its settings
@@ -73,6 +86,8 @@ applied. Ask any device to check in now. Turn it into alerts, reports and audit 
 - **A service account per integration.** Each has only the permissions you grant it, can be limited
   to particular fleets or devices, to the networks it may call from, and to the web sites that may
   show its remote control sessions.
+- **Every action on the record.** Each task, such as a shell command or a message, keeps who
+  created it, and each remote session when it opened and how it ended.
 - **Checked on every call.** A token only says who is calling. Remove a permission, disable an
   account or lock a person out, and the next call fails, not the next hour's.
 - **Secrets stay put.** Wi-Fi passwords and screen lock codes go in and never come back out.

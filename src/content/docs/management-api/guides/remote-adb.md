@@ -5,7 +5,8 @@ description: Run adb against a device anywhere on the internet, end-to-end encry
 
 Remote ADB gives your engineers the Android Debug Bridge on a device wherever it is: in a store, in
 a vehicle, on mobile data. They use their usual `adb` and Android Studio; the device needs no open
-port and no VPN.
+port and no VPN. To run single commands from your own code instead, use
+[shell commands](/management-api/guides/shell-commands/).
 
 ## With the `ohr` command line tool
 
