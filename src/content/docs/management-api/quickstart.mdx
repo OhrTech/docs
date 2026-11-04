@@ -54,7 +54,7 @@ You need an OhrTech organisation with at least one device, and permission to man
    <TabItem label="curl">
 
    ```sh
-   curl https://api.ohrtech.net/v1/devices/42/messages \
+   curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/messages \
      -H "Authorization: Bearer $OHR_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"text": "Hello from the Management API"}'
@@ -64,14 +64,14 @@ You need an OhrTech organisation with at least one device, and permission to man
    <TabItem label="C#">
 
    ```sh
-   dotnet run quickstart.cs -- 42
+   dotnet run quickstart.cs -- dev_3swt6f457299btzpw1bxx4wf0q
    ```
 
    </TabItem>
    </Tabs>
 
    The message appears on the device within seconds. The response is the task that carries it:
-   `GET /v1/devices/42/tasks/{taskId}` shows it go from `pending` to `success`.
+   `GET /v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/tasks/{taskId}` shows it go from `pending` to `success`.
 
 </Steps>
 

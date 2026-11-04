@@ -23,7 +23,7 @@ if (root == null)
 }
 
 // The fleet and every fleet below it.
-var inFleet = new HashSet<long> { root.FleetId };
+var inFleet = new HashSet<string> { root.FleetId };
 for (var grew = true; grew;)
 {
     grew = false;
@@ -43,7 +43,7 @@ foreach (var device in await api.ListDevicesAsync())
     }
     catch (OhrApiException<ProblemDetails> e)
     {
-        Console.Error.WriteLine($"{device.Serial ?? device.DeviceId.ToString()}: {e.Result.Title}");
+        Console.Error.WriteLine($"{device.Serial ?? device.DeviceId}: {e.Result.Title}");
         failed++;
     }
 }

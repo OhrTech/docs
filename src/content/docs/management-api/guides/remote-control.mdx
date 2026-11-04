@@ -33,7 +33,7 @@ Needs `RemoteControl` on the device.
 <TabItem label="curl">
 
 ```sh
-curl https://api.ohrtech.net/v1/devices/42/remote-control-sessions \
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/remote-control-sessions \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
   -d '{"embedOrigins": ["https://support.example.com"]}'
 ```
@@ -42,7 +42,7 @@ curl https://api.ohrtech.net/v1/devices/42/remote-control-sessions \
 <TabItem label="C#">
 
 ```csharp
-var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest
+var rc = await api.OpenRemoteControlSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenRemoteControlRequest
 {
     EmbedOrigins = ["https://support.example.com"],
 });
@@ -62,8 +62,8 @@ The answer, `201 Created`:
 ```json
 {
   "session": {
-    "sessionId": "8a3c6f0e-…",
-    "deviceId": 42,
+    "sessionId": "rc_1shbwr5f2984fagzq5pd22kjyj",
+    "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
     "status": "pending",
     "consent": "confirm",
     "actor": "service:help-desk",

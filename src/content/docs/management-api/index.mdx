@@ -11,6 +11,8 @@ and a remote control viewer you can put in your own web app.
 
 - **Base URL:** `https://api.ohrtech.net`, versioned under `/v1`
 - **Format:** JSON over HTTPS, errors as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details
+- **Ids:** strings whose prefix says what they name, such as `dev_3swt6f457299btzpw1bxx4wf0q`: `dev_` a device,
+  `flt_` a fleet, `app_` an app, `org_` an organisation, `tsk_` a task
 - **Reference:** [every operation](/management-api/reference/), also as an
   [OpenAPI document](https://github.com/OhrTech/management-api/blob/main/openapi.json)
 - **SDK:** [.NET](/management-api/sdks/dotnet/) (`OhrTech.Management` on NuGet). From any other
@@ -62,9 +64,9 @@ Each device in the response, shortened:
 ```json
 [
   {
-    "deviceId": 42,
+    "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
     "serial": "A0000A00042",
-    "fleetId": 7,
+    "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
     "fleetName": "Downtown store",
     "online": true,
     "lastCheckIn": "2026-11-03T16:43:05Z",

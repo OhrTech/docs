@@ -7,6 +7,19 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-04: ids with a type prefix
+
+The one change to `v1` that is not an addition, made the day after it was published:
+
+- Every id is a string whose prefix says what it names, such as `dev_3swt6f457299btzpw1bxx4wf0q`: `org_` an
+  organisation, `flt_` a fleet, `dev_` a device, `app_` an app, `tsk_` a task, `usr_` a person,
+  `sa_` a service account, `adb_` and `rc_` remote ADB and remote control sessions. Ids were
+  numbers, and sessions UUIDs.
+- Organisations are called that throughout: `orgId` and `orgName` where it said `clientId` and
+  `clientName`, `orgs` in `GET /v1/me`, and the `orgId` filter.
+- An id of another kind, such as a fleet's id where a device's belongs, is 400 ("Not a device id").
+- The [.NET SDK](/management-api/sdks/dotnet/) 2.0.0 and [`ohr`](/management-api/cli/) use them.
+
 ## 2026-11-04: your apps
 
 - [Your apps](/management-api/guides/apps/): `GET` and `POST /v1/apps`, `GET` and `PATCH

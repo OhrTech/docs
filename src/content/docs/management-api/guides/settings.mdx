@@ -85,7 +85,7 @@ override, so the device falls back to its fleets. `PUT` replaces all of the devi
 <TabItem label="curl">
 
 ```sh
-curl -X PATCH https://api.ohrtech.net/v1/devices/42/settings \
+curl -X PATCH https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/settings \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
   -d '{
     "settings": {
@@ -100,7 +100,7 @@ curl -X PATCH https://api.ohrtech.net/v1/devices/42/settings \
 <TabItem label="C#">
 
 ```csharp
-await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto
+await api.UpdateDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyPatchDto
 {
     Settings = new()
     {

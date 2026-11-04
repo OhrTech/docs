@@ -24,13 +24,14 @@
         "operationId": "ListApps",
         "parameters": [
           {
-            "name": "clientId",
+            "name": "orgId",
             "in": "query",
             "description": "Only this organisation's apps.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "package",
@@ -214,11 +215,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -288,7 +291,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.GetAppAsync(12);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.GetAppAsync(\"app_44n36syg958kyv8gzmq6f59tkq\");"
           }
         ]
       },
@@ -302,11 +305,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -386,7 +391,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = \"Store kiosk\" });"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.UpdateAppAsync(\"app_44n36syg958kyv8gzmq6f59tkq\", new UpdateAppRequest { Name = \"Store kiosk\" });"
           }
         ]
       }
@@ -402,11 +407,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -479,7 +486,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar versions = await api.ListAppVersionsAsync(12);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar versions = await api.ListAppVersionsAsync(\"app_44n36syg958kyv8gzmq6f59tkq\");"
           }
         ]
       },
@@ -493,11 +500,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "state",
@@ -595,7 +604,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait\nvar version = await api.UploadApkAsync(12, \"app-release.apk\", state: \"enforced\");"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait\nvar version = await api.UploadApkAsync(\"app_44n36syg958kyv8gzmq6f59tkq\", \"app-release.apk\", state: \"enforced\");"
           }
         ]
       }
@@ -611,11 +620,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "versionCode",
@@ -704,7 +715,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = \"enforced\" });"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar version = await api.SetAppVersionStateAsync(\"app_44n36syg958kyv8gzmq6f59tkq\", 240, new SetAppVersionStateRequest { State = \"enforced\" });"
           }
         ]
       }
@@ -720,11 +731,13 @@
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -794,7 +807,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rollout = await api.GetAppRolloutAsync(12);\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync(12);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rollout = await api.GetAppRolloutAsync(\"app_44n36syg958kyv8gzmq6f59tkq\");\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync(\"app_44n36syg958kyv8gzmq6f59tkq\");"
           }
         ]
       }
@@ -810,11 +823,13 @@
           {
             "name": "fleetId",
             "in": "path",
+            "description": "A fleet id (flt_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -887,7 +902,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListFleetAppsAsync(7);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListFleetAppsAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\");"
           }
         ]
       }
@@ -903,20 +918,24 @@
           {
             "name": "fleetId",
             "in": "path",
+            "description": "A fleet id (flt_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -979,7 +998,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.AddFleetAppAsync(7, 12);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.AddFleetAppAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_44n36syg958kyv8gzmq6f59tkq\");"
           }
         ]
       },
@@ -993,20 +1012,24 @@
           {
             "name": "fleetId",
             "in": "path",
+            "description": "A fleet id (flt_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "appId",
             "in": "path",
+            "description": "An app id (app_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1069,7 +1092,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.RemoveFleetAppAsync(7, 12);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.RemoveFleetAppAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_44n36syg958kyv8gzmq6f59tkq\");"
           }
         ]
       }
@@ -1162,22 +1185,24 @@
         "operationId": "ListDevices",
         "parameters": [
           {
-            "name": "clientId",
+            "name": "orgId",
             "in": "query",
             "description": "Only this organisation's devices.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "fleetId",
             "in": "query",
             "description": "Only devices directly in this fleet.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "online",
@@ -1274,11 +1299,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1348,7 +1375,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar device = await api.GetDeviceAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar device = await api.GetDeviceAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       }
@@ -1364,11 +1391,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -1441,7 +1470,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.MoveDeviceAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new MoveDeviceRequest { FleetId = \"flt_2dn47a2xa58j1txv8m28spkmyb\" });"
           }
         ]
       }
@@ -1457,11 +1486,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1534,7 +1565,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar enrolments = await api.ListEnrolmentsAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar enrolments = await api.ListEnrolmentsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       }
@@ -1550,11 +1581,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1627,7 +1660,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListInstalledAppsAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListInstalledAppsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       }
@@ -1643,11 +1676,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1717,7 +1752,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar checkIn = await api.RequestCheckInAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar checkIn = await api.RequestCheckInAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       }
@@ -1731,13 +1766,14 @@
         "operationId": "ListFleets",
         "parameters": [
           {
-            "name": "clientId",
+            "name": "orgId",
             "in": "query",
             "description": "Only this organisation's fleets.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -1826,11 +1862,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "limit",
@@ -1912,7 +1950,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListAdbSessionsAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListAdbSessionsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       },
@@ -1926,11 +1964,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -2010,7 +2050,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line tool opens ADB sessions and runs the encrypted tunnel:\n//   ohr adb connect 42\nvar session = await api.OpenAdbSessionAsync(42, new OpenAdbSessionRequest\n{\n    AdbPublicKey = adbPublicKey,\n    ClientKey = clientKey,\n});"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line tool opens ADB sessions and runs the encrypted tunnel:\n//   ohr adb connect A0000A00042\nvar session = await api.OpenAdbSessionAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new OpenAdbSessionRequest\n{\n    AdbPublicKey = adbPublicKey,\n    ClientKey = clientKey,\n});"
           }
         ]
       }
@@ -2026,11 +2066,13 @@
           {
             "name": "sessionId",
             "in": "path",
+            "description": "A remote ADB session id (adb_…).",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "pattern": "^adb_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "adb_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2100,7 +2142,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar session = await api.GetAdbSessionAsync(sessionId);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar session = await api.GetAdbSessionAsync(\"adb_1w6k4wmxxv91bamfgcm4xhn42h\");"
           }
         ]
       },
@@ -2114,11 +2156,13 @@
           {
             "name": "sessionId",
             "in": "path",
+            "description": "A remote ADB session id (adb_…).",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "pattern": "^adb_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "adb_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2181,7 +2225,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nawait api.CloseAdbSessionAsync(sessionId);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.CloseAdbSessionAsync(\"adb_1w6k4wmxxv91bamfgcm4xhn42h\");"
           }
         ]
       }
@@ -2197,11 +2241,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "limit",
@@ -2283,7 +2329,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListRemoteControlSessionsAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessions = await api.ListRemoteControlSessionsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       },
@@ -2297,11 +2343,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -2380,7 +2428,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest\n{\n    EmbedOrigins = [\"https://support.example.com\"],\n});\n// <iframe src=\"{rc.Embed.Url}\" allow=\"fullscreen; clipboard-read\"></iframe>"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rc = await api.OpenRemoteControlSessionAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new OpenRemoteControlRequest\n{\n    EmbedOrigins = [\"https://support.example.com\"],\n});\n// <iframe src=\"{rc.Embed.Url}\" allow=\"fullscreen; clipboard-read\"></iframe>"
           }
         ]
       }
@@ -2396,11 +2444,13 @@
           {
             "name": "sessionId",
             "in": "path",
+            "description": "A remote control session id (rc_…).",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "pattern": "^rc_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "rc_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2470,7 +2520,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar session = await api.GetRemoteControlSessionAsync(sessionId);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar session = await api.GetRemoteControlSessionAsync(\"rc_1shbwr5f2984fagzq5pd22kjyj\");"
           }
         ]
       },
@@ -2484,11 +2534,13 @@
           {
             "name": "sessionId",
             "in": "path",
+            "description": "A remote control session id (rc_…).",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "pattern": "^rc_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "rc_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2551,7 +2603,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nawait api.CloseRemoteControlSessionAsync(sessionId);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.CloseRemoteControlSessionAsync(\"rc_1shbwr5f2984fagzq5pd22kjyj\");"
           }
         ]
       }
@@ -2567,11 +2619,13 @@
           {
             "name": "sessionId",
             "in": "path",
+            "description": "A remote control session id (rc_…).",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+              "pattern": "^rc_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "rc_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2641,7 +2695,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar sessionId = Guid.Parse(\"8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b\");\nvar rc = await api.JoinRemoteControlSessionAsync(sessionId);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rc = await api.JoinRemoteControlSessionAsync(\"rc_1shbwr5f2984fagzq5pd22kjyj\");"
           }
         ]
       }
@@ -2739,11 +2793,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -2813,7 +2869,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.GetDeviceSettingsAsync(42);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.GetDeviceSettingsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       },
@@ -2827,11 +2883,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -2911,7 +2969,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.ReplaceDeviceSettingsAsync(42, new PolicyDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n    }\n});"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.ReplaceDeviceSettingsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new PolicyDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n    }\n});"
           }
         ]
       },
@@ -2925,11 +2983,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -3009,7 +3069,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n        [\"dev.usb_debugging\"] = null, // remove the override\n    }\n});"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar settings = await api.UpdateDeviceSettingsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new PolicyPatchDto\n{\n    Settings = new()\n    {\n        [\"display.brightness\"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n        [\"dev.usb_debugging\"] = null, // remove the override\n    }\n});"
           }
         ]
       }
@@ -3025,11 +3085,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -3101,7 +3163,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.PushDeviceSettingsAsync(42, new PushSettingsRequest { Reapply = [\"display.brightness\"] });"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.PushDeviceSettingsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new PushSettingsRequest { Reapply = [\"display.brightness\"] });"
           }
         ]
       }
@@ -3246,11 +3308,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "limit",
@@ -3264,11 +3328,12 @@
           {
             "name": "before",
             "in": "query",
-            "description": "Only tasks with a smaller id: pass the last taskId of the previous page.",
+            "description": "Only tasks older than this one: pass the last taskId of the previous page.",
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^tsk_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "tsk_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -3341,7 +3406,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar tasks = await api.ListTasksAsync(42, limit: 50);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar tasks = await api.ListTasksAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", limit: 50);"
           }
         ]
       },
@@ -3355,11 +3420,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -3439,7 +3506,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.CreateTaskAsync(42, new CreateTaskRequest\n{\n    TaskClass = \"ShowToast\",\n    Parameters = [\"Please plug me in\"],\n});"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.CreateTaskAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new CreateTaskRequest\n{\n    TaskClass = \"ShowToast\",\n    Parameters = [\"Please plug me in\"],\n});"
           }
         ]
       }
@@ -3455,20 +3522,24 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           },
           {
             "name": "taskId",
             "in": "path",
+            "description": "A task id (tsk_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^tsk_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "tsk_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "responses": {
@@ -3538,7 +3609,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.GetTaskAsync(42, 9131);"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.GetTaskAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"tsk_3b0wkr78p69s7tzaevqeef8pyh\");"
           }
         ]
       }
@@ -3554,11 +3625,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -3638,7 +3711,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = \"Please plug me in\" });"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.ShowMessageAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new ShowMessageRequest { Text = \"Please plug me in\" });"
           }
         ]
       }
@@ -3654,11 +3727,13 @@
           {
             "name": "deviceId",
             "in": "path",
+            "description": "A device id (dev_…).",
             "required": true,
             "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
           }
         ],
         "requestBody": {
@@ -3738,7 +3813,7 @@
           {
             "lang": "csharp",
             "label": "C# SDK",
-            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = \"am start -a android.settings.SETTINGS\" });\ntask = await api.WaitForTaskAsync(task);\nConsole.WriteLine($\"{task.Shell?.ExitCode}: {task.Shell?.Stdout}\");"
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.RunShellCommandAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new RunShellCommandRequest { Command = \"am start -a android.settings.SETTINGS\" });\ntask = await api.WaitForTaskAsync(task);\nConsole.WriteLine($\"{task.Shell?.ExitCode}: {task.Shell?.Stdout}\");"
           }
         ]
       }
@@ -3785,12 +3860,10 @@
         "type": "object",
         "properties": {
           "sessionId": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "status": {
             "type": "string"
@@ -3878,8 +3951,7 @@
         "type": "object",
         "properties": {
           "fleetId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "fleetName": {
             "type": "string"
@@ -3901,8 +3973,7 @@
         "type": "object",
         "properties": {
           "appId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "packageName": {
             "type": "string"
@@ -4027,30 +4098,6 @@
         },
         "additionalProperties": false
       },
-      "ClientDto": {
-        "required": [
-          "clientId",
-          "clientName",
-          "permissions"
-        ],
-        "type": "object",
-        "properties": {
-          "clientId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "clientName": {
-            "type": "string"
-          },
-          "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
       "ConnectionDto": {
         "required": [
           "token",
@@ -4081,10 +4128,9 @@
           "name": {
             "type": "string"
           },
-          "clientId": {
-            "type": "integer",
+          "orgId": {
+            "type": "string",
             "description": "The organisation; needed only when you belong to more than one.",
-            "format": "int64",
             "nullable": true
           }
         },
@@ -4114,13 +4160,13 @@
           "agent",
           "battery",
           "capabilities",
-          "clientId",
-          "clientName",
           "createdAt",
           "deviceId",
           "imei",
           "network",
           "online",
+          "orgId",
+          "orgName",
           "os",
           "settings",
           "typeName"
@@ -4128,8 +4174,7 @@
         "type": "object",
         "properties": {
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "imei": {
             "type": "string"
@@ -4141,16 +4186,14 @@
           "typeName": {
             "type": "string"
           },
-          "clientId": {
-            "type": "integer",
-            "format": "int64"
+          "orgId": {
+            "type": "string"
           },
-          "clientName": {
+          "orgName": {
             "type": "string"
           },
           "fleetId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
             "nullable": true
           },
           "fleetName": {
@@ -4198,11 +4241,11 @@
         "required": [
           "agentOutdated",
           "charging",
-          "clientId",
-          "clientName",
           "deviceId",
           "imei",
           "online",
+          "orgId",
+          "orgName",
           "remoteAdb",
           "remoteControl",
           "settingsErrors",
@@ -4212,8 +4255,7 @@
         "type": "object",
         "properties": {
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "imei": {
             "type": "string"
@@ -4222,16 +4264,14 @@
             "type": "string",
             "nullable": true
           },
-          "clientId": {
-            "type": "integer",
-            "format": "int64"
+          "orgId": {
+            "type": "string"
           },
-          "clientName": {
+          "orgName": {
             "type": "string"
           },
           "fleetId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
             "nullable": true
           },
           "fleetName": {
@@ -4300,7 +4340,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "One row of GET /v1/devices. The first twelve fields are what ohr 1.0 reads; the rest were added later."
+        "description": "One row of GET /v1/devices."
       },
       "DeviceLoginRequest": {
         "type": "object",
@@ -4461,27 +4501,24 @@
       },
       "FleetDto": {
         "required": [
-          "clientId",
           "deviceCount",
           "fleetId",
-          "fleetName"
+          "fleetName",
+          "orgId"
         ],
         "type": "object",
         "properties": {
           "fleetId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "fleetName": {
             "type": "string"
           },
-          "clientId": {
-            "type": "integer",
-            "format": "int64"
+          "orgId": {
+            "type": "string"
           },
           "parentFleetId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
             "nullable": true
           },
           "deviceCount": {
@@ -4533,24 +4570,22 @@
       "ManagedAppDto": {
         "required": [
           "appId",
-          "clientId",
-          "clientName",
           "createdAt",
           "fleets",
           "name",
+          "orgId",
+          "orgName",
           "packageName"
         ],
         "type": "object",
         "properties": {
           "appId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
-          "clientId": {
-            "type": "integer",
-            "format": "int64"
+          "orgId": {
+            "type": "string"
           },
-          "clientName": {
+          "orgName": {
             "type": "string"
           },
           "name": {
@@ -4584,21 +4619,21 @@
       },
       "MeDto": {
         "required": [
-          "clients",
           "email",
           "globalAdmin",
-          "globalPermissions"
+          "globalPermissions",
+          "orgs"
         ],
         "type": "object",
         "properties": {
           "userId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
+            "description": "The person (usr_…); null for a service account.",
             "nullable": true
           },
           "serviceAccountId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
+            "description": "The service account (sa_…); null for a person.",
             "nullable": true
           },
           "email": {
@@ -4613,10 +4648,10 @@
               "type": "string"
             }
           },
-          "clients": {
+          "orgs": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ClientDto"
+              "$ref": "#/components/schemas/OrgDto"
             },
             "description": "The caller's organisations, each with every permission the caller holds there (a person holds the\n            device permissions through membership alone)."
           },
@@ -4633,9 +4668,8 @@
         "type": "object",
         "properties": {
           "fleetId": {
-            "type": "integer",
+            "type": "string",
             "description": "The fleet to move the device to, or null for none. Required, so that a missing value never moves it.",
-            "format": "int64",
             "nullable": true
           }
         },
@@ -4704,8 +4738,7 @@
         "type": "object",
         "properties": {
           "sessionId": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "relayUrl": {
             "type": "string"
@@ -4743,6 +4776,29 @@
             },
             "description": "Web origins (https://app.example.com) that may show the viewer page in an iframe. At most 5. A service account limited to some sites may name only those; naming none then means all of them.",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OrgDto": {
+        "required": [
+          "orgId",
+          "orgName",
+          "permissions"
+        ],
+        "type": "object",
+        "properties": {
+          "orgId": {
+            "type": "string"
+          },
+          "orgName": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "additionalProperties": false
@@ -4899,18 +4955,18 @@
         "type": "object",
         "properties": {
           "sessionId": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "pending, notified, awaiting_consent, active, closed, denied, failed."
           },
           "consent": {
-            "type": "string"
+            "type": "string",
+            "description": "unattended, notify or confirm: what the device was told to do."
           },
           "actor": {
             "type": "string"
@@ -4978,16 +5034,14 @@
         "type": "object",
         "properties": {
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "serial": {
             "type": "string",
             "nullable": true
           },
           "fleetId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
             "nullable": true
           },
           "fleetName": {
@@ -5007,8 +5061,7 @@
             "description": "up_to_date, pending (waiting for the device), installing or failed."
           },
           "taskId": {
-            "type": "integer",
-            "format": "int64",
+            "type": "string",
             "nullable": true
           },
           "detail": {
@@ -5033,8 +5086,7 @@
         "type": "object",
         "properties": {
           "appId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "packageName": {
             "type": "string"
@@ -5105,8 +5157,7 @@
           "fleetIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "The fleets it may act on, each with every fleet below it; null for the whole organisation.",
             "nullable": true
@@ -5114,8 +5165,7 @@
           "deviceIds": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             },
             "description": "Devices it may act on outside those fleets.",
             "nullable": true
@@ -5342,12 +5392,10 @@
         "type": "object",
         "properties": {
           "taskId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "deviceId": {
-            "type": "integer",
-            "format": "int64"
+            "type": "string"
           },
           "taskClass": {
             "type": "string"

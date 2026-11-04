@@ -43,12 +43,12 @@ Every operation is a method named after its operation ID in the
 
 ```csharp
 var devices = await api.ListDevicesAsync(online: true);
-var device = await api.GetDeviceAsync(42);
-await api.RequestCheckInAsync(42);
-await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });
-await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });
-var settings = await api.GetDeviceSettingsAsync(42);
-var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest
+var device = await api.GetDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q");
+await api.RequestCheckInAsync("dev_3swt6f457299btzpw1bxx4wf0q");
+await api.MoveDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q", new MoveDeviceRequest { FleetId = "flt_2dn47a2xa58j1txv8m28spkmyb" });
+await api.ShowMessageAsync("dev_3swt6f457299btzpw1bxx4wf0q", new ShowMessageRequest { Text = "Please plug me in" });
+var settings = await api.GetDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
+var rc = await api.OpenRemoteControlSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenRemoteControlRequest
 {
     EmbedOrigins = ["https://support.example.com"],
 });

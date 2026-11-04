@@ -47,13 +47,16 @@ for a service account its limits:
 
 ```json
 {
-  "serviceAccountId": 12,
+  "userId": null,
+  "serviceAccountId": "sa_2akenrad1h8r7tkfc387vvgma9",
   "email": "service:help-desk",
   "globalAdmin": false,
   "globalPermissions": [],
-  "clients": [{ "clientId": 3, "clientName": "Acme", "permissions": ["ViewDevices", "RemoteControl"] }],
+  "orgs": [
+    { "orgId": "org_4b60p9zf168jxsyx98w8wstk29", "orgName": "Acme", "permissions": ["ViewDevices", "RemoteControl"] }
+  ],
   "serviceAccount": {
-    "fleetIds": [7],
+    "fleetIds": ["flt_2dn47a2xa58j1txv8m28spkmyb"],
     "deviceIds": [],
     "embedOrigins": ["https://support.example.com"]
   }

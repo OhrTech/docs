@@ -11,8 +11,9 @@ it, with no store and no one at the device.
 
 ## Apps, versions and fleets
 
-- An **app** is a package name, such as `com.example.kiosk`, and your name for it. Several apps may
-  share a package: flavours of one app built for different fleets, each with its own versions.
+- An **app** is a package name, such as `com.example.kiosk`, your name for it, and an id, such as
+  `app_44n36syg958kyv8gzmq6f59tkq`, that never changes. Several apps may share a package: flavours of one app
+  built for different fleets, each with its own id and versions.
 - Each **version** is one APK you uploaded. The API reads its version code, version name, signer and
   permissions from the APK itself.
 - An app goes to the devices of the **fleets** you assign it to: the devices directly in each fleet,
@@ -38,15 +39,15 @@ Once per app. Needs `ManageApps`.
 
 ```csharp
 var app = await api.CreateAppAsync(new CreateAppRequest { PackageName = "com.example.kiosk", Name = "Kiosk" });
-await api.AddFleetAppAsync(7, app.AppId); // install it on fleet 7's devices
+await api.AddFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", app.AppId); // install it on that fleet's devices
 ```
 
 </TabItem>
 <TabItem label="ohr">
 
 ```sh
-ohr apps create com.example.kiosk --name Kiosk
-ohr apps assign com.example.kiosk "Downtown store"
+ohr apps create com.example.kiosk --name Kiosk    # shows the new app's id
+ohr apps assign app_44n36syg958kyv8gzmq6f59tkq flt_2dn47a2xa58j1txv8m28spkmyb
 ```
 
 </TabItem>
@@ -56,26 +57,26 @@ ohr apps assign com.example.kiosk "Downtown store"
 curl https://api.ohrtech.net/v1/apps \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
   -d '{"packageName": "com.example.kiosk", "name": "Kiosk"}'
-curl -X PUT https://api.ohrtech.net/v1/fleets/7/apps/12 -H "Authorization: Bearer $OHR_TOKEN"
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_44n36syg958kyv8gzmq6f59tkq -H "Authorization: Bearer $OHR_TOKEN"
 ```
 
 </TabItem>
 </Tabs>
 
-If you belong to several organisations, pass `clientId`, the organisation to add it to. For a
+If you belong to several organisations, pass `orgId`, the organisation to add it to. For a
 flavour, add another app with the same package and its own name, and assign it to its own fleets.
 
 ## Upload a version
 
-The request body is the APK itself: one signed `.apk`, up to 1 GiB, not an `.aab`. Name the app in
-the path: the API refuses an APK of any other package (400, "Wrong app"), so a build pipeline that
+The request body is the APK itself: one signed `.apk`, up to 1 GiB, not an `.aab`. Name the app by
+its id in the path: the API refuses an APK of any other package (400, "Wrong app"), so a build pipeline that
 picks up the wrong file can't release the wrong app.
 
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
 ```csharp
-var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");
+var version = await api.UploadApkAsync("app_44n36syg958kyv8gzmq6f59tkq", "app-release.apk", state: "enforced");
 Console.WriteLine($"{version.PackageName} {version.VersionName} ({version.VersionCode}) is {version.State}");
 ```
 
@@ -83,14 +84,14 @@ Console.WriteLine($"{version.PackageName} {version.VersionName} ({version.Versio
 <TabItem label="ohr">
 
 ```sh
-ohr apps upload com.example.kiosk app-release.apk --enforce
+ohr apps upload app_44n36syg958kyv8gzmq6f59tkq app-release.apk --enforce
 ```
 
 </TabItem>
 <TabItem label="curl">
 
 ```sh
-curl "https://api.ohrtech.net/v1/apps/12/versions?state=enforced" \
+curl "https://api.ohrtech.net/v1/apps/app_44n36syg958kyv8gzmq6f59tkq/versions?state=enforced" \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/octet-stream" \
   --data-binary @app-release.apk
 ```
@@ -120,15 +121,15 @@ v3, upload with `allowNewSigningKey=true`.
 <TabItem label="C#">
 
 ```csharp
-await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });
+await api.SetAppVersionStateAsync("app_44n36syg958kyv8gzmq6f59tkq", 240, new SetAppVersionStateRequest { State = "enforced" });
 ```
 
 </TabItem>
 <TabItem label="ohr">
 
 ```sh
-ohr apps release com.example.kiosk 240     # enforce; --available to offer it instead
-ohr apps hold com.example.kiosk 240
+ohr apps release app_44n36syg958kyv8gzmq6f59tkq 240     # enforce; --available to offer it
+ohr apps hold app_44n36syg958kyv8gzmq6f59tkq 240
 ```
 
 </TabItem>
@@ -144,7 +145,7 @@ where it is with the enforced one: `up_to_date`, `pending` (it hasn't started), 
 <TabItem label="C#">
 
 ```csharp
-var rollout = await api.WaitForRolloutAsync(12, TimeSpan.FromMinutes(15));
+var rollout = await api.WaitForRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq", TimeSpan.FromMinutes(15));
 foreach (var d in rollout.Devices.Where(d => d.Status == "failed"))
     Console.WriteLine($"{d.DeviceId}: {d.Detail}");
 ```
@@ -156,7 +157,7 @@ install the version when they next connect.
 <TabItem label="ohr">
 
 ```sh
-ohr apps rollout com.example.kiosk --wait
+ohr apps rollout app_44n36syg958kyv8gzmq6f59tkq --wait
 ```
 
 </TabItem>

@@ -12,21 +12,21 @@ devices and to the fleets below them.
 ## List devices
 
 `GET /v1/devices` returns every device you can reach. Narrow it with `fleetId` (devices directly in
-that fleet), `online=true` or `false` (checked in within the last 20 minutes), or `clientId` if you
+that fleet), `online=true` or `false` (checked in within the last 20 minutes), or `orgId` if you
 belong to more than one organisation. Needs `ViewDevices`.
 
 <Tabs syncKey="lang">
 <TabItem label="curl">
 
 ```sh
-curl "https://api.ohrtech.net/v1/devices?fleetId=7&online=true" -H "Authorization: Bearer $OHR_TOKEN"
+curl "https://api.ohrtech.net/v1/devices?fleetId=flt_2dn47a2xa58j1txv8m28spkmyb&online=true" -H "Authorization: Bearer $OHR_TOKEN"
 ```
 
 </TabItem>
 <TabItem label="C#">
 
 ```csharp
-var devices = await api.ListDevicesAsync(fleetId: 7, online: true);
+var devices = await api.ListDevicesAsync(fleetId: "flt_2dn47a2xa58j1txv8m28spkmyb", online: true);
 ```
 
 </TabItem>
@@ -65,11 +65,11 @@ Devices check in on their own schedule. When you need fresh status (before a sup
 change), ask:
 
 ```sh
-curl -X POST https://api.ohrtech.net/v1/devices/42/check-in -H "Authorization: Bearer $OHR_TOKEN"
+curl -X POST https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/check-in -H "Authorization: Bearer $OHR_TOKEN"
 ```
 
 The answer is `202 Accepted`. A reachable device checks in within seconds; read it again with
-`GET /v1/devices/42`. A device on mobile data may only hear the request at its next scheduled
+`GET /v1/devices/dev_3swt6f457299btzpw1bxx4wf0q`. A device on mobile data may only hear the request at its next scheduled
 check-in.
 
 ## Fleets
@@ -86,16 +86,16 @@ Needs `MoveDevices`. The device gets its new fleet's settings at once.
 <TabItem label="curl">
 
 ```sh
-curl -X PUT https://api.ohrtech.net/v1/devices/42/fleet \
+curl -X PUT https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/fleet \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
-  -d '{"fleetId": 7}'
+  -d '{"fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb"}'
 ```
 
 </TabItem>
 <TabItem label="C#">
 
 ```csharp
-await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });
+await api.MoveDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q", new MoveDeviceRequest { FleetId = "flt_2dn47a2xa58j1txv8m28spkmyb" });
 ```
 
 </TabItem>

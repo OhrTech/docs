@@ -16,7 +16,7 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details, s
 
 | Status | Means | What to do |
 |---|---|---|
-| 400 | The request is invalid. Settings errors are listed per setting under `errors`. | Fix the request; nothing was changed |
+| 400 | The request is invalid, such as a fleet's id where a device's belongs ("Not a device id"). Settings errors are listed per setting under `errors`. | Fix the request; nothing was changed |
 | 401 | No token, an expired or revoked one, or a service account token used outside its networks | Sign in again, or check the token and the account's networks |
 | 403 | You can reach the device but lack the permission for this call | Ask an admin to grant the permission named in `detail` |
 | 404 | No such device or session, or not one you can reach | Check the ID, and the service account's device scope |
@@ -32,7 +32,7 @@ problem, and `OhrApiException<HttpValidationProblemDetails>` for per-setting err
 ```csharp
 try
 {
-    await api.UpdateDeviceSettingsAsync(42, patch);
+    await api.UpdateDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", patch);
 }
 catch (OhrApiException<HttpValidationProblemDetails> e)
 {

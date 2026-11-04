@@ -21,7 +21,7 @@ app.MapGet("/devices", async (OhrManagementClient api) =>
 
 // Your server opens the session; the browser only ever sees the short-lived embed link.
 // In a real help desk, check here that the signed-in agent may support this device.
-app.MapPost("/devices/{deviceId:long}/connect", async (long deviceId, HttpRequest request, OhrManagementClient api) =>
+app.MapPost("/devices/{deviceId}/connect", async (string deviceId, HttpRequest request, OhrManagementClient api) =>
 {
     var thisSite = $"{request.Scheme}://{request.Host}";
     try
@@ -40,7 +40,7 @@ app.MapPost("/devices/{deviceId:long}/connect", async (long deviceId, HttpReques
 });
 
 // What the viewer's keys can't do: open a particular settings screen, with a shell command.
-app.MapPost("/devices/{deviceId:long}/wifi-settings", async (long deviceId, OhrManagementClient api) =>
+app.MapPost("/devices/{deviceId}/wifi-settings", async (string deviceId, OhrManagementClient api) =>
 {
     try
     {
@@ -58,7 +58,7 @@ app.MapPost("/devices/{deviceId:long}/wifi-settings", async (long deviceId, OhrM
     }
 });
 
-app.MapDelete("/sessions/{sessionId}", async (Guid sessionId, OhrManagementClient api) =>
+app.MapDelete("/sessions/{sessionId}", async (string sessionId, OhrManagementClient api) =>
 {
     await api.CloseRemoteControlSessionAsync(sessionId);
     return Results.NoContent();

@@ -16,64 +16,63 @@ const text = source.startsWith('http') ? await (await fetch(source)).text() : aw
 const doc = JSON.parse(text);
 
 const client = 'using var api = OhrManagementClient.ForServiceAccount(token);\n\n';
-const sessionId = 'var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");\n';
 
 // One C# call per operationId, in the SDK's terms (OhrTech.Management on NuGet).
 const samples = {
 	GetMe: 'var me = await api.GetMeAsync();',
 	ListDevices: 'var devices = await api.ListDevicesAsync(online: true);',
-	GetDevice: 'var device = await api.GetDeviceAsync(42);',
-	MoveDevice: 'await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });',
-	ListEnrolments: 'var enrolments = await api.ListEnrolmentsAsync(42);',
-	ListInstalledApps: 'var apps = await api.ListInstalledAppsAsync(42);',
-	RequestCheckIn: 'var checkIn = await api.RequestCheckInAsync(42);',
+	GetDevice: 'var device = await api.GetDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
+	MoveDevice: 'await api.MoveDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q", new MoveDeviceRequest { FleetId = "flt_2dn47a2xa58j1txv8m28spkmyb" });',
+	ListEnrolments: 'var enrolments = await api.ListEnrolmentsAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
+	ListInstalledApps: 'var apps = await api.ListInstalledAppsAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
+	RequestCheckIn: 'var checkIn = await api.RequestCheckInAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
 	ListFleets: 'var fleets = await api.ListFleetsAsync();',
-	ListAdbSessions: 'var sessions = await api.ListAdbSessionsAsync(42);',
+	ListAdbSessions: 'var sessions = await api.ListAdbSessionsAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
 	OpenAdbSession:
-		'// The ohr command line tool opens ADB sessions and runs the encrypted tunnel:\n//   ohr adb connect 42\n' +
-		'var session = await api.OpenAdbSessionAsync(42, new OpenAdbSessionRequest\n{\n    AdbPublicKey = adbPublicKey,\n    ClientKey = clientKey,\n});',
-	GetAdbSession: sessionId + 'var session = await api.GetAdbSessionAsync(sessionId);',
-	CloseAdbSession: sessionId + 'await api.CloseAdbSessionAsync(sessionId);',
-	ListRemoteControlSessions: 'var sessions = await api.ListRemoteControlSessionsAsync(42);',
+		'// The ohr command line tool opens ADB sessions and runs the encrypted tunnel:\n//   ohr adb connect A0000A00042\n' +
+		'var session = await api.OpenAdbSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenAdbSessionRequest\n{\n    AdbPublicKey = adbPublicKey,\n    ClientKey = clientKey,\n});',
+	GetAdbSession: 'var session = await api.GetAdbSessionAsync("adb_1w6k4wmxxv91bamfgcm4xhn42h");',
+	CloseAdbSession: 'await api.CloseAdbSessionAsync("adb_1w6k4wmxxv91bamfgcm4xhn42h");',
+	ListRemoteControlSessions: 'var sessions = await api.ListRemoteControlSessionsAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
 	OpenRemoteControlSession:
-		'var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest\n{\n    EmbedOrigins = ["https://support.example.com"],\n});\n// <iframe src="{rc.Embed.Url}" allow="fullscreen; clipboard-read"></iframe>',
-	GetRemoteControlSession: sessionId + 'var session = await api.GetRemoteControlSessionAsync(sessionId);',
-	CloseRemoteControlSession: sessionId + 'await api.CloseRemoteControlSessionAsync(sessionId);',
-	JoinRemoteControlSession: sessionId + 'var rc = await api.JoinRemoteControlSessionAsync(sessionId);',
+		'var rc = await api.OpenRemoteControlSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenRemoteControlRequest\n{\n    EmbedOrigins = ["https://support.example.com"],\n});\n// <iframe src="{rc.Embed.Url}" allow="fullscreen; clipboard-read"></iframe>',
+	GetRemoteControlSession: 'var session = await api.GetRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");',
+	CloseRemoteControlSession: 'await api.CloseRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");',
+	JoinRemoteControlSession: 'var rc = await api.JoinRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");',
 	GetSettingsCatalog: 'var catalog = await api.GetSettingsCatalogAsync();',
-	GetDeviceSettings: 'var settings = await api.GetDeviceSettingsAsync(42);',
+	GetDeviceSettings: 'var settings = await api.GetDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q");',
 	ReplaceDeviceSettings:
-		'var settings = await api.ReplaceDeviceSettingsAsync(42, new PolicyDto\n{\n    Settings = new()\n    {\n        ["display.brightness"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n    }\n});',
+		'var settings = await api.ReplaceDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyDto\n{\n    Settings = new()\n    {\n        ["display.brightness"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n    }\n});',
 	UpdateDeviceSettings:
-		'var settings = await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto\n{\n    Settings = new()\n    {\n        ["display.brightness"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n        ["dev.usb_debugging"] = null, // remove the override\n    }\n});',
+		'var settings = await api.UpdateDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyPatchDto\n{\n    Settings = new()\n    {\n        ["display.brightness"] = new SettingPolicy { Mode = SettingMode.Locked, Value = 80 },\n        ["dev.usb_debugging"] = null, // remove the override\n    }\n});',
 	PushDeviceSettings:
-		'await api.PushDeviceSettingsAsync(42, new PushSettingsRequest { Reapply = ["display.brightness"] });',
+		'await api.PushDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PushSettingsRequest { Reapply = ["display.brightness"] });',
 	StartDeviceLogin: null, // the SDK runs the whole device code flow:
 	PollDeviceLogin: null,
 	RefreshLogin: null,
-	ListTasks: 'var tasks = await api.ListTasksAsync(42, limit: 50);',
+	ListTasks: 'var tasks = await api.ListTasksAsync("dev_3swt6f457299btzpw1bxx4wf0q", limit: 50);',
 	CreateTask:
-		'var task = await api.CreateTaskAsync(42, new CreateTaskRequest\n{\n    TaskClass = "ShowToast",\n    Parameters = ["Please plug me in"],\n});',
-	GetTask: 'var task = await api.GetTaskAsync(42, 9131);',
-	ShowMessage: 'var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });',
+		'var task = await api.CreateTaskAsync("dev_3swt6f457299btzpw1bxx4wf0q", new CreateTaskRequest\n{\n    TaskClass = "ShowToast",\n    Parameters = ["Please plug me in"],\n});',
+	GetTask: 'var task = await api.GetTaskAsync("dev_3swt6f457299btzpw1bxx4wf0q", "tsk_3b0wkr78p69s7tzaevqeef8pyh");',
+	ShowMessage: 'var task = await api.ShowMessageAsync("dev_3swt6f457299btzpw1bxx4wf0q", new ShowMessageRequest { Text = "Please plug me in" });',
 	RunShellCommand:
-		'var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });\n' +
+		'var task = await api.RunShellCommandAsync("dev_3swt6f457299btzpw1bxx4wf0q", new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });\n' +
 		'task = await api.WaitForTaskAsync(task);\nConsole.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");',
 	ListApps: 'var apps = await api.ListAppsAsync(package: "com.example.kiosk");',
 	CreateApp: 'var app = await api.CreateAppAsync(new CreateAppRequest { PackageName = "com.example.kiosk", Name = "Kiosk" });',
-	GetApp: 'var app = await api.GetAppAsync(12);',
-	UpdateApp: 'var app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = "Store kiosk" });',
-	ListAppVersions: 'var versions = await api.ListAppVersionsAsync(12);',
+	GetApp: 'var app = await api.GetAppAsync("app_44n36syg958kyv8gzmq6f59tkq");',
+	UpdateApp: 'var app = await api.UpdateAppAsync("app_44n36syg958kyv8gzmq6f59tkq", new UpdateAppRequest { Name = "Store kiosk" });',
+	ListAppVersions: 'var versions = await api.ListAppVersionsAsync("app_44n36syg958kyv8gzmq6f59tkq");',
 	UploadApk:
 		'// The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait\n' +
-		'var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");',
+		'var version = await api.UploadApkAsync("app_44n36syg958kyv8gzmq6f59tkq", "app-release.apk", state: "enforced");',
 	SetAppVersionState:
-		'var version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });',
+		'var version = await api.SetAppVersionStateAsync("app_44n36syg958kyv8gzmq6f59tkq", 240, new SetAppVersionStateRequest { State = "enforced" });',
 	GetAppRollout:
-		'var rollout = await api.GetAppRolloutAsync(12);\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync(12);',
-	ListFleetApps: 'var apps = await api.ListFleetAppsAsync(7);',
-	AddFleetApp: 'await api.AddFleetAppAsync(7, 12);',
-	RemoveFleetApp: 'await api.RemoveFleetAppAsync(7, 12);',
+		'var rollout = await api.GetAppRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq");\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq");',
+	ListFleetApps: 'var apps = await api.ListFleetAppsAsync("flt_2dn47a2xa58j1txv8m28spkmyb");',
+	AddFleetApp: 'await api.AddFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");',
+	RemoveFleetApp: 'await api.RemoveFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");',
 };
 
 const signIn =

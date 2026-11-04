@@ -9,7 +9,7 @@ Build the APK, upload it as the app's new version, enforce it, and wait until th
 The pipeline goes red if a device fails to install the update.
 
 **Needs:** the app [added once](/management-api/guides/apps/#add-an-app) and assigned to its
-fleets, and a service account with `ManageApps`, its token stored as the pipeline secret
+fleets, its id (`ohr apps` shows it), and a service account with `ManageApps`, its token stored as the pipeline secret
 `OHR_TOKEN`.
 
 <Tabs syncKey="ci">
@@ -40,8 +40,9 @@ jobs:
       - name: Release to the devices
         env:
           OHR_TOKEN: ${{ secrets.OHR_TOKEN }}
+          OHR_APP: app_44n36syg958kyv8gzmq6f59tkq   # the app's id
         run: >
-          ohr apps upload com.example.kiosk app/build/outputs/apk/release/app-release.apk
+          ohr apps upload "$OHR_APP" app/build/outputs/apk/release/app-release.apk
           --enforce --skip-duplicate --wait --timeout 20m
 ```
 
@@ -53,10 +54,12 @@ release:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "release"
+  variables:
+    OHR_APP: app_44n36syg958kyv8gzmq6f59tkq   # the app's id
   script:
     - ./gradlew assembleRelease
     - curl -fsSL https://github.com/OhrTech/ohr-cli/releases/latest/download/install.sh | sh
-    - ~/.local/bin/ohr apps upload com.example.kiosk app/build/outputs/apk/release/app-release.apk
+    - ~/.local/bin/ohr apps upload "$OHR_APP" app/build/outputs/apk/release/app-release.apk
       --enforce --skip-duplicate --wait --timeout 20m
   # OHR_TOKEN: a masked CI/CD variable
 ```
@@ -65,18 +68,16 @@ release:
 </Tabs>
 
 ```text
-Uploading app-release.apk (18.4 MiB) to app 12, com.example.kiosk...
-Uploaded: com.example.kiosk 2.4.0 (version 240) as app 12, enforced.
+Uploading app-release.apk (18.4 MiB) to app app_44n36syg958kyv8gzmq6f59tkq, com.example.kiosk...
+Uploaded: com.example.kiosk 2.4.0 (version 240) as app app_44n36syg958kyv8gzmq6f59tkq, enforced.
 Rollout of version 240: 37 of 37 up to date.
 ```
 
 ## How it works
 
-- **The right app, or nothing.** The upload names the app (`com.example.kiosk`), and the API refuses
-  an APK of any other package, so a misconfigured build can't release something else. If several of
-  your apps share the package, flavours for different fleets, name the app by its id
-  (`ohr apps upload 12 …`, one step per flavour): a package that fits more than one app fails
-  instead of guessing.
+- **The right app, or nothing.** The upload names the app by its id, and the API refuses an APK of
+  any other package, so a misconfigured build can't release something else. Flavours of one app for
+  different fleets are separate apps with their own ids: one upload step per flavour.
 - **Each build must be newer.** The API refuses a version code that isn't higher than every version
   already uploaded, and an APK signed with another key. `--skip-duplicate` makes a re-run of the
   same build succeed instead of failing: the version is already there.
@@ -88,8 +89,8 @@ Rollout of version 240: 37 of 37 up to date.
 
 - **Stage it.** Upload with `--available` instead of `--enforce`, or assign the app to a small
   test fleet first, then enforce the same version for everyone with
-  `ohr apps release com.example.kiosk 240`.
+  `ohr apps release "$OHR_APP" 240`.
 - **Pin the tool.** `OHR_VERSION=1.0.0` before `sh` in the install step installs that release
   instead of the latest.
-- **Without the tool.** The same from C#: `await api.UploadApkAsync(12, path, state: "enforced")`,
-  then `await api.WaitForRolloutAsync(12)`. See [your apps](/management-api/guides/apps/).
+- **Without the tool.** The same from C#: `await api.UploadApkAsync("app_44n36syg958kyv8gzmq6f59tkq", path, state: "enforced")`,
+  then `await api.WaitForRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq")`. See [your apps](/management-api/guides/apps/).

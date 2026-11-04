@@ -13,7 +13,7 @@ Needs `SendMessages`. The text (up to 1,000 characters) appears on the device's 
 <TabItem label="curl">
 
 ```sh
-curl https://api.ohrtech.net/v1/devices/42/messages \
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/messages \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
   -d '{"text": "Please bring this tablet to the front desk."}'
 ```
@@ -22,7 +22,7 @@ curl https://api.ohrtech.net/v1/devices/42/messages \
 <TabItem label="C#">
 
 ```csharp
-var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please bring this tablet to the front desk." });
+var task = await api.ShowMessageAsync("dev_3swt6f457299btzpw1bxx4wf0q", new ShowMessageRequest { Text = "Please bring this tablet to the front desk." });
 ```
 
 </TabItem>
@@ -39,8 +39,8 @@ The 201 response to a message is its task:
 
 ```json
 {
-  "taskId": 9131,
-  "deviceId": 42,
+  "taskId": "tsk_3b0wkr78p69s7tzaevqeef8pyh",
+  "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
   "taskClass": "ShowToast",
   "parameters": ["Please bring this tablet to the front desk."],
   "status": "pending",

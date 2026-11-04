@@ -19,7 +19,7 @@ it as soon as it gets it, within seconds when it is online.
 <TabItem label="C#">
 
 ```csharp
-var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest
+var task = await api.RunShellCommandAsync("dev_3swt6f457299btzpw1bxx4wf0q", new RunShellCommandRequest
 {
     Command = "dumpsys battery | grep level",
 });
@@ -33,7 +33,7 @@ Console.WriteLine(task.Shell!.Stdout); // "  level: 87"
 <TabItem label="ohr">
 
 ```sh
-ohr shell 42 "dumpsys battery | grep level"
+ohr shell A0000A00042 "dumpsys battery | grep level"
 ```
 
 The [command line](/management-api/cli/) waits for the device, prints the output, and exits with
@@ -43,12 +43,12 @@ the command's exit code.
 <TabItem label="curl">
 
 ```sh
-curl https://api.ohrtech.net/v1/devices/42/shell \
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/shell \
   -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
   -d '{"command": "dumpsys battery | grep level"}'
 ```
 
-Then `GET /v1/devices/42/tasks/{taskId}` until `status` is `success` or `failed`.
+Then `GET /v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/tasks/{taskId}` until `status` is `success` or `failed`.
 
 </TabItem>
 </Tabs>
@@ -57,8 +57,8 @@ The finished task carries the result under `shell`:
 
 ```json
 {
-  "taskId": 9200,
-  "deviceId": 42,
+  "taskId": "tsk_3f3mp3pjjs9t3vdhemwfsa3c69",
+  "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
   "taskClass": "ExecuteShellCmd",
   "status": "success",
   "createdBy": "ops@example.com",
@@ -105,7 +105,7 @@ The task keeps the first 64 KiB of stdout and of stderr; `truncated` says when t
 Start the command on every device, then wait for them all:
 
 ```csharp
-var devices = await api.ListDevicesAsync(fleetId: 7, online: true);
+var devices = await api.ListDevicesAsync(fleetId: "flt_2dn47a2xa58j1txv8m28spkmyb", online: true);
 var started = await Task.WhenAll(devices
     .Where(d => d.ShellCommands)
     .Select(d => api.RunShellCommandAsync(d.DeviceId,

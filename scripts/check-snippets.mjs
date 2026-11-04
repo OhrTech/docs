@@ -38,7 +38,7 @@ const prelude = {
 	api: 'using var api = OhrManagementClient.ForServiceAccount("ohrs_");',
 	token: 'var token = "ohrs_";',
 	patch: 'var patch = new PolicyPatchDto();',
-	deviceId: 'long deviceId = 42;',
+	deviceId: 'var deviceId = "dev_3swt6f457299btzpw1bxx4wf0q";',
 };
 
 const functions = snippets.map(({ where, code }, i) => {

@@ -12,11 +12,12 @@ const sample = `using OhrTech.Management;
 using var api = OhrManagementClient.ForServiceAccount(token);
 
 // Every device in your fleets, live
-foreach (var d in await api.ListDevicesAsync(online: true))
+var devices = await api.ListDevicesAsync(online: true);
+foreach (var d in devices)
     Console.WriteLine($"{d.Serial}  {d.BatteryLevel}%");
 
-// Its screen, inside your own help desk
-var rc = await api.OpenRemoteControlSessionAsync(42, new()
+// A screen, inside your own help desk
+var rc = await api.OpenRemoteControlSessionAsync(devices[0].DeviceId, new()
 {
     EmbedOrigins = ["https://support.example.com"]
 });

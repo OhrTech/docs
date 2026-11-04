@@ -17,27 +17,27 @@ static async Task ListDevices(OhrManagementClient api, string adbPublicKey, stri
 
 static async Task GetDevice(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var device = await api.GetDeviceAsync(42);
+    var device = await api.GetDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task MoveDevice(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    await api.MoveDeviceAsync(42, new MoveDeviceRequest { FleetId = 7 });
+    await api.MoveDeviceAsync("dev_3swt6f457299btzpw1bxx4wf0q", new MoveDeviceRequest { FleetId = "flt_2dn47a2xa58j1txv8m28spkmyb" });
 }
 
 static async Task ListEnrolments(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var enrolments = await api.ListEnrolmentsAsync(42);
+    var enrolments = await api.ListEnrolmentsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task ListInstalledApps(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var apps = await api.ListInstalledAppsAsync(42);
+    var apps = await api.ListInstalledAppsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task RequestCheckIn(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var checkIn = await api.RequestCheckInAsync(42);
+    var checkIn = await api.RequestCheckInAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task ListFleets(OhrManagementClient api, string adbPublicKey, string clientKey)
@@ -47,14 +47,14 @@ static async Task ListFleets(OhrManagementClient api, string adbPublicKey, strin
 
 static async Task ListAdbSessions(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessions = await api.ListAdbSessionsAsync(42);
+    var sessions = await api.ListAdbSessionsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task OpenAdbSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
     // The ohr command line tool opens ADB sessions and runs the encrypted tunnel:
-    //   ohr adb connect 42
-    var session = await api.OpenAdbSessionAsync(42, new OpenAdbSessionRequest
+    //   ohr adb connect A0000A00042
+    var session = await api.OpenAdbSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenAdbSessionRequest
     {
         AdbPublicKey = adbPublicKey,
         ClientKey = clientKey,
@@ -63,24 +63,22 @@ static async Task OpenAdbSession(OhrManagementClient api, string adbPublicKey, s
 
 static async Task GetAdbSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");
-    var session = await api.GetAdbSessionAsync(sessionId);
+    var session = await api.GetAdbSessionAsync("adb_1w6k4wmxxv91bamfgcm4xhn42h");
 }
 
 static async Task CloseAdbSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");
-    await api.CloseAdbSessionAsync(sessionId);
+    await api.CloseAdbSessionAsync("adb_1w6k4wmxxv91bamfgcm4xhn42h");
 }
 
 static async Task ListRemoteControlSessions(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessions = await api.ListRemoteControlSessionsAsync(42);
+    var sessions = await api.ListRemoteControlSessionsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task OpenRemoteControlSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var rc = await api.OpenRemoteControlSessionAsync(42, new OpenRemoteControlRequest
+    var rc = await api.OpenRemoteControlSessionAsync("dev_3swt6f457299btzpw1bxx4wf0q", new OpenRemoteControlRequest
     {
         EmbedOrigins = ["https://support.example.com"],
     });
@@ -89,20 +87,17 @@ static async Task OpenRemoteControlSession(OhrManagementClient api, string adbPu
 
 static async Task GetRemoteControlSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");
-    var session = await api.GetRemoteControlSessionAsync(sessionId);
+    var session = await api.GetRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");
 }
 
 static async Task CloseRemoteControlSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");
-    await api.CloseRemoteControlSessionAsync(sessionId);
+    await api.CloseRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");
 }
 
 static async Task JoinRemoteControlSession(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var sessionId = Guid.Parse("8a3c6f0e-2d41-4b8e-9f6a-1c2d3e4f5a6b");
-    var rc = await api.JoinRemoteControlSessionAsync(sessionId);
+    var rc = await api.JoinRemoteControlSessionAsync("rc_1shbwr5f2984fagzq5pd22kjyj");
 }
 
 static async Task GetSettingsCatalog(OhrManagementClient api, string adbPublicKey, string clientKey)
@@ -112,12 +107,12 @@ static async Task GetSettingsCatalog(OhrManagementClient api, string adbPublicKe
 
 static async Task GetDeviceSettings(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var settings = await api.GetDeviceSettingsAsync(42);
+    var settings = await api.GetDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q");
 }
 
 static async Task ReplaceDeviceSettings(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var settings = await api.ReplaceDeviceSettingsAsync(42, new PolicyDto
+    var settings = await api.ReplaceDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyDto
     {
         Settings = new()
         {
@@ -128,7 +123,7 @@ static async Task ReplaceDeviceSettings(OhrManagementClient api, string adbPubli
 
 static async Task UpdateDeviceSettings(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var settings = await api.UpdateDeviceSettingsAsync(42, new PolicyPatchDto
+    var settings = await api.UpdateDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyPatchDto
     {
         Settings = new()
         {
@@ -140,17 +135,17 @@ static async Task UpdateDeviceSettings(OhrManagementClient api, string adbPublic
 
 static async Task PushDeviceSettings(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    await api.PushDeviceSettingsAsync(42, new PushSettingsRequest { Reapply = ["display.brightness"] });
+    await api.PushDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PushSettingsRequest { Reapply = ["display.brightness"] });
 }
 
 static async Task ListTasks(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var tasks = await api.ListTasksAsync(42, limit: 50);
+    var tasks = await api.ListTasksAsync("dev_3swt6f457299btzpw1bxx4wf0q", limit: 50);
 }
 
 static async Task CreateTask(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var task = await api.CreateTaskAsync(42, new CreateTaskRequest
+    var task = await api.CreateTaskAsync("dev_3swt6f457299btzpw1bxx4wf0q", new CreateTaskRequest
     {
         TaskClass = "ShowToast",
         Parameters = ["Please plug me in"],
@@ -159,17 +154,17 @@ static async Task CreateTask(OhrManagementClient api, string adbPublicKey, strin
 
 static async Task GetTask(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var task = await api.GetTaskAsync(42, 9131);
+    var task = await api.GetTaskAsync("dev_3swt6f457299btzpw1bxx4wf0q", "tsk_3b0wkr78p69s7tzaevqeef8pyh");
 }
 
 static async Task ShowMessage(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var task = await api.ShowMessageAsync(42, new ShowMessageRequest { Text = "Please plug me in" });
+    var task = await api.ShowMessageAsync("dev_3swt6f457299btzpw1bxx4wf0q", new ShowMessageRequest { Text = "Please plug me in" });
 }
 
 static async Task RunShellCommand(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });
+    var task = await api.RunShellCommandAsync("dev_3swt6f457299btzpw1bxx4wf0q", new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });
     task = await api.WaitForTaskAsync(task);
     Console.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");
 }
@@ -186,50 +181,50 @@ static async Task CreateApp(OhrManagementClient api, string adbPublicKey, string
 
 static async Task GetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var app = await api.GetAppAsync(12);
+    var app = await api.GetAppAsync("app_44n36syg958kyv8gzmq6f59tkq");
 }
 
 static async Task UpdateApp(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = "Store kiosk" });
+    var app = await api.UpdateAppAsync("app_44n36syg958kyv8gzmq6f59tkq", new UpdateAppRequest { Name = "Store kiosk" });
 }
 
 static async Task ListAppVersions(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var versions = await api.ListAppVersionsAsync(12);
+    var versions = await api.ListAppVersionsAsync("app_44n36syg958kyv8gzmq6f59tkq");
 }
 
 static async Task UploadApk(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
     // The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait
-    var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");
+    var version = await api.UploadApkAsync("app_44n36syg958kyv8gzmq6f59tkq", "app-release.apk", state: "enforced");
 }
 
 static async Task SetAppVersionState(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });
+    var version = await api.SetAppVersionStateAsync("app_44n36syg958kyv8gzmq6f59tkq", 240, new SetAppVersionStateRequest { State = "enforced" });
 }
 
 static async Task GetAppRollout(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var rollout = await api.GetAppRolloutAsync(12);
+    var rollout = await api.GetAppRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq");
     // Or wait until every online device runs the enforced version:
-    rollout = await api.WaitForRolloutAsync(12);
+    rollout = await api.WaitForRolloutAsync("app_44n36syg958kyv8gzmq6f59tkq");
 }
 
 static async Task ListFleetApps(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    var apps = await api.ListFleetAppsAsync(7);
+    var apps = await api.ListFleetAppsAsync("flt_2dn47a2xa58j1txv8m28spkmyb");
 }
 
 static async Task AddFleetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    await api.AddFleetAppAsync(7, 12);
+    await api.AddFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");
 }
 
 static async Task RemoveFleetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
-    await api.RemoveFleetAppAsync(7, 12);
+    await api.RemoveFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");
 }
 
 static async Task SignIn()
