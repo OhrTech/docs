@@ -66,6 +66,7 @@ export default defineConfig({
 									items: [
 										'management-api/guides/devices-and-fleets',
 										'management-api/guides/settings',
+										'management-api/guides/apps',
 										'management-api/guides/messages-and-tasks',
 										'management-api/guides/remote-control',
 										'management-api/guides/embed-remote-control',
@@ -78,6 +79,7 @@ export default defineConfig({
 									label: 'Recipes',
 									items: [
 										'management-api/recipes/help-desk-connect',
+										'management-api/recipes/release-from-ci',
 										'management-api/recipes/sort-into-fleets',
 										'management-api/recipes/fleet-health-alerts',
 										'management-api/recipes/compliance-report',
@@ -85,8 +87,8 @@ export default defineConfig({
 									],
 								},
 								{
-									label: 'SDKs',
-									items: ['management-api/sdks/dotnet', 'management-api/sdks/other-languages'],
+									label: 'SDKs and tools',
+									items: ['management-api/sdks/dotnet', 'management-api/cli', 'management-api/sdks/other-languages'],
 								},
 								{
 									label: 'Reference',

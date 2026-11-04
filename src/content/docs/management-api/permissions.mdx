@@ -15,11 +15,12 @@ permission in the OhrTech Portal and the very next call follows it.
 | `EditSettings` | Change devices' settings, push and re-apply them | Every member | When granted |
 | `MoveDevices` | Move devices between fleets | Every member | When granted |
 | `SendMessages` | Show messages on devices' screens | Every member | When granted |
+| `ManageApps` | Add apps, upload versions, hold, offer or enforce them, assign apps to fleets | Every member | When granted |
 | `RemoteControl` | Open, join and end remote control sessions | When granted | When granted |
 | `RemoteAdb` | Open and end remote ADB sessions, and run shell commands | When granted | When granted |
 
 A person can do through the API exactly what they can do in the OhrTech Portal: every member holds
-the first five, and `RemoteControl` and `RemoteAdb` are granted per member. A service account holds
+the first six, and `RemoteControl` and `RemoteAdb` are granted per member. A service account holds
 only what you grant it.
 
 ## Limit a service account

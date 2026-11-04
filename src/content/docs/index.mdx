@@ -71,6 +71,20 @@ Your engineers use their own `adb` and Android Studio on a device in a store, a 
 mobile data. The connection is end-to-end encrypted, and the device needs no open port or VPN.
 
 </Feature>
+<Feature title="Your app, released from CI" href="/management-api/recipes/release-from-ci/">
+
+Every build of your release branch goes to your devices: upload the APK as the app's new version,
+enforce it, and follow it to every device. The pipeline fails if one can't install it, and an APK
+of the wrong app is refused.
+
+</Feature>
+<Feature title="A command line for all of it" href="/management-api/cli/">
+
+`ohr` does everything the API does from a terminal or a script: list devices, run a shell command
+on a whole fleet, change settings, release an app, open remote control. One executable for Linux,
+macOS and Windows, open source.
+
+</Feature>
 <Feature title="Know before your users call" href="/management-api/recipes/fleet-health-alerts/">
 
 Every device's last check-in, battery, network, OS build, installed apps and whether its settings

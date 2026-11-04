@@ -10,17 +10,19 @@ port and no VPN. To run single commands from your own code instead, use
 
 ## With the `ohr` command line tool
 
-The `ohr` tool signs your engineer in, opens the session, and runs the tunnel:
+The [`ohr` command line](/management-api/cli/) signs your engineer in, opens the session, and runs
+the tunnel:
 
 ```sh
 ohr login                          # once: approve in the OhrTech Portal
 ohr devices                        # find the device
 ohr adb connect A0000A00042        # tunnel open until Ctrl-C; adb and Android Studio see the device
-ohr shell A0000A00042 getprop ro.build.fingerprint
+ohr shell A0000A00042              # an interactive shell
 ohr adb A0000A00042 -- logcat -d   # any one adb command
 ```
 
-A device is named by its ID, IMEI or serial number.
+A device is named by its ID, IMEI or serial number. `ohr shell DEVICE COMMAND`, with a command,
+runs it as a [shell command](/management-api/guides/shell-commands/) instead, with no adb needed.
 
 ## How it stays private
 

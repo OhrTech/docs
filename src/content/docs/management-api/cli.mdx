@@ -1,0 +1,71 @@
+---
+title: Command line
+description: ohr, the OhrTech command line. Devices, apps, settings, shell commands, remote control and remote ADB from a terminal or a build pipeline.
+---
+
+`ohr` is the Management API in a terminal: one executable for Linux, macOS and Windows, with
+nothing else to install. It is open source, MIT licensed,
+[on GitHub](https://github.com/OhrTech/ohr-cli).
+
+## Install
+
+Linux and macOS:
+
+```sh
+curl -fsSL https://github.com/OhrTech/ohr-cli/releases/latest/download/install.sh | sh
+```
+
+The script installs `ohr` in `~/.local/bin` after checking it against the release's checksums.
+On Windows, download `ohr-win-x64.zip` (or `ohr-win-arm64.zip`) from
+[the latest release](https://github.com/OhrTech/ohr-cli/releases/latest) and put `ohr.exe` on your
+`PATH`.
+
+## Sign in
+
+```sh
+ohr login     # approve the sign-in in the OhrTech Portal
+ohr whoami    # who you are, and your permissions in each organisation
+```
+
+The login is saved for your account on this computer and renewed as you use it. For a build
+pipeline or another unattended job, put a [service account](/management-api/sign-in/) token in
+`OHR_TOKEN` instead: `ohr` then uses it.
+
+## Commands
+
+| Command | |
+|---|---|
+| `ohr devices` | List devices; `show`, `apps`, `enrolments`, `check-in`, `move` |
+| `ohr fleets` | List fleets, as a tree |
+| `ohr apps` | Your apps: `create`, `upload`, `release`, `hold`, `assign`, `rollout` ([guide](/management-api/guides/apps/)) |
+| `ohr settings` | `catalog`, `get`, `set`, `unset`, `apply`, `push` ([guide](/management-api/guides/settings/)) |
+| `ohr shell DEVICE COMMAND` | A [shell command](/management-api/guides/shell-commands/) on a device, or on a whole fleet with `--fleet` |
+| `ohr message DEVICE TEXT` | Show a message on a device's screen, or a fleet's with `--fleet` |
+| `ohr tasks DEVICE` | What a device was asked to do, and how it went |
+| `ohr rc open DEVICE` | [Remote control](/management-api/guides/remote-control/) in your browser |
+| `ohr adb connect DEVICE` | [Remote ADB](/management-api/guides/remote-adb/) for adb and Android Studio |
+
+A device is named by its ID, IMEI or serial number, a fleet by its ID or name, an app by its ID,
+or by its package name or name when only one of your apps has it. `ohr help` lists everything, and
+`ohr COMMAND --help` its options.
+
+```sh
+ohr devices --fleet "Downtown store" --online
+ohr shell A0000A00042 dumpsys battery
+ohr shell --fleet "Downtown store" -- df -h /data
+ohr settings set A0000A00042 display.brightness=80 --lock
+ohr apps upload com.example.kiosk app-release.apk --enforce --wait
+```
+
+## In scripts
+
+Commands that show data print the API's own JSON with `--json`:
+
+```sh
+ohr devices --json | jq -r '.[] | select(.batteryLevel < 20) | .serial'
+```
+
+The exit code says what happened: 0 ok, 1 error, 2 a bad command line, 3 sign-in needed or
+rejected, 4 not found, 5 permission denied, 6 the API unreachable, 7 the ADB tunnel failed,
+8 a conflict (such as a version that is not newer), 9 gave up waiting. `ohr shell` exits with the
+command's own exit code, or 124 when it ran out of time on the device.

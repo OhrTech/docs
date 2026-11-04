@@ -59,6 +59,21 @@ const samples = {
 	RunShellCommand:
 		'var task = await api.RunShellCommandAsync(42, new RunShellCommandRequest { Command = "am start -a android.settings.SETTINGS" });\n' +
 		'task = await api.WaitForTaskAsync(task);\nConsole.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");',
+	ListApps: 'var apps = await api.ListAppsAsync(package: "com.example.kiosk");',
+	CreateApp: 'var app = await api.CreateAppAsync(new CreateAppRequest { PackageName = "com.example.kiosk", Name = "Kiosk" });',
+	GetApp: 'var app = await api.GetAppAsync(12);',
+	UpdateApp: 'var app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = "Store kiosk" });',
+	ListAppVersions: 'var versions = await api.ListAppVersionsAsync(12);',
+	UploadApk:
+		'// The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait\n' +
+		'var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");',
+	SetAppVersionState:
+		'var version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });',
+	GetAppRollout:
+		'var rollout = await api.GetAppRolloutAsync(12);\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync(12);',
+	ListFleetApps: 'var apps = await api.ListFleetAppsAsync(7);',
+	AddFleetApp: 'await api.AddFleetAppAsync(7, 12);',
+	RemoveFleetApp: 'await api.RemoveFleetAppAsync(7, 12);',
 };
 
 const signIn =
@@ -78,6 +93,12 @@ const titles = {
 	GetSettingsCatalog: 'Settings catalog',
 	PushDeviceSettings: 'Push settings again',
 	RunShellCommand: 'Run a shell command',
+	UploadApk: 'Upload an APK',
+	SetAppVersionState: "Set a version's state",
+	GetAppRollout: 'Follow a rollout',
+	ListFleetApps: "List a fleet's apps",
+	AddFleetApp: 'Assign an app to a fleet',
+	RemoveFleetApp: 'Unassign an app from a fleet',
 };
 const title = (id) =>
 	titles[id] ?? id.replace(/(?!^)([A-Z])/g, ' $1').replace(/ (\w)/g, (m) => m.toLowerCase()).replace(/\badb\b/, 'ADB');

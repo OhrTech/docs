@@ -1,0 +1,174 @@
+---
+title: Your apps
+description: Upload your app's builds, decide which version devices install, and follow the rollout to every device.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your organisation's own apps, the ones you build, reach devices through OhrTech: you upload each
+build as a version of the app, choose which version the devices must run, and the devices install
+it, with no store and no one at the device.
+
+## Apps, versions and fleets
+
+- An **app** is a package name, such as `com.example.kiosk`, and your name for it. Several apps may
+  share a package: flavours of one app built for different fleets, each with its own versions.
+- Each **version** is one APK you uploaded. The API reads its version code, version name, signer and
+  permissions from the APK itself.
+- An app goes to the devices of the **fleets** you assign it to: the devices directly in each fleet,
+  not those of the fleets below it. A device holds one app per package, so a fleet gets at most one
+  of the apps that share a package (409 "Package already in this fleet").
+
+Each version is in one of three states:
+
+| State | Devices |
+|---|---|
+| `held` | Don't get it. Every upload starts here unless you say otherwise. |
+| `available` | Are offered it: your app on the device installs it when it is ready, through the [Device SDK](/device-sdk/). |
+| `enforced` | Install it: every device in the app's fleets runs the newest enforced version. Online devices start within seconds. |
+
+Devices only ever move up: one that already runs a newer version than the enforced one keeps it.
+
+## Add an app
+
+Once per app. Needs `ManageApps`.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+var app = await api.CreateAppAsync(new CreateAppRequest { PackageName = "com.example.kiosk", Name = "Kiosk" });
+await api.AddFleetAppAsync(7, app.AppId); // install it on fleet 7's devices
+```
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr apps create com.example.kiosk --name Kiosk
+ohr apps assign com.example.kiosk "Downtown store"
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/apps \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"packageName": "com.example.kiosk", "name": "Kiosk"}'
+curl -X PUT https://api.ohrtech.net/v1/fleets/7/apps/12 -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+</TabItem>
+</Tabs>
+
+If you belong to several organisations, pass `clientId`, the organisation to add it to. For a
+flavour, add another app with the same package and its own name, and assign it to its own fleets.
+
+## Upload a version
+
+The request body is the APK itself: one signed `.apk`, up to 1 GiB, not an `.aab`. Name the app in
+the path: the API refuses an APK of any other package (400, "Wrong app"), so a build pipeline that
+picks up the wrong file can't release the wrong app.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");
+Console.WriteLine($"{version.PackageName} {version.VersionName} ({version.VersionCode}) is {version.State}");
+```
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr apps upload com.example.kiosk app-release.apk --enforce
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl "https://api.ohrtech.net/v1/apps/12/versions?state=enforced" \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/octet-stream" \
+  --data-binary @app-release.apk
+```
+
+</TabItem>
+</Tabs>
+
+The API checks the APK before it keeps it:
+
+| Answer | When |
+|---|---|
+| 201 | The new version, as `AppVersionDto` |
+| 400 "Not an installable APK" | Not an APK, or not signed with APK signature scheme v2 or later |
+| 400 "Wrong app" | The APK is another package than the app in the path |
+| 409 "Not a newer version" | Its version code isn't higher than every version already uploaded |
+| 409 "Different signing key" | It is signed with another key than the previous version, so devices would refuse it as an update |
+
+A 409 also carries `appId`, `packageName` and `versionCode`. "Not a newer version" adds
+`latestVersionCode` and `exists`, which is `true` when this very version code is already uploaded:
+a pipeline that runs again can treat that as done. "Different signing key" adds
+`signingKeySha256` and `expectedSigningKeySha256`. If you rotated the key with APK signature scheme
+v3, upload with `allowNewSigningKey=true`.
+
+## Hold, offer or enforce a version
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });
+```
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr apps release com.example.kiosk 240     # enforce; --available to offer it instead
+ohr apps hold com.example.kiosk 240
+```
+
+</TabItem>
+</Tabs>
+
+## Follow the rollout
+
+`GET /v1/apps/{appId}/rollout` shows, for every device in the app's fleets, the version it runs and
+where it is with the enforced one: `up_to_date`, `pending` (it hasn't started), `installing` or
+`failed`, with the device's reason in `detail`.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+var rollout = await api.WaitForRolloutAsync(12, TimeSpan.FromMinutes(15));
+foreach (var d in rollout.Devices.Where(d => d.Status == "failed"))
+    Console.WriteLine($"{d.DeviceId}: {d.Detail}");
+```
+
+`WaitForRolloutAsync` returns once every online device is up to date or failed. Offline devices
+install the version when they next connect.
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr apps rollout com.example.kiosk --wait
+```
+
+</TabItem>
+</Tabs>
+
+To release from a build pipeline, see [release from CI](/management-api/recipes/release-from-ci/).
+
+## Permissions
+
+`ManageApps` adds apps, uploads versions, changes their state and assigns them to fleets. Every
+member of an organisation holds it; grant it to the service account your pipeline uses. Seeing
+apps, versions and rollouts needs `ManageApps` or `ViewDevices`.
+
+A service account limited to some fleets can upload held versions, but can offer or enforce a
+version only when every fleet with the app is within its limits.

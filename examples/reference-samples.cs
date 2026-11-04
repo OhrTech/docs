@@ -174,6 +174,64 @@ static async Task RunShellCommand(OhrManagementClient api, string adbPublicKey, 
     Console.WriteLine($"{task.Shell?.ExitCode}: {task.Shell?.Stdout}");
 }
 
+static async Task ListApps(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var apps = await api.ListAppsAsync(package: "com.example.kiosk");
+}
+
+static async Task CreateApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var app = await api.CreateAppAsync(new CreateAppRequest { PackageName = "com.example.kiosk", Name = "Kiosk" });
+}
+
+static async Task GetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var app = await api.GetAppAsync(12);
+}
+
+static async Task UpdateApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = "Store kiosk" });
+}
+
+static async Task ListAppVersions(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var versions = await api.ListAppVersionsAsync(12);
+}
+
+static async Task UploadApk(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait
+    var version = await api.UploadApkAsync(12, "app-release.apk", state: "enforced");
+}
+
+static async Task SetAppVersionState(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = "enforced" });
+}
+
+static async Task GetAppRollout(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var rollout = await api.GetAppRolloutAsync(12);
+    // Or wait until every online device runs the enforced version:
+    rollout = await api.WaitForRolloutAsync(12);
+}
+
+static async Task ListFleetApps(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var apps = await api.ListFleetAppsAsync(7);
+}
+
+static async Task AddFleetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    await api.AddFleetAppAsync(7, 12);
+}
+
+static async Task RemoveFleetApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    await api.RemoveFleetAppAsync(7, 12);
+}
+
 static async Task SignIn()
 {
     // The SDK runs the device code flow and refreshes the access token for you.

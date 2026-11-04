@@ -30,6 +30,16 @@ Console.WriteLine(task.Shell!.Stdout); // "  level: 87"
 `WaitForTaskAsync` asks for the task until it has finished.
 
 </TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr shell 42 "dumpsys battery | grep level"
+```
+
+The [command line](/management-api/cli/) waits for the device, prints the output, and exits with
+the command's exit code.
+
+</TabItem>
 <TabItem label="curl">
 
 ```sh

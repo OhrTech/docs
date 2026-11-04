@@ -15,6 +15,1065 @@
     }
   ],
   "paths": {
+    "/v1/apps": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "List apps",
+        "operationId": "ListApps",
+        "parameters": [
+          {
+            "name": "clientId",
+            "in": "query",
+            "description": "Only this organisation's apps.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "package",
+            "in": "query",
+            "description": "Only apps with this package name (several apps may share one).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ManagedAppDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Your organisations' apps",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListAppsAsync(package: \"com.example.kiosk\");"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Create app",
+        "operationId": "CreateApp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedAppDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add an app: a package name and your name for it (several apps may share a package)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.CreateAppAsync(new CreateAppRequest { PackageName = \"com.example.kiosk\", Name = \"Kiosk\" });"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Get app",
+        "operationId": "GetApp",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedAppDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "One app, with its newest versions and fleets",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.GetAppAsync(12);"
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Update app",
+        "operationId": "UpdateApp",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedAppDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename an app",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar app = await api.UpdateAppAsync(12, new UpdateAppRequest { Name = \"Store kiosk\" });"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}/versions": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "List app versions",
+        "operationId": "ListAppVersions",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AppVersionDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "An app's versions, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar versions = await api.ListAppVersionsAsync(12);"
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Upload an APK",
+        "operationId": "UploadApk",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "held (the default), available or enforced.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "allowNewSigningKey",
+            "in": "query",
+            "description": "Accept an APK signed with a different key than the previous version.\n            Devices refuse such an update unless the new key is a rotation (APK signature scheme v3) of the old one.",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The APK file.",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppVersionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The request body is the APK. It must be this app's package; its version code must be newer than every version already uploaded, and it must be signed with the same key (unless allowNewSigningKey). A 409 also carries appId, packageName and versionCode, plus latestVersionCode and exists (that version code is already uploaded) or the two keys' signingKeySha256 and expectedSigningKeySha256, so a pipeline that runs again can tell its own earlier upload from a mistake.",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The ohr command line does the same: ohr apps upload com.example.kiosk app-release.apk --enforce --wait\nvar version = await api.UploadApkAsync(12, \"app-release.apk\", state: \"enforced\");"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}/versions/{versionCode}": {
+      "patch": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Set a version's state",
+        "operationId": "SetAppVersionState",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "versionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppVersionStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppVersionDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Hold, offer or enforce a version",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar version = await api.SetAppVersionStateAsync(12, 240, new SetAppVersionStateRequest { State = \"enforced\" });"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}/rollout": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Follow a rollout",
+        "operationId": "GetAppRollout",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Which devices run the enforced version, and which are still getting it",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rollout = await api.GetAppRolloutAsync(12);\n// Or wait until every online device runs the enforced version:\nrollout = await api.WaitForRolloutAsync(12);"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "List a fleet's apps",
+        "operationId": "ListFleetApps",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ManagedAppDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The apps a fleet's devices get",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar apps = await api.ListFleetAppsAsync(7);"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}": {
+      "put": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Assign an app to a fleet",
+        "operationId": "AddFleetApp",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Give an app to a fleet's devices",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.AddFleetAppAsync(7, 12);"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Unassign an app from a fleet",
+        "operationId": "RemoveFleetApp",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop giving an app to a fleet's devices (they keep it installed)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.RemoveFleetAppAsync(7, 12);"
+          }
+        ]
+      }
+    },
     "/v1/me": {
       "get": {
         "tags": [
@@ -2811,6 +3870,94 @@
         },
         "additionalProperties": false
       },
+      "AppFleetDto": {
+        "required": [
+          "fleetId",
+          "fleetName"
+        ],
+        "type": "object",
+        "properties": {
+          "fleetId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fleetName": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppVersionDto": {
+        "required": [
+          "appId",
+          "packageName",
+          "permissions",
+          "signingKeySha256",
+          "state",
+          "uploadedAt",
+          "versionCode",
+          "versionName"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "versionCode": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "held: devices don't get it. available: offered to the device, whose own app installs it\n            when it is ready, through the Device SDK. enforced: every device in the app's fleets installs it."
+          },
+          "signingKeySha256": {
+            "type": "string",
+            "description": "SHA-256 of the signer's public key (apksigner's \"public key SHA-256 digest\")."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The permissions the APK asks for."
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppVersionSummaryDto": {
+        "required": [
+          "state",
+          "versionCode",
+          "versionName"
+        ],
+        "type": "object",
+        "properties": {
+          "versionCode": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "description": "held, available or enforced (see AppVersionDto)."
+          }
+        },
+        "additionalProperties": false
+      },
       "BatteryDto": {
         "required": [
           "charging"
@@ -2917,6 +4064,28 @@
           "token": {
             "type": "string",
             "description": "A LiveKit participant token; it can be used to join for 10 minutes."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateAppRequest": {
+        "required": [
+          "name",
+          "packageName"
+        ],
+        "type": "object",
+        "properties": {
+          "packageName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "integer",
+            "description": "The organisation; needed only when you belong to more than one.",
+            "format": "int64",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -3361,6 +4530,58 @@
         },
         "additionalProperties": {}
       },
+      "ManagedAppDto": {
+        "required": [
+          "appId",
+          "clientId",
+          "clientName",
+          "createdAt",
+          "fleets",
+          "name",
+          "packageName"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clientId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/AppVersionSummaryDto"
+          },
+          "enforcedVersionCode": {
+            "type": "integer",
+            "description": "The version the app's fleets install: the newest enforced one.",
+            "format": "int64",
+            "nullable": true
+          },
+          "fleets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppFleetDto"
+            },
+            "description": "The fleets whose devices get the app."
+          }
+        },
+        "additionalProperties": false
+      },
       "MeDto": {
         "required": [
           "clients",
@@ -3748,6 +4969,111 @@
         },
         "additionalProperties": false
       },
+      "RolloutDeviceDto": {
+        "required": [
+          "deviceId",
+          "online",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "serial": {
+            "type": "string",
+            "nullable": true
+          },
+          "fleetId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "fleetName": {
+            "type": "string",
+            "nullable": true
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "installedVersionCode": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "up_to_date, pending (waiting for the device), installing or failed."
+          },
+          "taskId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "detail": {
+            "type": "string",
+            "description": "Why it failed, as the device reported it.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RolloutDto": {
+        "required": [
+          "appId",
+          "devices",
+          "failed",
+          "installing",
+          "packageName",
+          "pending",
+          "total",
+          "upToDate"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "targetVersionCode": {
+            "type": "integer",
+            "description": "The version the fleets install (the newest enforced one); null when none is.",
+            "format": "int64",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upToDate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "installing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RolloutDeviceDto"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "RunShellCommandRequest": {
         "required": [
           "command"
@@ -3801,6 +5127,19 @@
             },
             "description": "The only web origins its remote control sessions may be embedded in; null for any.",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAppVersionStateRequest": {
+        "required": [
+          "state"
+        ],
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "description": "held, available or enforced."
           }
         },
         "additionalProperties": false
@@ -4091,6 +5430,18 @@
           }
         },
         "additionalProperties": false
+      },
+      "UpdateAppRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "securitySchemes": {
@@ -4107,6 +5458,9 @@
     }
   ],
   "tags": [
+    {
+      "name": "Apps"
+    },
     {
       "name": "Devices"
     },

@@ -7,6 +7,18 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-04: your apps
+
+- [Your apps](/management-api/guides/apps/): `GET` and `POST /v1/apps`, `GET` and `PATCH
+  /v1/apps/{appId}`, the app's versions (`GET /v1/apps/{appId}/versions`), uploading an APK as a new
+  version (`POST /v1/apps/{appId}/versions`, refused if it is another package), holding, offering or
+  enforcing a version (`PATCH /v1/apps/{appId}/versions/{versionCode}`), the rollout
+  (`GET /v1/apps/{appId}/rollout`) and a fleet's apps (`GET`, `PUT` and `DELETE
+  /v1/fleets/{fleetId}/apps/…`).
+- The new permission `ManageApps`, held by every member, lets the caller change apps. Seeing them
+  needs `ManageApps` or `ViewDevices`.
+- The [`ohr` command line](/management-api/cli/) is open source, for Linux, macOS and Windows.
+
 ## 2026-11-03: shell commands
 
 - `POST /v1/devices/{deviceId}/shell` runs a [shell command](/management-api/guides/shell-commands/)
