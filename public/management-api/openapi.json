@@ -26,7 +26,7 @@
           {
             "name": "orgId",
             "in": "query",
-            "description": "Only this organisation's apps.",
+            "description": "Only this organisation's own apps.",
             "schema": {
               "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
               "type": "string"
@@ -37,6 +37,14 @@
             "name": "package",
             "in": "query",
             "description": "Only apps with this package name (several apps may share one).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Only apps of this kind: org, catalog or platform.",
             "schema": {
               "type": "string"
             }
@@ -107,7 +115,7 @@
             }
           }
         },
-        "description": "Your organisations' apps",
+        "description": "Your organisations' apps, and OhrTech's catalog and platform apps",
         "x-codeSamples": [
           {
             "lang": "csharp",
@@ -710,7 +718,7 @@
             }
           }
         },
-        "description": "Hold, offer or enforce a version",
+        "description": "Hold, offer or enforce a version (and, for OhrTech's apps, its notes)",
         "x-codeSamples": [
           {
             "lang": "csharp",
@@ -1087,12 +1095,609 @@
             }
           }
         },
-        "description": "Stop giving an app to a fleet's devices (they keep it installed)",
+        "description": "Stop giving an app to a fleet's devices: they uninstall it",
         "x-codeSamples": [
           {
             "lang": "csharp",
             "label": "C# SDK",
             "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nawait api.RemoveFleetAppAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_44n36syg958kyv8gzmq6f59tkq\");"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}/policy": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "A fleet's update policy for an OhrTech app",
+        "operationId": "GetFleetAppPolicy",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppPolicyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Whether a fleet gets an OhrTech app's updates automatically or only once approved",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar policy = await api.GetFleetAppPolicyAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_3k7fx2qd0m9b4tz1s8c6ve5hwy\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Choose automatic or manual, or approve a version",
+        "operationId": "SetFleetAppPolicy",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppPolicyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Manual keeps the fleet's devices on the approved version for as long as the organisation wants:\nswitching to manual without a version approves what the fleet gets now. Approving a version moves\nthe devices to it at the fleet's update timing; devices never go back to an older one.",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// Stay on the version the fleet runs now, until you approve another:\nvar policy = await api.SetFleetAppPolicyAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_3k7fx2qd0m9b4tz1s8c6ve5hwy\", new SetAppPolicyRequest { Mode = \"manual\" });\n// Later, approve the newest:\npolicy = await api.SetFleetAppPolicyAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_3k7fx2qd0m9b4tz1s8c6ve5hwy\",\n    new SetAppPolicyRequest { Mode = \"manual\", ApprovedVersionCode = policy.Waiting[0].VersionCode });"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Follow the parent fleet's policy",
+        "operationId": "ClearFleetAppPolicy",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppPolicyDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Let a fleet follow its parent's policy for an OhrTech app again",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar policy = await api.ClearFleetAppPolicyAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_3k7fx2qd0m9b4tz1s8c6ve5hwy\");"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/update-timing": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "When a fleet installs updates",
+        "operationId": "GetUpdateTiming",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTimingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "When a fleet's devices install app updates",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar timing = await api.GetUpdateTimingAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Set when a fleet installs updates",
+        "operationId": "SetUpdateTiming",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTimingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTimingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Set when a fleet's devices install app updates: screen off, a maintenance window, or immediately",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar timing = await api.SetUpdateTimingAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", new UpdateTimingRequest\n{\n    Mode = \"window\", Start = \"02:00\", End = \"05:00\", Days = [1, 2, 3, 4, 5],\n});"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "Follow the parent fleet's timing",
+        "operationId": "ClearUpdateTiming",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateTimingDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Let a fleet follow its parent's update timing again",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar timing = await api.ClearUpdateTimingAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\");"
           }
         ]
       }
@@ -3959,11 +4564,67 @@
         },
         "additionalProperties": false
       },
+      "AppPolicyDto": {
+        "required": [
+          "appId",
+          "fleetId",
+          "mode",
+          "waiting"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "description": "automatic: each version OhrTech enforces. manual: only the version approved here; nothing newer\n            until someone in the organisation approves it. OhrTech can't override a manual fleet."
+          },
+          "approvedVersionCode": {
+            "type": "integer",
+            "description": "For manual: the version the fleet's devices may run (null: none newer than what\n            each device has). Devices never go back to an older version.",
+            "format": "int64",
+            "nullable": true
+          },
+          "approvedBy": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "inheritedFromFleetId": {
+            "type": "string",
+            "description": "The fleet up the tree this policy comes from; null when this fleet set it, or\n            nobody did (automatic).",
+            "nullable": true
+          },
+          "targetVersionCode": {
+            "type": "integer",
+            "description": "What the fleet's devices get under this policy.",
+            "format": "int64",
+            "nullable": true
+          },
+          "waiting": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WaitingVersionDto"
+            },
+            "description": "Newer versions that wait for approval (manual only), newest first."
+          }
+        },
+        "additionalProperties": false
+      },
       "AppVersionDto": {
         "required": [
           "appId",
           "packageName",
           "permissions",
+          "security",
           "signingKeySha256",
           "state",
           "uploadedAt",
@@ -4003,6 +4664,15 @@
           "uploadedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "description": "What OhrTech says about a catalog or platform release, such as the security fixes in it.",
+            "nullable": true
+          },
+          "security": {
+            "type": "boolean",
+            "description": "The release fixes security vulnerabilities."
           }
         },
         "additionalProperties": false
@@ -4131,6 +4801,11 @@
           "orgId": {
             "type": "string",
             "description": "The organisation; needed only when you belong to more than one.",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "description": "org (the default). catalog and platform are OhrTech's, and need OhrTech staff.",
             "nullable": true
           }
         },
@@ -4572,9 +5247,8 @@
           "appId",
           "createdAt",
           "fleets",
+          "kind",
           "name",
-          "orgId",
-          "orgName",
           "packageName"
         ],
         "type": "object",
@@ -4582,11 +5256,18 @@
           "appId": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "description": "org: your organisation's own app. catalog: provided by OhrTech; add it to your fleets.\n            platform: part of the OS on every device, such as Vanadium System WebView; updated where the OS has it.\n            OhrTech releases the versions of catalog and platform apps; each fleet chooses Automatic or Manual\n            (GET /v1/fleets/{fleetId}/apps/{appId}/policy)."
+          },
           "orgId": {
-            "type": "string"
+            "type": "string",
+            "description": "The organisation the app belongs to; null for catalog and platform apps.",
+            "nullable": true
           },
           "orgName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "name": {
             "type": "string"
@@ -4603,7 +5284,7 @@
           },
           "enforcedVersionCode": {
             "type": "integer",
-            "description": "The version the app's fleets install: the newest enforced one.",
+            "description": "The version the app's fleets install: the newest enforced one (for a\n            catalog or platform app, what Automatic fleets get).",
             "format": "int64",
             "nullable": true
           },
@@ -4612,7 +5293,7 @@
             "items": {
               "$ref": "#/components/schemas/AppFleetDto"
             },
-            "description": "The fleets whose devices get the app."
+            "description": "The fleets whose devices get the app (your fleets, for a catalog app; none for a platform app)."
           }
         },
         "additionalProperties": false
@@ -5053,12 +5734,24 @@
           },
           "installedVersionCode": {
             "type": "integer",
+            "description": "The version of this app the device runs; null if it has none, or has\n            the package as another app (a flavour it no longer gets, uninstalled before this one goes on).",
             "format": "int64",
+            "nullable": true
+          },
+          "targetVersionCode": {
+            "type": "integer",
+            "description": "The version this device should run: the newest enforced one, or for a catalog or\n            platform app on a Manual fleet, the version its organisation approved (null: none).",
+            "format": "int64",
+            "nullable": true
+          },
+          "policy": {
+            "type": "string",
+            "description": "For a catalog or platform app: automatic or manual, its fleet's choice; null for an org app.",
             "nullable": true
           },
           "status": {
             "type": "string",
-            "description": "up_to_date, pending (waiting for the device), installing or failed."
+            "description": "up_to_date; held (a Manual fleet: a newer version waits for its organisation's approval);\n            pending (waiting for the device); waiting (downloaded, waiting for the fleet's update timing, such as the screen\n            to be off); installing; failed."
           },
           "taskId": {
             "type": "string",
@@ -5066,7 +5759,7 @@
           },
           "detail": {
             "type": "string",
-            "description": "Why it failed, as the device reported it.",
+            "description": "Why it failed, as the device reported it; what a waiting device waits for; for a pending\n            device that has the package as another app, which one.",
             "nullable": true
           }
         },
@@ -5077,11 +5770,13 @@
           "appId",
           "devices",
           "failed",
+          "held",
           "installing",
           "packageName",
           "pending",
           "total",
-          "upToDate"
+          "upToDate",
+          "waiting"
         ],
         "type": "object",
         "properties": {
@@ -5093,7 +5788,7 @@
           },
           "targetVersionCode": {
             "type": "integer",
-            "description": "The version the fleets install (the newest enforced one); null when none is.",
+            "description": "The newest enforced version: what devices install, unless their fleet is Manual.",
             "format": "int64",
             "nullable": true
           },
@@ -5105,7 +5800,15 @@
             "type": "integer",
             "format": "int32"
           },
+          "held": {
+            "type": "integer",
+            "format": "int32"
+          },
           "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "waiting": {
             "type": "integer",
             "format": "int32"
           },
@@ -5181,15 +5884,42 @@
         },
         "additionalProperties": false
       },
-      "SetAppVersionStateRequest": {
+      "SetAppPolicyRequest": {
         "required": [
-          "state"
+          "mode"
         ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "automatic or manual."
+          },
+          "approvedVersionCode": {
+            "type": "integer",
+            "description": "For manual: the version to approve; omitted, the version the fleet gets now.",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAppVersionStateRequest": {
         "type": "object",
         "properties": {
           "state": {
             "type": "string",
-            "description": "held, available or enforced."
+            "description": "held, available or enforced; null leaves it.",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "description": "For a catalog or platform app (OhrTech staff): what the release changes; null leaves it.",
+            "nullable": true
+          },
+          "security": {
+            "type": "boolean",
+            "description": "For a catalog or platform app (OhrTech staff): the release fixes security vulnerabilities.",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -5487,6 +6217,111 @@
         "properties": {
           "name": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateTimingDto": {
+        "required": [
+          "description",
+          "fleetId",
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "fleetId": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "start": {
+            "type": "string",
+            "nullable": true
+          },
+          "end": {
+            "type": "string",
+            "nullable": true
+          },
+          "inheritedFromFleetId": {
+            "type": "string",
+            "description": "The fleet up the tree this timing comes from; null when this fleet set it or\n            nobody did (screen_off).",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "description": "In words, such as \"every day 02:00–05:00, or when the screen is off\"."
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateTimingRequest": {
+        "required": [
+          "mode"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "screen_off: once nobody has used the device for 2 minutes. window: only inside the window, even\n            in use. window_or_screen_off: either. immediate: at once, even mid-use."
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Days the window opens, 1 (Monday) to 7 (Sunday); empty or null: every day.",
+            "nullable": true
+          },
+          "start": {
+            "type": "string",
+            "description": "Window start, HH:mm, the device's local time.",
+            "nullable": true
+          },
+          "end": {
+            "type": "string",
+            "description": "Window end, HH:mm; earlier than start, it runs past midnight.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WaitingVersionDto": {
+        "required": [
+          "releasedAt",
+          "security",
+          "versionCode",
+          "versionName"
+        ],
+        "type": "object",
+        "properties": {
+          "versionCode": {
+            "type": "integer",
+            "description": "A version newer than what the fleet gets, waiting for approval.",
+            "format": "int64"
+          },
+          "versionName": {
+            "type": "string"
+          },
+          "releasedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "security": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

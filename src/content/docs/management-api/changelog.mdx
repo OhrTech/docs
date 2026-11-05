@@ -7,6 +7,21 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-05: when devices install, and OhrTech's apps
+
+- Each fleet chooses when its devices install app updates: `GET`, `PUT` and `DELETE
+  /v1/fleets/{fleetId}/update-timing` (when the screen is off, the default; a maintenance window;
+  either; or immediately). Devices download enforced versions at once and install them then.
+- Apps have a `kind`: `org` (yours), `catalog` (provided by OhrTech, such as the Vanadium browser) or
+  `platform` (part of the OS, such as Vanadium System WebView). `orgId` and `orgName` are null for
+  OhrTech's apps; versions have `notes` and `security`.
+- Per fleet, OhrTech's apps come automatically or only once approved: `GET`, `PUT` and `DELETE
+  /v1/fleets/{fleetId}/apps/{appId}/policy`.
+- Available versions download ahead over Wi-Fi. A device that leaves a fleet, or a fleet you take an
+  app from, uninstalls the app.
+- Rollouts: the statuses `held` and `waiting`, and `targetVersionCode`, `policy` per device; `held`
+  and `waiting` counts.
+
 ## 2026-11-04: ids with a type prefix
 
 The one change to `v1` that is not an addition, made the day after it was published:

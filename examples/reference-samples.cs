@@ -227,6 +227,43 @@ static async Task RemoveFleetApp(OhrManagementClient api, string adbPublicKey, s
     await api.RemoveFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");
 }
 
+static async Task GetFleetAppPolicy(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var policy = await api.GetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy");
+}
+
+static async Task SetFleetAppPolicy(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // Stay on the version the fleet runs now, until you approve another:
+    var policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy", new SetAppPolicyRequest { Mode = "manual" });
+    // Later, approve the newest:
+    policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy",
+        new SetAppPolicyRequest { Mode = "manual", ApprovedVersionCode = policy.Waiting[0].VersionCode });
+}
+
+static async Task ClearFleetAppPolicy(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var policy = await api.ClearFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy");
+}
+
+static async Task GetUpdateTiming(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timing = await api.GetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");
+}
+
+static async Task SetUpdateTiming(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timing = await api.SetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb", new UpdateTimingRequest
+    {
+        Mode = "window", Start = "02:00", End = "05:00", Days = [1, 2, 3, 4, 5],
+    });
+}
+
+static async Task ClearUpdateTiming(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timing = await api.ClearUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");
+}
+
 static async Task SignIn()
 {
     // The SDK runs the device code flow and refreshes the access token for you.

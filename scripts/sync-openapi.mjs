@@ -73,6 +73,19 @@ const samples = {
 	ListFleetApps: 'var apps = await api.ListFleetAppsAsync("flt_2dn47a2xa58j1txv8m28spkmyb");',
 	AddFleetApp: 'await api.AddFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");',
 	RemoveFleetApp: 'await api.RemoveFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_44n36syg958kyv8gzmq6f59tkq");',
+	GetFleetAppPolicy: 'var policy = await api.GetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy");',
+	SetFleetAppPolicy:
+		'// Stay on the version the fleet runs now, until you approve another:\n' +
+		'var policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy", new SetAppPolicyRequest { Mode = "manual" });\n' +
+		'// Later, approve the newest:\n' +
+		'policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy",\n' +
+		'    new SetAppPolicyRequest { Mode = "manual", ApprovedVersionCode = policy.Waiting[0].VersionCode });',
+	ClearFleetAppPolicy: 'var policy = await api.ClearFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy");',
+	GetUpdateTiming: 'var timing = await api.GetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");',
+	SetUpdateTiming:
+		'var timing = await api.SetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb", new UpdateTimingRequest\n{\n' +
+		'    Mode = "window", Start = "02:00", End = "05:00", Days = [1, 2, 3, 4, 5],\n});',
+	ClearUpdateTiming: 'var timing = await api.ClearUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");',
 };
 
 const signIn =
@@ -98,6 +111,12 @@ const titles = {
 	ListFleetApps: "List a fleet's apps",
 	AddFleetApp: 'Assign an app to a fleet',
 	RemoveFleetApp: 'Unassign an app from a fleet',
+	GetFleetAppPolicy: "A fleet's update policy for an OhrTech app",
+	SetFleetAppPolicy: 'Choose automatic or manual, or approve a version',
+	ClearFleetAppPolicy: "Follow the parent fleet's policy",
+	GetUpdateTiming: 'When a fleet installs updates',
+	SetUpdateTiming: 'Set when a fleet installs updates',
+	ClearUpdateTiming: "Follow the parent fleet's timing",
 };
 const title = (id) =>
 	titles[id] ?? id.replace(/(?!^)([A-Z])/g, ' $1').replace(/ (\w)/g, (m) => m.toLowerCase()).replace(/\badb\b/, 'ADB');

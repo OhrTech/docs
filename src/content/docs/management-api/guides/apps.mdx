@@ -18,17 +18,27 @@ it, with no store and no one at the device.
   permissions from the APK itself.
 - An app goes to the devices of the **fleets** you assign it to: the devices directly in each fleet,
   not those of the fleets below it. A device holds one app per package, so a fleet gets at most one
-  of the apps that share a package (409 "Package already in this fleet").
+  of the apps that share a package (409 "Package already in this fleet"). A device that leaves the
+  fleet, or a fleet you take the app from, uninstalls it.
 
 Each version is in one of three states:
 
 | State | Devices |
 |---|---|
-| `held` | Don't get it. Every upload starts here unless you say otherwise. |
-| `available` | Are offered it: your app on the device installs it when it is ready, through the [Device SDK](/device-sdk/). |
-| `enforced` | Install it: every device in the app's fleets runs the newest enforced version. Online devices start within seconds. |
+| `held` | Never download it, never install it. Every upload starts here unless you say otherwise. |
+| `available` | Download it ahead, over Wi-Fi or Ethernet only, and keep it: your app installs it when it is ready, through the [Device SDK](/device-sdk/). |
+| `enforced` | Install it: every device in the app's fleets runs the newest enforced version, at the time its fleet chooses (see [when devices install](#when-devices-install)). |
 
 Devices only ever move up: one that already runs a newer version than the enforced one keeps it.
+
+Besides your own apps (`kind`: `org`), `GET /v1/apps` lists OhrTech's:
+
+- **catalog** apps, such as the Vanadium browser: assign them to your fleets like your own.
+- **platform** apps, such as Vanadium System WebView: part of the OS on every device, updated
+  wherever the OS has them. You don't assign them, and devices never uninstall them.
+
+OhrTech releases the versions of both. Each of your fleets chooses whether it gets them
+[automatically or only once you approve one](#ohrtechs-apps-automatic-or-manual).
 
 ## Add an app
 
@@ -137,9 +147,11 @@ ohr apps hold app_44n36syg958kyv8gzmq6f59tkq 240
 
 ## Follow the rollout
 
-`GET /v1/apps/{appId}/rollout` shows, for every device in the app's fleets, the version it runs and
-where it is with the enforced one: `up_to_date`, `pending` (it hasn't started), `installing` or
-`failed`, with the device's reason in `detail`.
+`GET /v1/apps/{appId}/rollout` shows, for every device the app applies to, the version it runs, the
+version it should run (`targetVersionCode`), and where it is: `up_to_date`; `held` (a manual fleet
+hasn't approved the newest version); `pending` (it hasn't started); `waiting` (it has the version and
+waits for its fleet's update timing, such as the screen to be off); `installing`; or `failed`, with
+the device's reason in `detail`.
 
 <Tabs syncKey="lang">
 <TabItem label="C#">
@@ -150,7 +162,8 @@ foreach (var d in rollout.Devices.Where(d => d.Status == "failed"))
     Console.WriteLine($"{d.DeviceId}: {d.Detail}");
 ```
 
-`WaitForRolloutAsync` returns once every online device is up to date or failed. Offline devices
+`WaitForRolloutAsync` returns once every online device is up to date, held, waiting for its fleet's
+timing, or failed; pass `untilInstalled: true` to wait for the timed installs too. Offline devices
 install the version when they next connect.
 
 </TabItem>
@@ -165,6 +178,82 @@ ohr apps rollout app_44n36syg958kyv8gzmq6f59tkq --wait
 
 To release from a build pipeline, see [release from CI](/management-api/recipes/release-from-ci/).
 
+## When devices install
+
+Installing an update closes the app being updated, and a WebView update closes every app that is
+showing web content at that moment (anything typed into a web page and not yet saved is lost). So
+each fleet chooses when its devices install enforced versions; they download them whenever they can.
+
+| `mode` | Devices install |
+|---|---|
+| `screen_off` | Once nobody has used the device for 2 minutes and no call is active. The default. A device that is never idle waits. |
+| `window` | Only in the window, the device's local time (`days` 1 = Monday to 7, `start`, `end`), even if someone is using the device. |
+| `window_or_screen_off` | Either. |
+| `immediate` | At once, even mid-use. |
+
+A fleet without its own timing follows its parent's. Operating system updates have their own settings.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+await api.SetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb", new UpdateTimingRequest
+{
+    Mode = "window", Start = "02:00", End = "05:00", Days = [1, 2, 3, 4, 5],
+});
+```
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr fleets timing flt_2dn47a2xa58j1txv8m28spkmyb --window 02:00-05:00 --days mon,tue,wed,thu,fri
+```
+
+</TabItem>
+</Tabs>
+
+## OhrTech's apps: automatic or manual
+
+For each catalog and platform app, a fleet's policy is:
+
+- **automatic** (the default): each version OhrTech releases installs at the fleet's timing.
+- **manual**: the fleet's devices stay on the version you approved, for as long as you choose.
+  Nothing changes until someone in your organisation approves a newer one. OhrTech can't override
+  it.
+
+`GET /v1/fleets/{fleetId}/apps/{appId}/policy` shows the policy, the version the fleet gets, and
+the newer versions that wait for approval, with OhrTech's notes and whether each fixes security
+vulnerabilities. Waiting matters most for the WebView: it shows web content inside apps, and an
+outdated one has publicly known vulnerabilities that any web page an app opens, including an ad or
+a link, can use. A manual fleet's organisation gets an email when a version waits, and weekly while
+a security update waits (`reminders`).
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+// Stay on what the fleet runs now:
+var policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy", new SetAppPolicyRequest { Mode = "manual" });
+// Later, approve the newest waiting version:
+policy = await api.SetFleetAppPolicyAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_3k7fx2qd0m9b4tz1s8c6ve5hwy",
+    new SetAppPolicyRequest { Mode = "manual", ApprovedVersionCode = policy.Waiting[0].VersionCode });
+```
+
+</TabItem>
+<TabItem label="ohr">
+
+```sh
+ohr apps policy app_3k7fx2qd0m9b4tz1s8c6ve5hwy flt_2dn47a2xa58j1txv8m28spkmyb --manual
+ohr apps approve app_3k7fx2qd0m9b4tz1s8c6ve5hwy flt_2dn47a2xa58j1txv8m28spkmyb
+```
+
+</TabItem>
+</Tabs>
+
+To try a version on a few devices first, move them to a small child fleet and approve it there.
+An OS update brings its own WebView: a fleet's devices keep a newer one that came with the OS.
+
 ## Permissions
 
 `ManageApps` adds apps, uploads versions, changes their state and assigns them to fleets. Every
@@ -173,3 +262,6 @@ apps, versions and rollouts needs `ManageApps` or `ViewDevices`.
 
 A service account limited to some fleets can upload held versions, but can offer or enforce a
 version only when every fleet with the app is within its limits.
+
+A fleet's update timing and its policies for OhrTech's apps need `ManageApps` in the fleet's
+organisation. Catalog and platform versions are released by OhrTech (403 "Managed by OhrTech").
