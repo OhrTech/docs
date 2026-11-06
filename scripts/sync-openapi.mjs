@@ -86,6 +86,21 @@ const samples = {
 		'var timing = await api.SetUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb", new UpdateTimingRequest\n{\n' +
 		'    Mode = "window", Start = "02:00", End = "05:00", Days = [1, 2, 3, 4, 5],\n});',
 	ClearUpdateTiming: 'var timing = await api.ClearUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");',
+	ListAppPermissions:
+		'var permissions = await api.ListAppPermissionsAsync("app_44n36syg958kyv8gzmq6f59tkq");\n' +
+		'foreach (var p in permissions.Where(p => p.State == "waiting"))\n    Console.WriteLine($"{p.Permission} waits for OhrTech\'s approval");',
+	ListOrgPermissionApprovals: 'var approved = await api.ListOrgPermissionApprovalsAsync("org_06b160s9zq89js04rhtj7zs0ke");',
+	ApproveOrgPermission:
+		'// OhrTech staff only.\n' +
+		'var approval = await api.ApproveOrgPermissionAsync("org_06b160s9zq89js04rhtj7zs0ke", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST",\n' +
+		'    new ApprovePermissionRequest { Note = "Push: wake the app for incoming calls" });',
+	WithdrawOrgPermission:
+		'// OhrTech staff only.\nawait api.WithdrawOrgPermissionAsync("org_06b160s9zq89js04rhtj7zs0ke", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");',
+	ApproveAppPermission:
+		'// OhrTech staff only, for OhrTech\'s apps.\n' +
+		'var approval = await api.ApproveAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");',
+	WithdrawAppPermission:
+		'// OhrTech staff only, for OhrTech\'s apps.\nawait api.WithdrawAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");',
 };
 
 const signIn =
@@ -117,6 +132,12 @@ const titles = {
 	GetUpdateTiming: 'When a fleet installs updates',
 	SetUpdateTiming: 'Set when a fleet installs updates',
 	ClearUpdateTiming: "Follow the parent fleet's timing",
+	ListAppPermissions: "An app's privileged permissions",
+	ListOrgPermissionApprovals: "An organisation's approved permissions",
+	ApproveOrgPermission: 'Approve a permission for an organisation',
+	WithdrawOrgPermission: "Withdraw an organisation's approval",
+	ApproveAppPermission: 'Approve a permission for an OhrTech app',
+	WithdrawAppPermission: "Withdraw an OhrTech app's approval",
 };
 const title = (id) =>
 	titles[id] ?? id.replace(/(?!^)([A-Z])/g, ' $1').replace(/ (\w)/g, (m) => m.toLowerCase()).replace(/\badb\b/, 'ADB');

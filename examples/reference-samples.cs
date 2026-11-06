@@ -264,6 +264,43 @@ static async Task ClearUpdateTiming(OhrManagementClient api, string adbPublicKey
     var timing = await api.ClearUpdateTimingAsync("flt_2dn47a2xa58j1txv8m28spkmyb");
 }
 
+static async Task ListAppPermissions(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var permissions = await api.ListAppPermissionsAsync("app_44n36syg958kyv8gzmq6f59tkq");
+    foreach (var p in permissions.Where(p => p.State == "waiting"))
+        Console.WriteLine($"{p.Permission} waits for OhrTech's approval");
+}
+
+static async Task ListOrgPermissionApprovals(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var approved = await api.ListOrgPermissionApprovalsAsync("org_06b160s9zq89js04rhtj7zs0ke");
+}
+
+static async Task ApproveOrgPermission(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // OhrTech staff only.
+    var approval = await api.ApproveOrgPermissionAsync("org_06b160s9zq89js04rhtj7zs0ke", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST",
+        new ApprovePermissionRequest { Note = "Push: wake the app for incoming calls" });
+}
+
+static async Task WithdrawOrgPermission(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // OhrTech staff only.
+    await api.WithdrawOrgPermissionAsync("org_06b160s9zq89js04rhtj7zs0ke", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");
+}
+
+static async Task ApproveAppPermission(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // OhrTech staff only, for OhrTech's apps.
+    var approval = await api.ApproveAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");
+}
+
+static async Task WithdrawAppPermission(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    // OhrTech staff only, for OhrTech's apps.
+    await api.WithdrawAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");
+}
+
 static async Task SignIn()
 {
     // The SDK runs the device code flow and refreshes the access token for you.
