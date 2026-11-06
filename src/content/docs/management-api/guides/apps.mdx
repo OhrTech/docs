@@ -259,6 +259,48 @@ ohr apps approve app_3k7fx2qd0m9b4tz1s8c6ve5hwy flt_2dn47a2xa58j1txv8m28spkmyb
 To try a version on a few devices first, move them to a small child fleet and approve it there.
 An OS update brings its own WebView: a fleet's devices keep a newer one that came with the OS.
 
+**microG** is in the catalog as two apps: microG Services and microG Companion. They stand in for
+Google Play services and the Play Store, so apps written against Google's libraries get push
+messages (Firebase Cloud Messaging), Google sign-in and Google's location API. Add both to a fleet
+like any catalog app. They run as ordinary apps in Android's app sandbox, and location comes from
+the device's own location service.
+
+## What your apps may do on a device
+
+The apps the hub installs get Android permissions in three ways:
+
+- **Permissions a person would be asked about** (location, camera, SMS, ...) and **special access**
+  (draw over other apps, usage access, ...) are granted automatically, as soon as the app is
+  installed. The person at the device can't revoke them: your fleet's devices are managed.
+- **Battery optimization:** an app that declares `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` is exempted,
+  so Doze doesn't hold it back.
+- **Privileged permissions**, which Android gives only to apps built into the OS, are granted once
+  OhrTech approves them for your organisation. Then every app of yours that requests one gets it.
+  Ask OhrTech for the ones your apps need. Until then an app runs without them, as Android runs any
+  app without a permission it wasn't granted.
+
+A privileged permission goes only to the app signed with the key the hub knows it by: another APK
+under the same package name gets nothing. If an approval is withdrawn, devices revoke the permission
+at their next check-in and restart the app. A few privileged permissions are never granted, because
+they would let an app take over the device or escape management (granting itself permissions,
+changing secure settings, installing packages, managing users).
+
+`GET /v1/apps/{appId}/permissions` lists the privileged permissions an app's versions request and,
+for each, `granted`, `waiting` (not approved) or `never`:
+
+```http
+GET /v1/apps/app_44n36syg958kyv8gzmq6f59tkq/permissions
+
+[
+  { "permission": "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST", "state": "granted",
+    "approvedFor": "org", "versionCodes": [241, 240], "note": "Push: wake the app for incoming calls" },
+  { "permission": "android.permission.WRITE_SECURE_SETTINGS", "state": "never",
+    "approvedFor": null, "versionCodes": [241], "note": null }
+]
+```
+
+`GET /v1/orgs/{orgId}/permission-approvals` lists what OhrTech approved for your organisation.
+
 ## Permissions
 
 `ManageApps` adds apps, uploads versions, changes their state and assigns them to fleets. Every

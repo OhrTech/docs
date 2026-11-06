@@ -7,6 +7,18 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-06: what apps may do on a device
+
+- Apps the hub installs get the runtime and special-access permissions they request automatically,
+  and a battery-optimization exemption when they declare `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`.
+- Privileged permissions are granted once OhrTech approves them for the organisation (or for one of
+  OhrTech's apps): `GET /v1/apps/{appId}/permissions` shows each one's state, and
+  `GET /v1/orgs/{orgId}/permission-approvals` what OhrTech approved. OhrTech staff approve with
+  `PUT` and withdraw with `DELETE` on `/v1/orgs/{orgId}/permission-approvals/{permission}` and
+  `/v1/apps/{appId}/permission-approvals/{permission}`.
+- microG Services and microG Companion are catalog apps: Google Play services' push, sign-in and
+  location API for apps written against them.
+
 ## 2026-11-05: when devices install, and OhrTech's apps
 
 - Each fleet chooses when its devices install app updates: `GET`, `PUT` and `DELETE
