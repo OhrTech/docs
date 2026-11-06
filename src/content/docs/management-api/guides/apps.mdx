@@ -191,6 +191,11 @@ each fleet chooses when its devices install enforced versions; they download the
 | `window_or_screen_off` | Either. |
 | `immediate` | At once, even mid-use. |
 
+Only updates wait: an app a device doesn't have yet (just added to the fleet, or a device that just
+joined it) installs at once, since it can't close anything. If a waiting update is no longer wanted
+(the app leaves the fleet, the device moves, or the version is held), the device drops it without
+installing.
+
 A fleet without its own timing follows its parent's. Operating system updates have their own settings.
 
 <Tabs syncKey="lang">

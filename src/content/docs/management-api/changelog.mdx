@@ -11,7 +11,8 @@ Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's histor
 
 - Each fleet chooses when its devices install app updates: `GET`, `PUT` and `DELETE
   /v1/fleets/{fleetId}/update-timing` (when the screen is off, the default; a maintenance window;
-  either; or immediately). Devices download enforced versions at once and install them then.
+  either; or immediately). Devices download enforced versions at once and install them then. An
+  app a device doesn't have yet installs at once, whatever the timing.
 - Apps have a `kind`: `org` (yours), `catalog` (provided by OhrTech, such as the Vanadium browser) or
   `platform` (part of the OS, such as Vanadium System WebView). `orgId` and `orgName` are null for
   OhrTech's apps; versions have `notes` and `security`.
