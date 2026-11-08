@@ -115,9 +115,13 @@ sdk.getKiosk().start(activity, OhrKiosk.Feature.SYSTEM_INFO | OhrKiosk.Feature.N
 `stop()` ends kiosk mode when your app is the one pinned and the fleet's **Kiosk apps may leave
 kiosk mode** setting (`kiosk.app_exit`) is on, which it is by default. When the fleet turns it off,
 `stop()` throws `NotAllowed("kiosk")`: only the hub or the exit PIN end kiosk mode then. When
-another app, or no app, is pinned, `stop()` does nothing. `stop()` also ends kiosk mode the fleet
-started for your app; the device then doesn't pin it again until it restarts or the fleet's kiosk
-settings change.
+another app, or no app, is pinned, `stop()` does nothing.
+
+When the fleet made your app its kiosk app, `stop()` is an exit for a while, as with the exit PIN,
+except that your app stays in front: the device pins it again after the fleet's exit time
+(`kiosk.exit_minutes`, 10 minutes by default), when the screen turns off, or when your app's process
+starts again, whichever comes first. A notification counts down, with **Back to kiosk** to end it
+early. When your app pinned itself with `start`, `stop()` simply ends kiosk mode.
 
 `modeChanges` (Kotlin `Flow`) or `listenMode(executor, listener)` (Java) give the device's `mode`
 each time kiosk mode starts or ends. Call `state()` to learn whether it is your app's.

@@ -172,7 +172,7 @@ off by default). Otherwise Android refuses the network and the call throws `Fail
 | Field | Values |
 |---|---|
 | `method` | `peap` (default), `ttls`, `tls`, `pwd`, `sim`, `aka`, `aka-prime` |
-| `phase2` | PEAP: `mschapv2`, `gtc`, `sim`, `aka`, `aka-prime`. TTLS: `pap`, `mschap`, `mschapv2`, `gtc`. Required for these two; leave it out for the others |
+| `phase2` | PEAP: `mschapv2` (default), `gtc`, `sim`, `aka`, `aka-prime`. TTLS: `pap`, `mschap`, `mschapv2` (default), `gtc`. Leave it out for the other methods |
 | `identity` | Required for PEAP, TTLS, TLS and PWD |
 | `anonymousIdentity` | The outer identity, optional |
 | `password` | Required for PEAP, TTLS and PWD; not allowed for the others |

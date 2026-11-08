@@ -105,7 +105,7 @@ WorkManager for longer work.
 |---|---|
 | `onMessage(message)` | A message that passed every check. You must override it |
 | `onDropped(pushId, reason)` | A message the library refused, and why (see [dropped messages](#dropped-messages)) |
-| `onTokenChanged(token)` | For a token that changed or ended (`null`: register again). The current OhrTech Agent doesn't call it yet; see [when a token ends](#when-a-token-ends) |
+| `onTokenChanged(token)` | For a token that ended at OhrTech (`null`: register again if you still want push); see [when a token ends](#when-a-token-ends) |
 | `senderKeys()` | The keys messages must be signed with. By default, the ones you gave `register` or `setSenderKeys` |
 
 | `OhrPushMessage` | |
@@ -292,14 +292,15 @@ and messages still queued for it are dropped. Send the new token to your server.
 | The app registered again | Use the new token |
 | The app called `unregister()` | Nothing. Register again to receive messages |
 | The app was uninstalled | Nothing. The token and the app's keys are deleted with it |
-| The device moved to a fleet without the app, or the app was removed from the device's fleet | Nothing. The token ends at the next message your server sends to it |
+| The device moved to a fleet without the app, or the app was removed from the device's fleet | The token ends at the next message your server sends to it; the app's `onTokenChanged(null)` follows |
 
 Your server learns that a token ended when `POST /v1/push` refuses a message with
 `the token has ended (…)`. Then drop the token, and wait for the app to send a new one.
 
-`onTokenChanged` is meant to tell the app about these changes, but the current OhrTech Agent doesn't
-call it yet. Until it does, check `token()` when the app starts, as in [Register](#register), and
-send the token to your server again when it differs from what you last sent.
+When OhrTech ends a token the app didn't end itself, the device learns it right away if it is
+online, or at its next connection, and your `OhrPushService.onTokenChanged(null)` runs: register
+again if the app still wants push, and send the new token to your server. Checking `token()` when
+the app starts, as in [Register](#register), covers the rest.
 
 ## Unregister
 

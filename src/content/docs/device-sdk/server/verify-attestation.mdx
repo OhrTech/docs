@@ -43,11 +43,10 @@ var verdict = await api.VerifyAttestationAsync(new VerifyAttestationRequest
     Ec = attestation.Ec,
     MlDsa65 = attestation.MlDsa65,          // null for the ec suite
     Package = "com.example.kiosk",
+    SignerSha256 = MySigningCertSha256,     // hex, as apksigner verify --print-certs shows it
 });
 if (!verdict.Valid || verdict.Problems.Count > 0)
     throw new UnauthorizedAccessException(verdict.Reason ?? string.Join("; ", verdict.Problems));
-if (!verdict.SignerSha256.Contains(MySigningCertSha256))
-    throw new UnauthorizedAccessException("not our build of the app");
 SaveDevice(verdict.DeviceId!, verdict.PublicKeys["ec"], verdict.PublicKeys.GetValueOrDefault("mlDsa65"));
 ```
 
@@ -62,7 +61,8 @@ curl https://api.ohrtech.net/v1/attestations/verify \
   -d '{
     "challenge": "q83vEjRWeJCrze8SNFZ4kKvN7xI0VniQq83vEjRWeJA=",
     "ec": ["MIICwzCC…", "MIICFzCC…", "MIIB9TCC…", "MIIB6TCC…"],
-    "package": "com.example.kiosk"
+    "package": "com.example.kiosk",
+    "signerSha256": "5f0c3a9e7d21b8e64f9a0c2d1e3b5a7f6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f"
   }'
 ```
 
@@ -108,9 +108,10 @@ The answer:
   retired or compromised). `problems` lists what fails the boot policy (verified boot, a locked
   bootloader, OhrTech's boot key, a minimum OS patch level when OhrTech sets one) and the
   `package` you asked for.
-- **Check the signer yourself.** `signerSha256` is the SHA-256 of the app's signing certificates,
-  lowercase hex; the API does not compare it with anything. Compare it with your own (`apksigner
-  verify --print-certs`), or anyone's build of an app with your package name passes.
+- **Check the signer.** Send `signerSha256`, the SHA-256 of your signing certificate (hex, as
+  `apksigner verify --print-certs` shows it; colons are fine), and a key from an app signed with
+  anything else gets the problem `the app is not signed with the expected key`. Without it, compare
+  `signerSha256` in the answer yourself, or anyone's build of an app with your package name passes.
 - **Check `osPatchLevel`** (YYYYMM) against your own minimum, if you have one.
 - **`inYourOrganisation`** is true when the device is one of yours; only then are `fleetId` and
   `appId` filled in. Devices of other organisations still verify, without them.

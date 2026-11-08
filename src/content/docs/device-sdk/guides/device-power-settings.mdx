@@ -189,7 +189,7 @@ isn't valid throws `InvalidConfig` with `field` `schedule`.
 
 | Call | |
 |---|---|
-| `setScreenTimeout(seconds)` | One of 15, 30, 60, 120, 300, 600 or 1800 seconds; `InvalidConfig("seconds")` otherwise |
+| `setScreenTimeout(seconds)` | Any whole number of seconds, 1 to 2147483 (Android's limit); `InvalidConfig("seconds")` otherwise |
 | `setBrightness(percent)` | 0 to 100; `InvalidConfig("percent")` otherwise. Turns adaptive brightness off |
 
 They change the same settings as the fleet's **Screen timeout** (`display.timeout`) and
@@ -247,16 +247,28 @@ brightness is on. A key that isn't in `keys()` throws `Unsupported`.
 Needs the `settings` grant. `set(key, value)` takes a `Boolean`, a number, a `String`, a
 `JSONArray`, a `JSONObject` or `null`, in the catalogue's shape:
 
-| Kind | Example |
-|---|---|
-| On or off | `set("display.auto_rotate", true)` |
-| Percent | `set("sound.media_volume", 40)` |
-| Choice | `set("display.font_size", "large")` |
-| List | `set("system.languages", JSONArray(listOf("de-DE", "en-US")))` |
+These are the settings an app can read and change, with the values each takes:
 
-The device applies the value straight away and reports it to the hub, where it shows in the
-device's `reported` settings. Pass only values the catalogue lists: the device applies what it
-can, and a value it can't apply throws `Failed`.
+| Kind | Settings | Values |
+|---|---|---|
+| On or off | `wifi.enabled`, `bluetooth.enabled`, `network.data_roaming`, `telephony.calls_and_texts`, `location.enabled`, `notifications.dnd`, `notifications.cooldown`, `notifications.camera_flash`, `notifications.screen_flash`, `notifications.emergency_alerts`, `battery.show_percentage`, `sound.vibration`, `display.dark_theme`, `display.auto_rotate`, `display.lift_to_wake`, `safety.emergency_sos`, `system.auto_time_zone`, `dev.stay_awake`, `dev.show_taps`, `dev.pointer_location` | `true` or `false` |
+| Percent | `sound.media_volume`, `sound.ring_volume`, `sound.alarm_volume`, `display.brightness`, `battery.saver_threshold` | A whole number, 0 to 100 |
+| Seconds | `display.timeout` | A whole number of seconds, 1 to 2147483 (Android's limit) |
+| Choice | `display.font_size`, `display.size` | `small`, `default`, `large` or `largest` |
+| App | `apps.browser`, `apps.sms` | A package name, or `default` |
+| Time zone | `system.time_zone` | An IANA zone, such as `Europe/Amsterdam` |
+| Lists | `system.languages`; `system.input_methods` | Language tags such as `de-DE`; input method ids such as `com.example.keyboard/.ImeService`, or `default` |
+
+```kotlin
+sdk.settings.set("display.auto_rotate", true)
+sdk.settings.set("display.timeout", 45)
+sdk.settings.set("system.languages", JSONArray(listOf("de-DE", "en-US")))
+```
+
+A value that doesn't fit throws `InvalidConfig` (`field` `value`, and `reason` says what it must be),
+before anything changes. The device applies a valid value straight away and reports it to the hub,
+where it shows in the device's `reported` settings. A value the device can't apply anyway throws
+`Failed`.
 
 Who wins:
 
@@ -267,18 +279,12 @@ Who wins:
 
 ### What apps can't change
 
-The settings that make up the fleet's control of the device are not in `keys()`, whatever the
-grant, so an app can't loosen the policy that manages it:
-
-- every `security.*` and `kiosk.*` key (screen lock, certificates; kiosk mode is the
-  [kiosk area](/device-sdk/guides/kiosk/))
-- `wifi.networks` (use the [Wi-Fi area](/device-sdk/guides/wifi-and-networks/))
-- `sdk.access` (the Device SDK grants themselves)
-- `remote_control.consent` and `remote_adb.enabled`
-- `dev.usb_debugging`, `apps.unknown_sources`, `system.factory_reset`, `system.safe_mode`
-- `apps.home` and `apps.home_screen_layout`
-- `connected.usb_file_transfer`, `connected.physical_media`
-- `network.tethering`, `network.cellular_2g`, `network.wep`, `network.private_dns`
+Only the settings above are in `keys()`; `get` and `set` refuse every other key with `Unsupported`,
+whatever the grant. The rest are the fleet's control of the device (screen lock, kiosk mode, Wi-Fi
+networks, the Device SDK grants, remote control, USB debugging, factory reset, each app's
+configuration and certificates, and so on), and a setting the catalogue gains later stays out of
+apps' reach until it is added here. Kiosk mode and Wi-Fi networks have their own areas:
+[kiosk](/device-sdk/guides/kiosk/), [Wi-Fi](/device-sdk/guides/wifi-and-networks/).
 
 ### Follow changes
 
@@ -313,6 +319,6 @@ Closeable watch = sdk.getSettings().listen(getMainExecutor(), setting -> {
 |---|---|
 | `NotAllowed("power")`, `NotAllowed("settings")` | A change without the fleet's grant |
 | `FleetLocked(key)` | The fleet locks the setting |
-| `InvalidConfig(field, reason)` | A screen timeout, brightness or reboot schedule that isn't valid |
+| `InvalidConfig(field, reason)` | A setting value, screen timeout, brightness or reboot schedule that isn't valid |
 | `Unsupported` | `install` with nothing offered; `get` or `set` of a key apps can't use |
 | `Failed(reason)` | The device couldn't apply it |
