@@ -192,6 +192,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from cryptography import x509
+from cryptography.x509.oid import ExtendedKeyUsageOID
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, mldsa
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
@@ -200,7 +201,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat,
 # SHA-256 of OhrTech's verified boot key, as an attestation's root of trust reports it.
 OHRTECH_BOOT_KEY = "2beb1f5c24417c079046e60db3348bba47858b4990eeda2f5b88729507ff2ada"
 KEY_DESCRIPTION = x509.ObjectIdentifier("1.3.6.1.4.1.11129.2.1.17")
-STATUS_SIGNING_EKU = x509.ObjectIdentifier("2.25.73147592544128211943638446974928104936")
+STATUS_SIGNING_EKU = ExtendedKeyUsageOID.OCSP_SIGNING   # 1.3.6.1.5.5.7.3.9
 
 
 class AttestationError(Exception):
@@ -515,8 +516,8 @@ It is a JWS (`application/jwt`), ES256:
   intermediate, base64 DER.
 - The signing certificate is "OhrTech Attestation Status 1", issued by OhrTech Attestation
   Intermediate 1 under the OhrTech Attestation Root. Check that chain, that the signing
-  certificate is not a CA, and that it has the extended key usage
-  `2.25.73147592544128211943638446974928104936` (a UUID OID), then the signature, as with any JWS.
+  certificate is not a CA, and that it has the extended key usage id-kp-OCSPSigning
+  (`1.3.6.1.5.5.7.3.9`), then the signature, as with any JWS.
 - The payload:
 
 ```json
@@ -533,9 +534,6 @@ Each entry is keyed by the unit certificate's serial number in lowercase hex, as
 is written (with a leading `00` when the first byte is 0x80 or more). `reason` is `retired`, `lost`
 or `compromised`. A list is good for 24 hours (`exp`): refuse to use an expired one. Certificates
 that have expired anyway leave the list.
-
-Go's `crypto/x509` can't parse the status certificate (its extended key usage OID has an arc
-larger than 64 bits): in Go, read that certificate with another ASN.1 parser, or use `verify`.
 
 To stop vouching for one of your own devices, for example one that was stolen:
 
