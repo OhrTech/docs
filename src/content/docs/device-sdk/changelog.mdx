@@ -1,0 +1,88 @@
+---
+title: Changelog
+description: Changes to the Device SDK for Android (net.ohrtech:device-sdk), and the OhrTech Agent version each one needs.
+---
+
+**Our promise:** every version of the library works with every version of the OhrTech Agent. The
+interface between them only adds. If a device's Agent is too old for a call to it, the call throws
+`OhrException.Unsupported` with `needsAgent`, the Agent version that has it, and the rest of the
+library keeps working. `sdk.session.agentVersion` tells you which Agent a device runs. See
+[access](/device-sdk/access/).
+
+## 0.2.0 (unreleased): configuration, attestation, diagnostics, USB devices, certificates
+
+```kotlin
+implementation("net.ohrtech:device-sdk:0.2.0")
+```
+
+- [Managed configuration](/device-sdk/guides/managed-config/): `sdk.config` (`OhrConfig`) reads
+  the settings your app declares in `app_restrictions.xml`, with the values its fleet or device
+  sets: `string`, `int`, `bool`, `strings`, `bundle`, `bundles`, with your declared defaults, and
+  `changes`. It works without connecting to the Agent. Needs Agent 1061 or later; with an older Agent
+  the getters return the declared defaults. On the hub: `GET /v1/apps/{appId}/config-schema`, and
+  `GET`, `PUT` and `DELETE` on `/v1/fleets/{fleetId}/apps/{appId}/config` and
+  `/v1/devices/{deviceId}/apps/{appId}/config`.
+- [Device attestation](/device-sdk/guides/attestation/): `sdk.attestation` (`OhrAttestation`).
+  `attest(challenge, suite)` makes a key in the app's Android Keystore whose certificate chain runs
+  to the OhrTech Attestation Root and names the device, with `Suite.EC` (P-256) or
+  `Suite.EC_MLDSA65` (an EC and an ML-DSA-65 key). `token(audience)` signs a short-lived proof for
+  each request. It uses the app's own Keystore and makes no call to the Agent: it needs an OhrTech
+  OS whose attestation keys chain to the OhrTech Attestation Root. Keystore errors are
+  `OhrException.Failed`. Your server checks
+  the chain with `POST /v1/attestations/verify` (see
+  [verify attestation](/device-sdk/server/verify-attestation/)).
+- [Kiosk](/device-sdk/guides/kiosk/): `kiosk.requestExit()` opens the Agent's exit PIN keypad over
+  the pinned app, and `kiosk.heartbeat(timeoutMs)` and `stopHeartbeat()` drive the kiosk watchdog,
+  which restarts the app when its main thread hangs. Needs Agent 1061 or later. The exit PIN's power
+  menu item and key sequence work once the device's OhrTech OS supports them.
+- [Diagnostics](/device-sdk/guides/diagnostics/): `sdk.diagnostics` (`OhrDiagnostics`) sends the
+  app's own events (`event(name, data)`) and keeps its log lines (`log`, `i`, `w`, `e`) for log
+  bundles. Crash reports need no SDK: the Agent reports Java crashes, native crashes and ANRs of
+  every app the hub installs (fleet setting `apps.crash_reports`, on by default). Needs Agent 1061
+  or later. On the hub: `GET /v1/apps/{appId}/crashes`, `/v1/apps/{appId}/crashes/{signature}` and
+  `/v1/devices/{deviceId}/crashes`; `POST /v1/devices/{deviceId}/apps/{appId}/log-bundles` and
+  `GET /v1/devices/{deviceId}/log-bundles`.
+- [USB devices](/device-sdk/guides/usb-devices/): `sdk.usb` (`OhrUsb`) lists the attached
+  peripherals the fleet pre-approves for the app (`devices()`, `changes`). The Agent gives the app
+  access to them with no "Allow access?" prompt. Needs Agent 1061 or later. On the hub: the fleet
+  setting `usb.devices`, `GET`, `PUT` and `DELETE /v1/fleets/{fleetId}/apps/{appId}/usb-devices`,
+  and `GET /v1/devices/{deviceId}/usb-devices`.
+- [Certificates for apps](/device-sdk/guides/certificates/): `sdk.certificates`
+  (`OhrCertificates`). `request(alias)` makes a key in the TEE and gets it a client certificate from
+  the organisation's issuing CA, `renewIfDue(alias)` renews it, `list()` also returns the PKCS#12
+  certificates the fleet imports, and `keyManager()`, `trustManager()` and `sslContext()` put them
+  and the fleet's trusted CAs together for TLS. Needs Agent 1061 or later. See
+  [client certificates](/device-sdk/server/client-certificates/).
+- `OhrException.Refused`: the hub refused a request it checks itself, such as a certificate when
+  the fleet gives the app no issuing CA.
+- `OhrException` extends `RuntimeException`, so Java code can catch it without the methods
+  declaring it.
+- For Java: `OhrConfig.int(...)` is `getInt(...)`; `updates.install()`, `OhrWifiView.Theme` and
+  `OhrWifiView.Options` take their defaults; `OhrWifiView.Listener` methods are default methods, so
+  implement only the ones you need.
+- `sdk.session.app` is the app's `app_…` id, as the Management API and the portal name it.
+- `OhrDeviceSdk.VERSION`, the interface version, is 2. `sdk.session.agentInterface` is 2 on Agent
+  1061 and later.
+
+## 0.1.0 (2026-11-08): the first release
+
+```kotlin
+implementation("net.ohrtech:device-sdk:0.1.0")
+```
+
+Android 13 (API 33) and later. Needs Agent 1059 or later. Keys and push also need OhrTech OS
+2026110702 or later.
+
+- `OhrDeviceSdk.connect` (Kotlin, suspends) and `connectBlocking` (Java), `isAvailable`, and
+  `session`: who the Agent takes the app for and what its fleet lets it change (`mayUse(area)`).
+- The areas `device`, `updates`, `wifi`, `network`, `kiosk` (`start`, `stop`, `state`,
+  `modeChanges`), `power` and `settings`. Changes come as a `Flow` or, for Java, a listener on an
+  `Executor`.
+- `OhrWifiView`: Android's Wi-Fi screen, drawn by the Agent inside your layout.
+- [Keys](/device-sdk/guides/keys/): ML-KEM-768, ML-KEM-1024, X-Wing and X25519 keys in the TEE,
+  with attestation (`POST /v1/devices/{deviceId}/key-attestations/verify`); the JCA provider
+  `OhrTech`, `OhrKem` and `OhrHpke`.
+- [Push](/device-sdk/guides/push/): `push` and `OhrPushService`, end to end from your server, with
+  the suites `x25519` and `xwing-mldsa65`.
+- `OhrException`: `NotManaged`, `NotAllowed`, `FleetLocked`, `Unsupported`, `InvalidConfig` and
+  `Failed`.

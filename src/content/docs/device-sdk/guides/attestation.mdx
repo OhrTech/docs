@@ -1,0 +1,141 @@
+---
+title: Device attestation
+description: Prove to your server that a request comes from your app, unmodified, on a specific, genuine OhrTech device, with no secret in the APK.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your server can't trust what an app says about itself: anyone can copy an API key out of an APK.
+Device attestation gives it proof instead. Your app makes a key in the device's TEE, bound to a
+challenge from your server, and gets a certificate chain for it that runs up to the OhrTech
+Attestation Root. The chain says which OhrTech device made the key, that it was made for your
+app, signed with your key, and that the device booted OhrTech's OS with its bootloader locked.
+
+Your server checks the chain once and keeps the key. From then on, each request carries a short
+token signed with that key.
+
+## Attest once
+
+1. Your server gives the app a challenge: fresh random bytes, 1 to 128 of them, used once.
+2. The app calls `attest(challenge)` and sends the result to your server.
+3. Your server checks it and keeps the device id and the public key (see
+   [verify attestations on your server](/device-sdk/server/verify-attestation/)).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val sdk = OhrDeviceSdk.connect(context)
+withContext(Dispatchers.IO) {
+    val challenge = Base64.getDecoder().decode(myServer.newChallenge())  // your own endpoint
+    val attestation = sdk.attestation.attest(challenge)                  // or Suite.EC_MLDSA65
+    myServer.register(attestation.toJson().toString())                    // your server checks it
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// Off the main thread.
+OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(context);
+byte[] challenge = Base64.getDecoder().decode(myServer.newChallenge());   // your own endpoint
+OhrAttestation.Attestation attestation = sdk.getAttestation().attest(challenge);
+myServer.register(attestation.toJson().toString());                       // your server checks it
+```
+
+</TabItem>
+</Tabs>
+
+`attest` takes a moment, as the TEE makes and certifies the key: call it off the main thread.
+`toJson()` gives what your server needs, each chain as base64 DER, the key's certificate first:
+
+```json
+{ "suite": "ec", "ec": ["MIICwzCC…", "MIICFzCC…", "MIIB9TCC…", "MIIB6TCC…"] }
+```
+
+## Prove each request
+
+Once your server has registered the key, sign each request with a token:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val token = sdk.attestation.token("https://api.example.com")   // valid for 5 minutes
+val c = URL("https://api.example.com/orders").openConnection() as HttpsURLConnection
+c.setRequestProperty("Authorization", "OhrAttest $token")      // any header your server reads
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+String token = sdk.getAttestation().token("https://api.example.com");   // valid for 5 minutes
+HttpsURLConnection c = (HttpsURLConnection) new URL("https://api.example.com/orders").openConnection();
+c.setRequestProperty("Authorization", "OhrAttest " + token);           // any header your server reads
+```
+
+</TabItem>
+</Tabs>
+
+`token(audience, ttlSeconds, nonce)`:
+
+| Parameter | |
+|---|---|
+| `audience` | Who the token is for, usually your server's URL. Your server refuses a token made for another audience. |
+| `ttlSeconds` | How long it is valid. Default 300. OhrTech's verifiers refuse a token that lives longer than 10 minutes. |
+| `nonce` | Optional. A value from your server, to stop a token being replayed within its lifetime. |
+
+A token is `header.payload.signature`, base64url, with the header
+`{"typ":"ohr-attest","alg":"ES256"}` and the payload `{"aud", "iat", "exp", "nonce"?}`. An `ES256`
+token is a standard JWS. For the post-quantum suite the header says `"ES256+ML-DSA-65"` and a fourth
+part carries the ML-DSA-65 signature of the same `header.payload`.
+
+## Two suites
+
+| Suite | Keys | Use it |
+|---|---|---|
+| `Suite.EC` (default) | One EC P-256 key | Everywhere. Tokens of about 220 characters. |
+| `Suite.EC_MLDSA65` | An EC P-256 key and an ML-DSA-65 key, both attested; every token signed with both | When the proof must hold up against a future quantum computer. Tokens of about 4,700 characters. |
+
+ML-DSA on its own is not offered: the EC signature keeps the proof sound if a flaw is ever found
+in the newer algorithm. Your server checks both chains and both signatures.
+
+## What the chain says
+
+| | Where |
+|---|---|
+| The device: `dev_…`, its id in the [Management API](/management-api/) | The unit's attestation key certificate (the second in the chain), as the URI `urn:ohrtech:device:dev_…` |
+| The app: its package, version code and the SHA-256 of its signing certificate | The key's certificate (Android key attestation) |
+| Where the key lives: the TEE or StrongBox | The key's certificate |
+| Verified boot: the state, whether the bootloader is locked, and the boot key | The key's certificate |
+| OS version and patch levels (OS, vendor, boot) | The key's certificate |
+| Your challenge | The key's certificate |
+
+The chain has four certificates: the key's, the unit's attestation key, OhrTech Attestation
+Intermediate 1, and the OhrTech Attestation Root. The unit's certificate is short-lived (about a
+month). That matters only when your server checks a chain: a key your server has registered keeps
+signing valid tokens after it.
+
+## Things to know
+
+- **One attested key per app.** `attest` replaces the key before it, and the old key can no longer
+  sign tokens. Attest again when your server asks, and register the new key. `suite` says which
+  suite the current key has, or null before the first `attest`.
+- **No Agent needed.** `OhrAttestation` uses your app's own Android Keystore, not the OhrTech Agent,
+  so it works without a connection: `OhrAttestation()` in Kotlin, `new OhrAttestation()` in Java.
+  What it needs is an OhrTech OS, whose KeyMint certifies keys up to the OhrTech Attestation Root. On
+  any other device `attest` still returns a chain, and your server's check fails.
+- **Clearing the app's data** deletes the key. `token` then throws, and the app attests again.
+- **This is not `keys.attest`.** [Keys](/device-sdk/guides/keys/) attests the encryption keys your
+  app keeps in the TEE, checked per device with the Management API. Device attestation is for
+  proving the app and the device to your own server.
+
+## Errors
+
+| | When |
+|---|---|
+| `IllegalArgumentException` | The challenge is empty or longer than 128 bytes. |
+| `OhrException.Failed` | `token` with no attested key: call `attest` first. |
+| The Keystore's own exceptions (`ProviderException`, `KeyStoreException`, …) | The TEE could not make, certify or use the key. `OhrAttestation` does not go through the Agent, so these are not `OhrException`. They are not declared: in Java, catch them as `Exception`. |

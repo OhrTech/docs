@@ -1,0 +1,377 @@
+---
+title: Access, errors and versions
+description: What every managed app may use, what needs the fleet's grant, every exception the library throws, threading, following changes, and which Agent each area needs.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+The OhrTech Agent judges every call your app makes: who the app is, and what its fleet lets it
+do. This page covers those rules, the exceptions you get when a call can't go through, how to call
+the library from the right thread, and which Agent versions each area needs.
+
+## Who may use what
+
+Only apps your organisation installed on the device through OhrTech may use the Device SDK. The
+Agent also checks that the installed APK is still signed with the key it was installed with. Any
+other caller gets `OhrException.NotManaged`, on `connect` and on every call.
+
+A managed app may read most things and use the areas that only touch itself. Changing the device
+needs the fleet's **grant** for that area:
+
+| Area | Every managed app | With the fleet's grant |
+|---|---|---|
+| `device` | `info()` | |
+| `updates` | `available()`, `install()`, `changes` | |
+| `wifi` | `state()`, `networks()`, `scan()`, `saved()`, `stateChanges`, `networkChanges` | `save`, `connect`, `disconnect`, `forget`, `setEnabled`, `connectQr`, and [`OhrWifiView`](/device-sdk/guides/wifi-and-networks/) |
+| `network` | `state()`, `changes` | `setMobileData`, `setAirplaneMode`, `setDataRoaming` |
+| `kiosk` | `state()`, `modeChanges`, `requestExit()`, `heartbeat()` | `start`, `stop` |
+| `power` | `battery()`, `rebootSchedule()`, `batteryChanges` | `reboot`, `scheduleReboot`, `setScreenTimeout`, `setBrightness` |
+| `settings` | `keys()`, `get()`, `changes` | `set` |
+| `keys`, `push`, `diagnostics`, `usb`, `certificates` | Everything | |
+| `config`, `attestation` | Everything: they don't go through the Agent's grants | |
+
+The areas a fleet can grant are `wifi`, `network`, `kiosk`, `power` and `settings`. `usb` and
+`certificates` need no grant, but they give your app only what the fleet sets up for it: the
+[USB devices](/device-sdk/guides/usb-devices/) it approves, the
+[certificates and CAs](/device-sdk/guides/certificates/) it gives the app.
+
+Some calls also follow other fleet settings, whatever the grant: `kiosk.stop()` works only if the
+fleet lets kiosk apps leave, and `kiosk.requestExit()` only if the fleet lets the app offer the exit
+PIN. Both throw `OhrException.NotAllowed("kiosk")` otherwise. See [kiosk mode](/device-sdk/guides/kiosk/).
+
+## Grant an area
+
+A grant is per fleet and per app: the fleet setting `sdk.access`. It applies to the fleet's devices
+and to the fleets below it, unless a fleet below has a grant of its own for that app.
+
+- **Portal:** open the fleet, then its **Applications** tab. The **Device SDK** column shows what
+  each app may change; **Change** on an app's row turns areas on and off.
+- **Management API:** `GET`, `PUT` and `DELETE /v1/fleets/{fleetId}/apps/{appId}/sdk-access`.
+  Reading needs `ViewSettings`; changing needs `EditSettings` ([permissions](/management-api/permissions/)).
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp nocheck
+var access = await api.SetSdkAccessAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    new SetSdkAccessRequest { Areas = ["wifi", "kiosk"] });
+Console.WriteLine(string.Join(", ", access.Areas)); // "wifi, kiosk"
+```
+
+`GetSdkAccessAsync` reads the grant; `ClearSdkAccessAsync` drops the fleet's own grant.
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/sdk-access \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"areas": ["wifi", "kiosk"]}'
+```
+
+</TabItem>
+</Tabs>
+
+`PUT` replaces the fleet's grant for the app with the areas you send. It answers with the grant as
+it now applies, as `GET` does:
+
+```json
+{
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
+  "areas": ["wifi", "kiosk"],
+  "own": ["wifi", "kiosk"],
+  "inheritedFrom": null,
+  "alwaysAllowed": ["device", "updates", "keys", "push", "wifi.read", "network.read", "power.read", "settings.read"]
+}
+```
+
+| Field | |
+|---|---|
+| `areas` | What the app may change on this fleet's devices: the fleet's own grant, or the nearest parent fleet's |
+| `own` | This fleet's own grant, or null when it has none and inherits |
+| `inheritedFrom` | The fleet whose grant applies when `own` is null |
+| `alwaysAllowed` | What the app may use without a grant |
+
+| To | Send |
+|---|---|
+| Grant areas | `PUT` with the areas. They are kept in the order `wifi`, `network`, `kiosk`, `power`, `settings`, each once |
+| Take away what a parent fleet grants | `PUT` with `{"areas": []}` |
+| Inherit the parent fleet's grant again | `DELETE` |
+
+An area that isn't one of the five is refused with 400 "Bad areas". A fleet or app you can't reach
+is 404 "No such fleet" or "No such app". The fleet's devices get the change when they are next
+online.
+
+## Check before you call
+
+`sdk.session.areas` is what the app may use, as the Agent saw it when you connected: the
+always-allowed areas, the reads (`wifi.read`, `network.read`, `power.read`, `settings.read`) and
+each area the fleet grants. `session.mayUse(area)` checks one:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+if (sdk.session.mayUse("wifi")) wifiView.attach(sdk) else showReadOnlyNetworkInfo()
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+if (sdk.getSession().mayUse("wifi")) wifiView.attach(sdk); else showReadOnlyNetworkInfo();
+```
+
+</TabItem>
+</Tabs>
+
+Use it to decide what to show. The Agent still checks every call against the fleet's grant as it is
+at that moment, so a grant taken away after you connected makes the next change throw
+`OhrException.NotAllowed`. Connect again to refresh `session.areas`.
+
+Every change an app makes through the Device SDK, and every change the Agent refuses, is recorded
+in the device's events: on the device's page in the portal, and with
+`GET /v1/devices/{deviceId}/events`. Each event names the app, the area, the action and the result:
+`ok`, `failed` (Android refused), `denied` (not granted), `locked` (the fleet locks it) or
+`dropped` (a push message the library dropped). A refusal
+of the same app, area and action is recorded at most once an hour.
+
+## Settings the fleet locks
+
+A grant lets the app change what the fleet leaves open, not what it locks. A change to a setting the
+fleet **locks** throws `OhrException.FleetLocked`, whose `key` is the setting's key in the
+[settings catalogue](/management-api/guides/settings/):
+
+| Call | Refused when the fleet locks |
+|---|---|
+| `settings.set(key, value)` | `key` |
+| `power.setScreenTimeout` | `display.timeout` |
+| `power.setBrightness` | `display.brightness` |
+| `network.setDataRoaming` | `network.data_roaming` |
+| `wifi.setEnabled` | `wifi.enabled` |
+| `wifi.save`, `wifi.connect(config)`, `wifi.connectQr`, `wifi.forget` for one of the fleet's own networks | `wifi.networks` (the fleet's networks are read-only to apps) |
+
+`settings.get(key)` tells you beforehand: its `mode` is `unmanaged`, `set` or `locked`, and `locked`
+is true for `locked`. A setting the fleet only sets (`set`) is open: the app's change holds until the
+fleet changes that setting. Some settings, such as the lock screen, debugging and factory reset, are
+never open to apps; `settings.keys()` lists the ones that are. See
+[device, power and settings](/device-sdk/guides/device-power-settings/).
+
+## Errors
+
+Every refusal or failure is an `OhrException`, never a raw binder exception. It is a sealed class:
+
+| Exception | Properties | When |
+|---|---|---|
+| `NotManaged` | | The app isn't one your organisation installed on this device through OhrTech, or no longer carries the signature it was installed with |
+| `NotAllowed` | `area` | The fleet doesn't grant the area (`"wifi"`, `"kiosk"`, ...), or a kiosk call the fleet doesn't allow (`stop`, `requestExit`) |
+| `FleetLocked` | `key` | The fleet locks the setting or network `key` ([above](#settings-the-fleet-locks)) |
+| `Unsupported` | `reason`, `needsAgent` | The device, its OS or its Agent can't do it: no OhrTech Agent (on `connect`), an OS without TEE keys, a setting key apps can't use, no update offered to install, no exit PIN set. When the Agent is only too old, `needsAgent` is the Agent version that can ([versions](#agent-versions)); otherwise it is null |
+| `InvalidConfig` | `field`, `reason` | A value the app passed is wrong: `field` names it (`"seconds"`, `"percent"`, `"alias"`, `"network"`, or a field of a Wi-Fi config), `reason` says why |
+| `Failed` | `reason` | The Agent tried and Android refused; or the Agent can't be reached, stopped (connect again), didn't answer `connect` in time; or the hub didn't answer in time (push registration, a certificate request); or the `OhrDeviceSdk` is closed |
+| `Refused` | `reason` | The hub refused a certificate request it checks itself, such as when the fleet gives the app no issuing CA ([certificates](/device-sdk/guides/certificates/)) |
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+try {
+    withContext(Dispatchers.IO) { sdk.power.setBrightness(80) }
+} catch (e: OhrException.NotAllowed) {
+    // e.area == "power": the fleet doesn't grant it
+} catch (e: OhrException.FleetLocked) {
+    // e.key == "display.brightness"
+} catch (e: OhrException.Unsupported) {
+    e.needsAgent?.let { Log.i(TAG, "needs Agent $it") }
+} catch (e: OhrException) {
+    Log.w(TAG, "brightness: ${e.message}")
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// On a background thread
+try {
+    sdk.getPower().setBrightness(80);
+} catch (OhrException.NotAllowed e) {
+    // e.getArea() is "power": the fleet doesn't grant it
+} catch (OhrException.FleetLocked e) {
+    // e.getKey() is "display.brightness"
+} catch (OhrException.Unsupported e) {
+    Long needs = e.getNeedsAgent();   // null unless the Agent is too old
+} catch (OhrException e) {
+    Log.w(TAG, "brightness: " + e.getMessage());
+}
+```
+
+`OhrException` is unchecked (a `RuntimeException`), so Java needs no `throws`.
+
+</TabItem>
+</Tabs>
+
+A few mistakes are not `OhrException`s, because they are bugs in the calling code rather than
+refusals:
+
+- `IllegalArgumentException` when the library checks an argument itself before calling the Agent:
+  a `kiosk.heartbeat` timeout outside 2 seconds to 10 minutes, a diagnostics event name or data
+  that is too long, a certificate alias outside 1 to 64 of `A-Z a-z 0-9 . _ -`, an attestation
+  challenge outside 1 to 128 bytes, `push.register` with no sender key.
+- `IllegalStateException` from `connectBlocking` on the main thread.
+
+## Threading
+
+Calls into the Agent are binder calls: they block until the Agent answers. Some take seconds (a Wi-Fi
+connection, `push.register` up to 30 seconds, `certificates.request` up to 60 seconds). Make them off
+the main thread. The library marks them `@WorkerThread`, so lint can flag calls from the main
+thread.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+// Suspending versions, safe on the main thread
+val sdk = OhrDeviceSdk.connect(context)
+val info = sdk.device.infoAsync()
+val token = sdk.push.registerAsync(senderKeys)
+
+// Everything else: move it to Dispatchers.IO
+val battery = withContext(Dispatchers.IO) { sdk.power.battery() }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// connectBlocking and every call on a thread of your own
+executor.execute(() -> {
+    try {
+        OhrPower.Battery battery = sdk.getPower().battery();
+        runOnUiThread(() -> showBattery(battery));
+    } catch (OhrException e) {
+        // see Errors
+    }
+});
+```
+
+</TabItem>
+</Tabs>
+
+The suspending versions are `OhrDeviceSdk.connect`, `device.infoAsync()` and `push.registerAsync()`.
+These are safe on any thread, the main one included:
+
+- `sdk.session` and `sdk.isConnected`
+- `diagnostics.event(...)` and `diagnostics.log(...)`: one-way calls that never wait for the Agent
+- `kiosk.heartbeat()` and `kiosk.stopHeartbeat()`: the library beats from the main thread itself
+- `OhrConfig`: it reads Android's application restrictions, not the Agent
+
+## Following changes
+
+Areas that change on their own tell you when they do. In Kotlin, collect a `Flow`. In Java, pass an
+`Executor` and an `OhrListener`; you get a `Closeable`, and closing it stops the listener.
+
+| Area | Kotlin `Flow` | Java listener | Gives |
+|---|---|---|---|
+| `updates` | `changes` | `listen` | `OhrUpdates.Update`; `OhrUpdates.NONE` when the offer is withdrawn |
+| `wifi` | `stateChanges` | `listenState` | `OhrWifi.State` |
+| `wifi` | `networkChanges` | `listenNetworks` | `List<OhrWifi.Network>` |
+| `network` | `changes` | `listen` | `OhrNetwork.State` |
+| `kiosk` | `modeChanges` | `listenMode` | The device's lock task mode: `"none"`, `"locked"` or `"pinned"` |
+| `power` | `batteryChanges` | `listenBattery` | `OhrPower.Battery` |
+| `settings` | `changes` | `listen` | `OhrSettings.Setting`, one key at a time |
+| `config` | `changes` | `listen` | The new managed configuration, as a `Bundle` |
+| `usb` | `changes` | `listen` | `OhrUsb.Change`: an approved device attached or detached |
+| `certificates` | `changes` | `listen` | `Unit`: the fleet changed the app's certificates or CAs |
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+lifecycleScope.launch {
+    showNetwork(withContext(Dispatchers.IO) { sdk.network.state() })   // now
+    sdk.network.changes.collect { showNetwork(it) }                    // then each change
+}
+```
+
+Cancelling the coroutine stops the watch.
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// Registering is one binder call: do it off the main thread
+Closeable watch = sdk.getNetwork().listen(getMainExecutor(), state -> showNetwork(state));
+
+// Later, to stop
+try {
+    watch.close();
+} catch (IOException ignored) {
+}
+```
+
+</TabItem>
+</Tabs>
+
+- A watch gives the changes from then on, not the current value: read the current state first, as
+  above.
+- Each `collect` and each `listen` is a watch of its own with the Agent.
+- A watch doesn't survive the Agent restarting: it goes quiet. When `sdk.isConnected` turns false,
+  connect again and watch again.
+- `config.changes` works without the Agent: it follows Android's application restrictions.
+
+## Agent versions
+
+Each library version works with every Agent version; what an older Agent lacks, the library refuses
+before calling it. `sdk.session.agentVersion` is the Agent's version and
+`sdk.session.agentInterface` the Device SDK interface it speaks. This library speaks interface 2
+(`OhrDeviceSdk.VERSION`).
+
+| What | Needs |
+|---|---|
+| `connect`; `device`, `updates`, `wifi`, `network`, `power`, `settings`; `kiosk.start`, `stop`, `state`, `modeChanges`; `OhrWifiView` | Agent 1059 or later (interface 1) |
+| `keys`, `push` | Agent 1059 or later, on OhrTech OS 2026110702 or later (the TEE's KEM app) |
+| `kiosk.requestExit`, `kiosk.heartbeat` (the exit PIN and the watchdog) | Agent 1061 or later (interface 2) |
+| `diagnostics` | Agent 1061 or later (interface 2) |
+| `usb` | Agent 1061 or later (interface 2) |
+| `certificates` | Agent 1061 or later (interface 2) |
+| `config` | Agent 1061 or later sets the values. `OhrConfig` never calls the Agent and never throws `Unsupported`: with an older Agent it gives the declared defaults |
+| `attestation` | Doesn't call the Agent: it uses your app's Android Keystore. See [device attestation](/device-sdk/guides/attestation/) for what the device needs |
+
+On an Agent older than 1061, the interface 2 calls throw `OhrException.Unsupported` with
+`needsAgent = 1061`, so you can tell an old Agent from a device that can't do it:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val canHeartbeat = sdk.session.agentInterface >= 2
+if (canHeartbeat) sdk.kiosk.heartbeat() else Log.i(TAG, "the watchdog needs Agent 1061")
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+boolean canHeartbeat = sdk.getSession().getAgentInterface() >= 2;
+if (canHeartbeat) sdk.getKiosk().heartbeat(); else Log.i(TAG, "the watchdog needs Agent 1061");
+```
+
+</TabItem>
+</Tabs>
+
+The Management API shows each device's Agent version
+([devices and fleets](/management-api/guides/devices-and-fleets/)). Besides the Agent, some
+features need the device's OS:
+
+- `keys` and `push` need an OhrTech OS with TEE keys; `sdk.keys.isAvailable()` tells you, and
+  otherwise their calls throw `OhrException.Unsupported`.
+- The kiosk exit PIN's power menu item and key sequence work once the device's OhrTech OS supports
+  them. `kiosk.requestExit()` works with Agent 1061 alone.
+
+## R8 and ProGuard
+
+The library ships its own consumer rules, which keep the Agent's binder interfaces and the
+`OhrTech` JCA provider. R8 applies them to your app by itself: you need no rules of your own. Your
+`OhrPushService` subclass is kept because your manifest declares it.

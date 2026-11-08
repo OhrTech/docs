@@ -1,0 +1,318 @@
+---
+title: Device, updates, power and settings
+description: Learn which device your app runs on, install your app's own updates when it suits you, read the battery, reboot, and read and change device settings from the app.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Four areas of the Device SDK:
+
+| Area | Reads | Changes |
+|---|---|---|
+| [`device`](#device) | Always | (nothing to change) |
+| [`updates`](#your-apps-updates) | Always | Always: it only touches your app |
+| [`power`](#power) | Always | The fleet's `power` grant |
+| [`settings`](#settings) | Always | The fleet's `settings` grant |
+
+All four need OhrTech Agent 1059 or later. Each call is a blocking call into the OhrTech Agent:
+make it off the main thread. In Kotlin,
+`device.infoAsync()` does that itself; wrap the others in `withContext(Dispatchers.IO)`. See
+[access](/device-sdk/access/) for grants and errors.
+
+## Device
+
+`device.info()` says which device your app runs on, as the hub and the
+[Management API](/management-api/) name it.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val info = sdk.device.infoAsync()
+log("${info.deviceId} in ${info.fleet?.name}, Agent ${info.agentVersion}, online: ${info.online}")
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrDevice.Info info = sdk.getDevice().info();   // off the main thread
+String fleet = info.getFleet() != null ? info.getFleet().getName() : null;
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `deviceId` | The device's id, such as `dev_3swt6f457299btzpw1bxx4wf0q`. `null` until the hub has sent the device its first policy |
+| `serial` | The hardware serial number, or `null` |
+| `fleet` | `id` (`flt_…`) and `name` of the device's fleet, or `null` |
+| `org` | `id` (`org_…`) and `name` of your organisation, or `null` |
+| `osRelease` | The Android release, such as `17` |
+| `osBuild` | The OhrTech OS build |
+| `securityPatch` | The security patch level, such as `2026-11-05` |
+| `osIncremental` | The build's incremental version |
+| `agentVersion` | The OhrTech Agent's version code |
+| `online` | The Agent is connected to the hub now |
+
+`deviceId` is the id to send to your server: it is the one the Management API uses in
+`/v1/devices/{deviceId}`.
+
+## Your app's updates
+
+When you set one of your app's versions to `available` (see
+[apps](/management-api/guides/apps/)), devices download it ahead, over Wi-Fi or Ethernet, and
+keep it. Nothing installs it until your app says so: at a quiet moment, after a sale, at the end
+of a shift.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) {
+    val update = sdk.updates.available()
+    if (update != null) sdk.updates.install(whenIdle = true)
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrUpdates.Update update = sdk.getUpdates().available();   // off the main thread
+if (update != null) sdk.getUpdates().install(true);          // true: when the screen is next off
+```
+
+</TabItem>
+</Tabs>
+
+`available()` returns the offered version, or `null` when none is offered or your app already runs
+it or a newer one.
+
+| `Update` field | |
+|---|---|
+| `versionCode` | The version code |
+| `versionName` | The version name, or `null` |
+| `notes` | The release notes uploaded with the version, or `null` |
+| `downloaded` | `true`: the device has it |
+
+`install(whenIdle)` installs it now (`false`, the default in Kotlin) or the next time the screen
+turns off (`true`). Java has no default: pass the value. The call returns at once; the install
+follows. Installing replaces your app, so its process stops. If it was on screen, the device starts
+it again afterwards; in [kiosk mode](/device-sdk/guides/kiosk/) the watchdog pins it again. The
+device reports the outcome to the hub. `install` throws `Unsupported` when nothing is offered.
+
+`changes` (Kotlin `Flow`) or `listen(executor, listener)` (Java) give the offer each time it
+changes. When the offer is withdrawn, they give `OhrUpdates.NONE` (`versionCode` 0).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+sdk.updates.changes.collect { update ->
+    updateBanner.isVisible = update != OhrUpdates.NONE
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+Closeable watch = sdk.getUpdates().listen(getMainExecutor(), update ->
+    updateBanner.setVisibility(update.equals(OhrUpdates.NONE) ? View.GONE : View.VISIBLE));
+```
+
+</TabItem>
+</Tabs>
+
+## Power
+
+Reading the battery and the reboot schedule is always allowed. Everything else needs the `power`
+grant.
+
+### Battery
+
+`power.battery()` returns:
+
+| Field | |
+|---|---|
+| `level` | 0 to 100, or `null` when unknown |
+| `charging` | Charging, or full on the charger |
+| `plugged` | `ac`, `usb`, `wireless`, `dock`, or `null` when unplugged |
+| `health` | `good`, `overheat`, `dead`, `overVoltage`, `cold` or `unknown` |
+| `temperatureC` | The battery's temperature, in °C |
+| `screenOn` | The screen is on |
+
+`batteryChanges` (Kotlin `Flow`) or `listenBattery(executor, listener)` (Java) give it again each
+time it changes, and when the screen turns on or off.
+
+### Reboot
+
+`reboot(reason)` reboots the device about 3 seconds later. The hub records `reason`; an empty one
+is recorded as `app`.
+
+`scheduleReboot(schedule)` reboots the device on a schedule, in the device's own time zone:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) {
+    // 03:30 every night except Sunday
+    sdk.power.scheduleReboot(OhrPower.Schedule("03:30", setOf(1, 2, 3, 4, 5, 6), "nightly"))
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// 03:30 every night except Sunday
+sdk.getPower().scheduleReboot(new OhrPower.Schedule("03:30", Set.of(1, 2, 3, 4, 5, 6), "nightly"));
+```
+
+</TabItem>
+</Tabs>
+
+| `Schedule` field | |
+|---|---|
+| `time` | `HH:mm`, 24-hour |
+| `days` | 1 to 7, Monday = 1; at least one day |
+| `reason` | What the hub records for each reboot |
+
+A device has one schedule: the last app to set it wins. It is kept across reboots.
+`rebootSchedule()` returns it, or `null`; `scheduleReboot(null)` removes it. A time or day that
+isn't valid throws `InvalidConfig` with `field` `schedule`.
+
+### Screen timeout and brightness
+
+| Call | |
+|---|---|
+| `setScreenTimeout(seconds)` | One of 15, 30, 60, 120, 300, 600 or 1800 seconds; `InvalidConfig("seconds")` otherwise |
+| `setBrightness(percent)` | 0 to 100; `InvalidConfig("percent")` otherwise. Turns adaptive brightness off |
+
+They change the same settings as the fleet's **Screen timeout** (`display.timeout`) and
+**Brightness** (`display.brightness`). When the fleet locks one, the call throws `FleetLocked` with
+that key. Otherwise your app's value holds until the fleet changes the setting, as with
+[`settings.set`](#change-a-setting).
+
+## Settings
+
+The `settings` area reads and changes the device's settings by the keys of the OhrTech settings
+catalogue: the same settings as the portal's Settings tab and the Management API's
+[settings](/management-api/guides/settings/). `GET /v1/settings/catalog` describes each key, its
+values and its options.
+
+### Read a setting
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) {
+    val keys = sdk.settings.keys()                     // what apps may use on this device
+    val dark = sdk.settings.get("display.dark_theme")  // value true or false, mode "set"
+    if (!dark.locked) sdk.settings.set("display.dark_theme", true)
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+List<String> keys = sdk.getSettings().keys();            // off the main thread
+OhrSettings.Setting dark = sdk.getSettings().get("display.dark_theme");
+if (!dark.getLocked()) sdk.getSettings().set("display.dark_theme", true);
+```
+
+</TabItem>
+</Tabs>
+
+`keys()` lists the keys apps may read and change on this device. `get(key)` returns a `Setting`:
+
+| Field | |
+|---|---|
+| `key` | The key |
+| `value` | The value on the device now: `Boolean`, `Int`, `String`, `JSONArray`, `JSONObject` or `null` |
+| `mode` | `unmanaged` (the fleet leaves it alone), `set` (the fleet set it; it may be changed) or `locked` (the fleet locks it) |
+| `locked` | `mode` is `locked` |
+
+The value has the catalogue's shape for that key. A choice is a string even when it looks like a
+number: `display.timeout` is `"300"`, not `300`. `display.brightness` reads `-1` while adaptive
+brightness is on. A key that isn't in `keys()` throws `Unsupported`.
+
+### Change a setting
+
+Needs the `settings` grant. `set(key, value)` takes a `Boolean`, a number, a `String`, a
+`JSONArray`, a `JSONObject` or `null`, in the catalogue's shape:
+
+| Kind | Example |
+|---|---|
+| On or off | `set("display.auto_rotate", true)` |
+| Percent | `set("sound.media_volume", 40)` |
+| Choice | `set("display.font_size", "large")` |
+| List | `set("system.languages", JSONArray(listOf("de-DE", "en-US")))` |
+
+The device applies the value straight away and reports it to the hub, where it shows in the
+device's `reported` settings. Pass only values the catalogue lists: the device applies what it
+can, and a value it can't apply throws `Failed`.
+
+Who wins:
+
+- A key the fleet **locks** refuses the change: `FleetLocked(key)`.
+- A key the fleet **sets**, or leaves unmanaged, takes your app's value. It holds until the fleet
+  changes that setting; then the fleet's new value applies.
+- The person at the device can change an unlocked setting too, like any setting.
+
+### What apps can't change
+
+The settings that make up the fleet's control of the device are not in `keys()`, whatever the
+grant, so an app can't loosen the policy that manages it:
+
+- every `security.*` and `kiosk.*` key (screen lock, certificates; kiosk mode is the
+  [kiosk area](/device-sdk/guides/kiosk/))
+- `wifi.networks` (use the [Wi-Fi area](/device-sdk/guides/wifi-and-networks/))
+- `sdk.access` (the Device SDK grants themselves)
+- `remote_control.consent` and `remote_adb.enabled`
+- `dev.usb_debugging`, `apps.unknown_sources`, `system.factory_reset`, `system.safe_mode`
+- `apps.home` and `apps.home_screen_layout`
+- `connected.usb_file_transfer`, `connected.physical_media`
+- `network.tethering`, `network.cellular_2g`, `network.wep`, `network.private_dns`
+
+### Follow changes
+
+`changes` (Kotlin `Flow`) or `listen(executor, listener)` (Java) give a `Setting` each time a
+setting's value changes on the device, whoever changed it: the fleet, your app, another app or the
+person at the device.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+sdk.settings.changes
+    .filter { it.key == "display.dark_theme" }
+    .collect { applyTheme(dark = it.value == true) }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+Closeable watch = sdk.getSettings().listen(getMainExecutor(), setting -> {
+    if (setting.getKey().equals("display.dark_theme")) applyTheme(Boolean.TRUE.equals(setting.getValue()));
+});
+```
+
+</TabItem>
+</Tabs>
+
+## Errors
+
+| Exception | When |
+|---|---|
+| `NotAllowed("power")`, `NotAllowed("settings")` | A change without the fleet's grant |
+| `FleetLocked(key)` | The fleet locks the setting |
+| `InvalidConfig(field, reason)` | A screen timeout, brightness or reboot schedule that isn't valid |
+| `Unsupported` | `install` with nothing offered; `get` or `set` of a key apps can't use |
+| `Failed(reason)` | The device couldn't apply it |

@@ -1,0 +1,328 @@
+---
+title: Keys in the TEE
+description: Make ML-KEM, X-Wing and X25519 keys whose private halves never leave the device's TEE, use them directly or through the JCA, and prove them to your server.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your app can make key encapsulation (KEM) keys in the device's TEE, the secure environment beside
+Android. The private key never leaves it: your app holds only the public key and a name for the key,
+its alias. Use the keys to receive secrets from your server, open HPKE messages, or agree on a key
+with post-quantum security. Your server can check that a key really is in this device's TEE, made
+for your app.
+
+| Algorithm | Public key | Ciphertext (`enc`) | Operations | HPKE KEM id |
+|---|---|---|---|---|
+| `ML_KEM_768` (ML-KEM-768) | 1,184 bytes | 1,088 bytes | decapsulate, encapsulate, HPKE, attest | `0x0041` |
+| `ML_KEM_1024` (ML-KEM-1024) | 1,568 bytes | 1,568 bytes | decapsulate, encapsulate, HPKE, attest | `0x0042` |
+| `X_WING` (X-Wing: ML-KEM-768 and X25519) | 1,216 bytes | 1,120 bytes | decapsulate, encapsulate, HPKE, attest | `0x647a` |
+| `X25519` | 32 bytes | 32 bytes | HPKE, attest | `0x0020` |
+
+The shared secret is always 32 bytes. X-Wing is the hybrid: it stays secure as long as either of its
+two halves is.
+
+Each app has its own keys. No other app can use them, and they are deleted when the app is
+uninstalled. Keys are open to every app your organisation installed through OhrTech: no fleet grant
+is needed. They need OhrTech Agent 1059 or later and OhrTech OS 2026110702 or later, the OS with the
+OhrTech KEM app in the TEE. `isAvailable()` says whether the device has it.
+
+These are KEM keys. For signatures, use Android's own Keystore: its ML-DSA-65 and Ed25519 keys are in
+the TEE too.
+
+## Make a key and use it
+
+Each call goes to the OhrTech Agent and the TEE, so make it on a worker thread.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val keys = sdk.keys
+if (!keys.isAvailable()) return
+
+// A new key under "orders" (replacing any key of that alias); its public key, to give your server
+val publicKey = keys.generate("orders", OhrKeys.Algorithm.X_WING)
+
+// Your server encapsulated to publicKey and sent you the ciphertext:
+val secret = keys.decapsulate("orders", ciphertext)          // 32 bytes
+
+// The other way: encapsulate to someone's public key (no key of yours needed)
+val e = keys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey)
+send(e.ciphertext)                                            // keep e.sharedSecret
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrKeys keys = sdk.getKeys();
+if (!keys.isAvailable()) return;
+
+// A new key under "orders" (replacing any key of that alias); its public key, to give your server
+byte[] publicKey = keys.generate("orders", OhrKeys.Algorithm.X_WING);
+
+// Your server encapsulated to publicKey and sent you the ciphertext:
+byte[] secret = keys.decapsulate("orders", ciphertext);       // 32 bytes
+
+// The other way: encapsulate to someone's public key (no key of yours needed)
+OhrKeys.Encapsulated e = keys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey);
+send(e.getCiphertext());                                      // keep e.getSharedSecret()
+```
+
+</TabItem>
+</Tabs>
+
+Public keys are raw: ML-KEM keys as FIPS 203 encodes them, an X-Wing key as the ML-KEM-768 key
+followed by the X25519 key.
+
+`decapsulate` doesn't fail on a changed ciphertext. ML-KEM then returns a different secret (it
+rejects implicitly), so use the secret in a way that fails when it is wrong, for example as the key
+of an authenticated cipher.
+
+| `OhrKeys` | |
+|---|---|
+| `isAvailable()` | Whether the device's OS has the OhrTech KEM app |
+| `generate(alias, algorithm)` | A new key; returns its public key. Replaces any key of that alias |
+| `publicKey(alias)` | The key's public key, or `null` if there's no such key |
+| `list()` | The app's keys: `alias`, `algorithm`, `createdAtMs` |
+| `delete(alias)` | Deletes the key. No error if there is none |
+| `decapsulate(alias, ciphertext)` | The 32-byte shared secret. ML-KEM and X-Wing keys |
+| `encapsulate(algorithm, publicKey)` | `ciphertext` and `sharedSecret`, to any public key of an ML-KEM or X-Wing algorithm |
+| `hpkeOpen(alias, kdf, aead, enc, info, aad, ciphertext)` | Opens an HPKE message (see [HPKE](#open-hpke-messages)) |
+| `attest(alias, challenge)` | Proof for your server (see [prove a key](#prove-a-key-to-your-server)) |
+
+### Aliases
+
+An alias is 1 to 64 of `A-Z a-z 0-9 . _ -`. Aliases that start with `ohr.` are reserved for the
+OhrTech Agent's own keys for your app, such as its [push](/device-sdk/guides/push/) key: you can't
+make, use or delete them, and `list()` doesn't show them.
+
+An app has at most 32 keys, its push key included.
+
+## Open HPKE messages
+
+With HPKE (RFC 9180), your server seals a message to the key's public half with any HPKE library,
+and the app opens it in the TEE. The KEM is the key's own (see the ids in the table above), the KDF
+HKDF-SHA256. Base mode, one message per sender context.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val plaintext = sdk.keys.hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM,
+    enc, info, aad, ciphertext)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+byte[] plaintext = sdk.getKeys().hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM,
+        enc, info, aad, ciphertext);
+```
+
+</TabItem>
+</Tabs>
+
+| AEAD | |
+|---|---|
+| `OhrHpke.AEAD_AES_128_GCM` | `0x0001` |
+| `OhrHpke.AEAD_AES_256_GCM` | `0x0002` |
+| `OhrHpke.AEAD_CHACHA20_POLY1305` | `0x0003` |
+
+The plaintext can be up to 8,192 bytes. A message that wasn't sealed to this key, or with other
+`info` or `aad`, throws `OhrException.Failed` ("does not open"). `OhrHpke.kemId(algorithm)` gives
+the KEM id for your server's library.
+
+## Through the JCA
+
+The library also offers the keys through the Java Cryptography Architecture, under the provider name
+`OhrTech`: a `KeyPairGenerator` for each algorithm, a read-only `KeyStore`, and two classes shaped
+like the JDK's: `OhrKem` (like `javax.crypto.KEM`) and `OhrHpke` (an HPKE recipient).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+OhrTechProvider.install(sdk)
+
+// Make a key: the private key is a handle, its material stays in the TEE
+val kpg = KeyPairGenerator.getInstance("ML-KEM-768", "OhrTech")
+kpg.initialize(OhrKeyGenParameterSpec("orders"))
+val pair = kpg.generateKeyPair()
+val publicKey = pair.public.encoded                            // raw, format "RAW"
+
+// Find it again later
+val ks = KeyStore.getInstance("OhrTech").apply { load(null) }
+val key = ks.getKey("orders", null) as OhrPrivateKey
+
+// KEM
+val kem = OhrKem.getInstance("ML-KEM-768")
+val (secretKey, encapsulation) = kem.newEncapsulator(theirPublicKey).encapsulate()   // the sender
+val secret = kem.newDecapsulator(key).decapsulate(encapsulation)                    // the key's owner
+
+// HPKE
+val plaintext = OhrHpke.recipient(key).open(enc, info, aad, ciphertext)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrTechProvider.install(sdk);
+
+// Make a key: the private key is a handle, its material stays in the TEE
+KeyPairGenerator kpg = KeyPairGenerator.getInstance("ML-KEM-768", "OhrTech");
+kpg.initialize(new OhrKeyGenParameterSpec("orders"));
+KeyPair pair = kpg.generateKeyPair();
+byte[] publicKey = pair.getPublic().getEncoded();             // raw, format "RAW"
+
+// Find it again later
+KeyStore ks = KeyStore.getInstance("OhrTech");
+ks.load(null);
+OhrPrivateKey key = (OhrPrivateKey) ks.getKey("orders", null);
+
+// KEM
+OhrKem kem = OhrKem.getInstance("ML-KEM-768");
+OhrKem.Encapsulated e = kem.newEncapsulator(theirPublicKey).encapsulate();   // the sender
+SecretKey secret = kem.newDecapsulator(key).decapsulate(e.encapsulation());  // the key's owner
+
+// HPKE
+byte[] plaintext = OhrHpke.recipient(key).open(enc, info, aad, ciphertext);
+```
+
+</TabItem>
+</Tabs>
+
+- **Install the provider** with a connected SDK before you use it, and again after you connect again.
+  Name the provider in `KeyPairGenerator.getInstance`, as above, so Android doesn't pick another one.
+- **Algorithms:** `ML-KEM-768`, `ML-KEM-1024`, `X-Wing` and `X25519`. `OhrKem` takes the first
+  three; an X25519 key has no raw KEM, so open HPKE with it instead.
+- **`KeyPairGenerator`** needs an `OhrKeyGenParameterSpec` with the alias; `initialize(keysize)`
+  throws.
+- **The `KeyStore`** lists the app's keys and deletes them (`deleteEntry`). It can't import keys or
+  hold certificates.
+- **`OhrKem`**: the secret is a `SecretKey` of algorithm `Generic`, 32 bytes. `newEncapsulator`
+  takes a raw public key, as bytes or as a `PublicKey` of format `RAW`.
+- **`OhrHpke.recipient(key, aead)`**: AES-128-GCM unless you name another AEAD.
+- Every operation is a call into the Agent and the TEE: not on the main thread.
+
+## Prove a key to your server
+
+`attest` proves that a key was made in this device's TEE, for your app, and binds the proof to a
+challenge from your server, so it can't be replayed.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val challenge = myServer.newChallenge()                      // your server's nonce, at most 128 bytes
+val a = sdk.keys.attest("orders", challenge)
+val b64 = Base64.getEncoder()
+myServer.verifyKey(
+    deviceId = sdk.device.info().deviceId,
+    alg = a.algorithm.standardName,
+    publicKey = b64.encodeToString(a.publicKey),
+    owner = a.owner,
+    coseSign1 = b64.encodeToString(a.coseSign1),
+    diceChain = b64.encodeToString(a.diceChain),
+)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+byte[] challenge = myServer.newChallenge();                  // your server's nonce, at most 128 bytes
+OhrKeys.Attestation a = sdk.getKeys().attest("orders", challenge);
+Base64.Encoder b64 = Base64.getEncoder();
+myServer.verifyKey(
+        sdk.getDevice().info().getDeviceId(),
+        a.getAlgorithm().getStandardName(),
+        b64.encodeToString(a.getPublicKey()),
+        a.getOwner(),
+        b64.encodeToString(a.getCoseSign1()),
+        b64.encodeToString(a.getDiceChain()));
+```
+
+</TabItem>
+</Tabs>
+
+Your server sends it, with the challenge it issued, to
+`POST /v1/devices/{deviceId}/key-attestations/verify`. That needs `ViewDevices` on the device.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+`VerifyKeyAttestationAsync` comes with the release of OhrTech.Management after 2.1.0.
+
+```csharp nocheck
+var verdict = await api.VerifyKeyAttestationAsync("dev_3swt6f457299btzpw1bxx4wf0q", new KeyAttestationDto
+{
+    Alg = "X-Wing",
+    PublicKey = publicKey,          // base64, as the app sent them
+    Owner = owner,
+    Challenge = Convert.ToBase64String(challenge),
+    CoseSign1 = coseSign1,
+    DiceChain = diceChain,
+});
+if (!verdict.Valid || verdict.PackageName != "com.example.orders")
+    throw new InvalidOperationException($"Not our app's TEE key: {verdict.Reason}");
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/key-attestations/verify \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"alg": "X-Wing", "publicKey": "…", "owner": "app:3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d:com.example.orders",
+       "challenge": "…", "coseSign1": "…", "diceChain": "…"}'
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `alg` | `ML-KEM-768`, `ML-KEM-1024`, `X-Wing` or `X25519` (`algorithm.standardName`) |
+| `publicKey` | The key's public key, base64 |
+| `owner` | The app, as the TEE names it: `app:<app id>:<package>` |
+| `challenge` | The challenge your server issued, base64 |
+| `coseSign1`, `diceChain` | The proof, base64, as `attest` returned them |
+
+```json
+{ "valid": true, "reason": null, "appId": "3f1c9a52-7d4e-4b8a-9c21-5e6f7a8b9c0d", "packageName": "com.example.orders" }
+```
+
+The hub checks that the proof chains to the TEE key OhrTech registered for that device, that the
+OhrTech KEM app signed it, and that it names this algorithm, this public key, this owner and this
+challenge. `valid` is `true` only if all of that holds. Then `appId` and `packageName` are the app
+the key belongs to, from `owner`; `appId` is in the UUID form the TEE records, not `app_…`.
+
+Check two things: `valid`, and that `packageName` is your app's. Any app on the device can prove its
+own keys, so a valid proof alone doesn't say whose key it is.
+
+When `valid` is `false`, `reason` says why, for example:
+
+| `reason` | |
+|---|---|
+| `the challenge does not match` | Not the challenge you sent, or an old proof |
+| `the statement is for another public key` | The public key isn't the one attested |
+| `the key belongs to …, not …` | `owner` isn't the app the key was made for |
+| `the chain is not rooted at this device's registered key` | The proof is from another device, or not from a TEE |
+| `This device has no registered TEE key` | The device can't prove keys |
+
+Fields that aren't base64 give `400`.
+
+## Errors
+
+| Exception | When |
+|---|---|
+| `OhrException.Unsupported` | The device's OS has no OhrTech KEM app; or `decapsulate` or `encapsulate` with X25519 |
+| `OhrException.InvalidConfig` (`alias`) | The alias is invalid or starts with `ohr.`, there is no such key, or the app has 32 keys already |
+| `OhrException.InvalidConfig` (`challenge`) | The challenge is over 128 bytes |
+| `OhrException.InvalidConfig` (`value`) | The TEE refused an input as invalid; `reason` says which |
+| `OhrException.Failed` | `does not open` for HPKE. `This key can no longer be used on this device; generate it again` when the TEE can't use a stored key |
+
+See [access](/device-sdk/access/) for errors every area shares.

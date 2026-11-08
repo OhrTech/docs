@@ -1,0 +1,337 @@
+---
+title: Quickstart
+description: Add the Device SDK to your Android app, connect to the OhrTech Agent, make a first call, and build a kiosk app that reads its managed configuration.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In a few minutes your app will connect to the OhrTech Agent on the device, read who the device is,
+and, in the worked example, start kiosk mode when its fleet says so.
+
+## Add the dependency
+
+The library is on Maven Central:
+
+<Tabs>
+<TabItem label="Kotlin DSL">
+
+```kotlin
+// build.gradle.kts of your app module
+dependencies {
+    implementation("net.ohrtech:device-sdk:0.2.0")
+}
+```
+
+</TabItem>
+<TabItem label="Groovy">
+
+```groovy
+// build.gradle of your app module
+dependencies {
+    implementation 'net.ohrtech:device-sdk:0.2.0'
+}
+```
+
+</TabItem>
+</Tabs>
+
+Make sure `mavenCentral()` is among your repositories (new Android projects have it). The library
+brings `kotlinx-coroutines-android` with it, and its own R8 rules: you need no ProGuard rules of
+your own.
+
+## What the app needs
+
+- **Android 13 (API 33) or later**: the library's `minSdk` is 33. OhrTech devices run Android 17.
+- **An OhrTech device.** Elsewhere there is no OhrTech Agent, and connecting throws
+  `OhrException.Unsupported`. `OhrDeviceSdk.isAvailable(context)` tells you beforehand.
+- **Installed through OhrTech by your organisation.** Upload the APK and assign the app to a fleet,
+  in the portal or with the [Management API](/management-api/guides/apps/). The Agent answers only
+  apps the hub installed on that device, signed with the key they were installed with; any other app
+  gets `OhrException.NotManaged`. An update you install yourself during development, signed with
+  the same key, keeps working; `session.appVersion` is then null.
+
+## Connect
+
+`OhrDeviceSdk.connect` binds the Agent and asks it who your app is. In Kotlin it suspends, and is
+safe to call from the main thread. From Java, call `connectBlocking` on a background thread: it
+throws `IllegalStateException` on the main thread.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+lifecycleScope.launch {
+    if (!OhrDeviceSdk.isAvailable(this@MainActivity)) return@launch   // not an OhrTech device
+    try {
+        val sdk = OhrDeviceSdk.connect(this@MainActivity)              // waits up to 10 s
+        Log.i(TAG, "app ${sdk.session.app}, Agent ${sdk.session.agentVersion}, may use ${sdk.session.areas}")
+    } catch (e: OhrException.NotManaged) {
+        // Not installed through OhrTech on this device
+    } catch (e: OhrException) {
+        Log.w(TAG, "Device SDK: ${e.message}")
+    }
+}
+```
+
+`lifecycleScope` is from `androidx.lifecycle:lifecycle-runtime-ktx`; any coroutine scope works.
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+ExecutorService io = Executors.newSingleThreadExecutor();
+
+io.execute(() -> {
+    if (!OhrDeviceSdk.isAvailable(this)) return;   // not an OhrTech device
+    try {
+        OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(this);   // waits up to 10 s
+        OhrDeviceSdk.Session session = sdk.getSession();
+        Log.i(TAG, "app " + session.getApp() + ", Agent " + session.getAgentVersion());
+    } catch (OhrException.NotManaged e) {
+        // Not installed through OhrTech on this device
+    } catch (OhrException e) {
+        Log.w(TAG, "Device SDK: " + e.getMessage());
+    }
+});
+```
+
+`OhrException` is unchecked, so Java catches it without declaring `throws`.
+
+</TabItem>
+</Tabs>
+
+`connect` throws:
+
+| Exception | When |
+|---|---|
+| `OhrException.Unsupported` | The device has no OhrTech Agent with the Device SDK |
+| `OhrException.NotManaged` | Your organisation didn't install this app on this device through OhrTech |
+| `OhrException.Failed` | The Agent didn't answer within the timeout (`timeoutMs`, 10 seconds by default) |
+
+`sdk.session` says who the Agent takes your app for: `app` (your app's `app_…` id), `packageName`,
+`appVersion`, `agentVersion`, `agentInterface`, and `areas`, what the fleet lets it do.
+`session.mayUse("kiosk")` is true when the fleet grants kiosk mode. See
+[access](/device-sdk/access/) for what each area needs.
+
+## A first call
+
+Read who the device is. Calls into the Agent are binder calls that wait for its answer: make them
+off the main thread, or use the suspending `…Async` versions where there is one
+([threading](/device-sdk/access/#threading)).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val info = sdk.device.infoAsync()   // or sdk.device.info() off the main thread
+Log.i(TAG, "${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android ${info.osRelease}, " +
+    "patch ${info.securityPatch}, online: ${info.online}")
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// On the background thread
+OhrDevice.Info info = sdk.getDevice().info();
+String fleet = info.getFleet() == null ? "no fleet" : info.getFleet().getName();
+Log.i(TAG, info.getDeviceId() + " in " + fleet + ", Android " + info.getOsRelease()
+    + ", patch " + info.getSecurityPatch() + ", online: " + info.getOnline());
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `deviceId` | The device's id, such as `dev_3swt6f457299btzpw1bxx4wf0q`. Null until the hub has sent the device its first policy |
+| `serial` | The device's serial number |
+| `fleet`, `org` | `id` and `name` of its fleet and organisation |
+| `osRelease`, `osBuild`, `osIncremental`, `securityPatch` | The OS it runs |
+| `agentVersion` | The OhrTech Agent's version |
+| `online` | Whether the Agent is connected to the OhrTech hub now |
+
+## Close
+
+Connect once, for example when your app starts, and keep the `OhrDeviceSdk` while you use it. Close
+it when you are done:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+override fun onDestroy() {
+    sdk?.close()
+    super.onDestroy()
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+@Override
+protected void onDestroy() {
+    if (sdk != null) sdk.close();
+    super.onDestroy();
+}
+```
+
+</TabItem>
+</Tabs>
+
+A closed SDK throws `OhrException.Failed` on every call. It doesn't reconnect by itself: if the
+Agent restarts (it is updated, say), `sdk.isConnected` turns false and calls throw
+`OhrException.Failed` ("The OhrTech Agent stopped; connect again"). Connect again then.
+
+## Worked example: a kiosk app
+
+A point-of-sale app that shows your web front end, full screen, locked to the app. Its fleet sets two
+things for it: the server it talks to, and whether it starts in kiosk mode.
+
+### 1. Declare the managed configuration
+
+Declare the settings your app reads, with their defaults, in `res/xml/app_restrictions.xml`. The
+portal shows a form for them on the fleet's and the device's pages.
+
+```xml
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction android:key="server_url" android:restrictionType="string"
+        android:title="Server URL" android:defaultValue="https://pos.example.com" />
+    <restriction android:key="kiosk_on_start" android:restrictionType="bool"
+        android:title="Start in kiosk mode" android:defaultValue="true" />
+</restrictions>
+```
+
+Point the manifest at it, in `<application>`:
+
+```xml
+<meta-data android:name="android.content.APP_RESTRICTIONS" android:resource="@xml/app_restrictions" />
+```
+
+### 2. Read it and start kiosk mode
+
+`OhrConfig` reads the values the fleet set, or the declared defaults. It needs no connection to the
+Agent and no grant. Starting kiosk mode needs the fleet's `kiosk` grant.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+class PosActivity : ComponentActivity() {
+    private var sdk: OhrDeviceSdk? = null
+    private lateinit var config: OhrConfig
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.pos)
+        config = OhrConfig(this)
+        show(config.string("server_url")!!)
+
+        lifecycleScope.launch {
+            // The fleet changed the configuration: follow it.
+            config.changes.collect { show(config.string("server_url")!!) }
+        }
+        lifecycleScope.launch {
+            try {
+                val s = OhrDeviceSdk.connect(this@PosActivity).also { sdk = it }
+                if (config.bool("kiosk_on_start") && s.session.mayUse("kiosk")) {
+                    withContext(Dispatchers.IO) {
+                        if (!s.kiosk.state().pinned) s.kiosk.start(this@PosActivity)
+                    }
+                }
+            } catch (e: OhrException) {
+                Log.w(TAG, "Kiosk mode: ${e.message}")
+            }
+        }
+    }
+
+    private fun show(url: String) { /* load url in your WebView */ }
+
+    override fun onDestroy() {
+        sdk?.close()
+        super.onDestroy()
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+public class PosActivity extends Activity {
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+    private volatile OhrDeviceSdk sdk;
+    private OhrConfig config;
+    private Closeable configWatch;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.pos);
+        config = new OhrConfig(this);
+        show(config.string("server_url"));
+
+        // The fleet changed the configuration: follow it, on the main thread.
+        configWatch = config.listen(getMainExecutor(), values -> show(config.string("server_url")));
+
+        io.execute(() -> {
+            try {
+                sdk = OhrDeviceSdk.connectBlocking(this);
+                if (config.bool("kiosk_on_start") && sdk.getSession().mayUse("kiosk")
+                        && !sdk.getKiosk().state().getPinned()) {
+                    sdk.getKiosk().start(this);
+                }
+            } catch (OhrException e) {
+                Log.w(TAG, "Kiosk mode: " + e.getMessage());
+            }
+        });
+    }
+
+    private void show(String url) { /* load url in your WebView */ }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            configWatch.close();
+        } catch (IOException ignored) {
+        }
+        if (sdk != null) sdk.close();
+        io.shutdown();
+        super.onDestroy();
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+`kiosk.start` pins the activity's task with Android's lock task, as the system: the app can't be
+left, not even by itself. By default the power menu and the status bar's system information stay
+available; pass `OhrKiosk.Feature` flags to choose. `kiosk.stop()` ends it only if the fleet lets
+kiosk apps leave; otherwise it throws `OhrException.NotAllowed`. The
+[kiosk guide](/device-sdk/guides/kiosk/) covers the exit PIN and the watchdog.
+
+### 3. Set it up for the fleet
+
+1. Upload the APK and assign the app to the fleet ([your apps](/management-api/guides/apps/)).
+2. On the fleet's Applications tab in the portal, grant the app **Kiosk mode**, or call
+   `PUT /v1/fleets/{fleetId}/apps/{appId}/sdk-access` with `{"areas": ["kiosk"]}`
+   ([access](/device-sdk/access/#grant-an-area)).
+3. Set `server_url` and `kiosk_on_start` for the fleet, or leave the defaults
+   ([managed configuration](/device-sdk/guides/managed-config/)).
+
+The device gets the grant and the configuration when it is next online, usually within seconds.
+Without the grant, `session.mayUse("kiosk")` is false and the app runs without kiosk mode.
+
+## Next
+
+- [Access, errors and versions](/device-sdk/access/): what needs a grant, every exception, threading,
+  following changes, and which Agent each area needs
+- [Kiosk mode](/device-sdk/guides/kiosk/), [Wi-Fi and networks](/device-sdk/guides/wifi-and-networks/),
+  [device, power and settings](/device-sdk/guides/device-power-settings/)
+- [Managed configuration](/device-sdk/guides/managed-config/): every setting type, bundles, secrets
+- [Push](/device-sdk/guides/push/) and [device attestation](/device-sdk/guides/attestation/), with
+  your own server
+- The [sample app](https://github.com/OhrTech/device-sdk-android/tree/main/sample): a kiosk app
+  that uses most of the library

@@ -1,0 +1,363 @@
+---
+title: Kiosk mode
+description: Lock the device to your app, from the app or from the fleet's settings, with a watchdog that brings the app back and an exit PIN for staff.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In kiosk mode the device runs one app and nothing else. The OhrTech Agent pins the app with
+Android's lock task mode, as the system: the person at the device can't leave the app, and the app
+can't unpin itself through Android either. Only the OhrTech Agent ends kiosk mode, when your app
+asks and the fleet allows it, when the hub lifts it, or when staff type the exit PIN.
+
+There are two ways in:
+
+- **From your app**, with `sdk.kiosk.start(activity)`. Needs the fleet's `kiosk` grant.
+- **From the fleet**, with the **Kiosk app** setting. The device starts and pins the app at every
+  boot. Your app needs no SDK call and no grant.
+
+Either way, the [watchdog](#the-watchdog) brings the app back when it crashes, hangs or leaves, and
+the [exit PIN](#the-exit-pin) lets staff leave kiosk mode for a while.
+
+`start`, `stop` and `state` need OhrTech Agent 1059 or later. The watchdog, the exit PIN, the Kiosk
+app setting, `requestExit` and `heartbeat` need Agent 1061 or later. On an older Agent, `requestExit` and `heartbeat` throw `OhrException.Unsupported`
+with `needsAgent = 1061`.
+
+## Start kiosk mode from your app
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+class KioskActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            val sdk = OhrDeviceSdk.connect(this@KioskActivity)
+            if (sdk.session.mayUse("kiosk")) {
+                withContext(Dispatchers.IO) { sdk.kiosk.start(this@KioskActivity) }
+            }
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// On a background thread:
+OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(activity);
+if (sdk.getSession().mayUse("kiosk")) {
+    sdk.getKiosk().start(activity);
+}
+```
+
+</TabItem>
+</Tabs>
+
+`start` pins the activity's task and returns once Android has locked it, so `state()` right after
+says so. The task must be one of your app's own (`InvalidConfig` with `field` `taskId` otherwise).
+
+Kiosk mode your app started lasts until it ends or the device restarts. After a restart, call
+`start` again when your app starts: an app that pins itself is not pinned again by the device. To
+have the device do it at every boot, use the fleet's [Kiosk app](#kiosk-mode-from-the-fleet)
+setting instead.
+
+### What stays available
+
+The second parameter of `start` says what the person at the device may still use. Combine
+`OhrKiosk.Feature` values with `or` (Kotlin) or `|` (Java). The default is `GLOBAL_ACTIONS or
+SYSTEM_INFO`: the power menu and the status bar's information.
+
+| `OhrKiosk.Feature` | Allows |
+|---|---|
+| `SYSTEM_INFO` | The status bar's information: clock, battery, signal |
+| `NOTIFICATIONS` | Notifications and the notification shade |
+| `HOME` | The Home button |
+| `OVERVIEW` | The Overview (recent apps) button |
+| `GLOBAL_ACTIONS` | The power menu (a long press of the power button) |
+| `KEYGUARD` | The lock screen |
+| `BLOCK_ACTIVITY_START_IN_TASK` | Blocks activities of apps other than yours from starting in the pinned task |
+
+These are Android's lock task features (`DevicePolicyManager.LOCK_TASK_FEATURE_*`), with the same
+values. When the exit PIN's power menu item is on, the device keeps the power menu available
+whatever you pass, since the item is in it.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+sdk.kiosk.start(activity, OhrKiosk.Feature.SYSTEM_INFO or OhrKiosk.Feature.NOTIFICATIONS or OhrKiosk.Feature.HOME)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+sdk.getKiosk().start(activity, OhrKiosk.Feature.SYSTEM_INFO | OhrKiosk.Feature.NOTIFICATIONS | OhrKiosk.Feature.HOME);
+```
+
+</TabItem>
+</Tabs>
+
+### State and stop
+
+`state()` returns:
+
+| Field | |
+|---|---|
+| `pinned` | Your app is the one in kiosk mode now |
+| `mode` | The device's lock task mode: `none`, `locked` (kiosk mode) or `pinned` (Android's screen pinning) |
+| `features` | The features kiosk mode was started with |
+| `appMayExit` | The fleet lets kiosk apps leave kiosk mode themselves |
+
+`stop()` ends kiosk mode when your app is the one pinned and the fleet's **Kiosk apps may leave
+kiosk mode** setting (`kiosk.app_exit`) is on, which it is by default. When the fleet turns it off,
+`stop()` throws `NotAllowed("kiosk")`: only the hub or the exit PIN end kiosk mode then. When
+another app, or no app, is pinned, `stop()` does nothing. `stop()` also ends kiosk mode the fleet
+started for your app; the device then doesn't pin it again until it restarts or the fleet's kiosk
+settings change.
+
+`modeChanges` (Kotlin `Flow`) or `listenMode(executor, listener)` (Java) give the device's `mode`
+each time kiosk mode starts or ends. Call `state()` to learn whether it is your app's.
+
+## Kiosk mode from the fleet
+
+Set these in the fleet's settings in the portal (category **Kiosk**), or per device with the
+[Management API](/management-api/guides/settings/).
+
+| Key | Label | Value | Default |
+|---|---|---|---|
+| `kiosk.app` | Kiosk app | The package to run in kiosk mode; `"default"` for none | `"default"` |
+| `kiosk.watchdog` | Kiosk app watchdog | `true` or `false` | `true` |
+| `kiosk.exit_pin` | Kiosk exit PIN | `{"code": "2468"}`: 4 to 12 digits | not set |
+| `kiosk.exit_minutes` | Kiosk exit time | `"5"`, `"10"`, `"15"`, `"30"` or `"60"` (minutes) | `"10"` |
+| `kiosk.exit_triggers` | Ways to open the exit PIN | Any of `power_menu`, `keys`, `gesture`, `app` | all four |
+| `kiosk.exit_keys` | Exit key sequence | `volume_down_5` or `volume_both_hold` | `volume_down_5` |
+| `kiosk.exit_corner` | Exit taps corner | `top_left`, `top_right`, `bottom_left`, `bottom_right` | `top_left` |
+| `kiosk.app_exit` | Kiosk apps may leave kiosk mode | `true` or `false` | `true` |
+
+With **Kiosk app** set, the device starts that app and pins it at every boot, with the power menu
+and the status bar's information available. If the app isn't installed yet, the setting waits and
+applies once it is. Setting it back to `"default"` ends the kiosk mode the fleet started. An app
+that pinned itself with the SDK keeps its kiosk mode: the fleet's kiosk app doesn't take over from it.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl -X PATCH https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/settings \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "settings": {
+      "kiosk.app":           { "mode": "Locked", "value": "com.example.kiosk" },
+      "kiosk.exit_pin":      { "mode": "Locked", "value": { "code": "2468" } },
+      "kiosk.exit_triggers": { "mode": "Locked", "value": ["gesture", "app"] }
+    }
+  }'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await api.UpdateDeviceSettingsAsync("dev_3swt6f457299btzpw1bxx4wf0q", new PolicyPatchDto
+{
+    Settings = new()
+    {
+        ["kiosk.app"] = new SettingPolicy { Mode = SettingMode.Locked, Value = "com.example.kiosk" },
+        ["kiosk.exit_pin"] = new SettingPolicy
+        {
+            Mode = SettingMode.Locked,
+            Value = new System.Text.Json.Nodes.JsonObject { ["code"] = "2468" },
+        },
+        ["kiosk.exit_triggers"] = new SettingPolicy
+        {
+            Mode = SettingMode.Locked,
+            Value = new System.Text.Json.Nodes.JsonArray("gesture", "app"),
+        },
+    }
+});
+```
+
+</TabItem>
+</Tabs>
+
+Apps can't change the kiosk settings: they are not among the [settings](/device-sdk/guides/device-power-settings/#settings)
+the SDK offers.
+
+## The watchdog
+
+When the app in kiosk mode crashes, stops responding or leaves the screen, the OhrTech Agent
+starts it again and pins it again. This works for an app the fleet set as **Kiosk app** and for an
+app that pinned itself with `start`. It is on unless the fleet turns **Kiosk app watchdog** off.
+
+- **Crashes and exits.** When kiosk mode ends without the app, the hub or the exit PIN ending it,
+  the Agent brings the app back: at once the first time, then after 5 seconds, then 30 seconds,
+  then 2 minutes.
+- **Hangs.** When Android reports that the app isn't responding (an ANR), the Agent stops the app
+  and so starts it again, without waiting for anyone to answer Android's dialog.
+- **A hung main thread that Android doesn't notice.** Call `heartbeat()`: see below.
+- **Giving up.** When the app stops for the 5th time within 10 minutes, the Agent stops trying and
+  shows that the app isn't working, with a **Try again** button.
+
+A new version of your app being installed doesn't count as a crash: the app is started again
+2 seconds later. While the Agent waits to start the app, a cover over the whole screen keeps the
+device from being used outside it. The device reports each restart, and each time it gives up, to
+the hub.
+
+With the watchdog off, kiosk mode ends when the app leaves. The device stays out of kiosk mode
+until your app calls `start` again or, for the fleet's kiosk app, until the device restarts or the
+fleet's kiosk settings change.
+
+### Heartbeat
+
+A main thread stuck in a loop, or waiting on a lock, doesn't always cause an ANR: Android reports
+one only when input or a broadcast goes unanswered. `heartbeat(timeoutMs)` makes the library tell
+the Agent, from your main thread, that it is alive, 4 times per `timeoutMs`. If the beats stop for
+longer than `timeoutMs`, the Agent stops the app and starts it again.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) { sdk.kiosk.start(activity) }
+sdk.kiosk.heartbeat(15_000)   // 15 s
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+sdk.getKiosk().start(activity);      // on a background thread
+sdk.getKiosk().heartbeat(15_000);    // 15 s
+```
+
+</TabItem>
+</Tabs>
+
+- `timeoutMs` is 2,000 (2 seconds) to 600,000 (10 minutes), 10,000 by default. Outside that,
+  `heartbeat` throws `IllegalArgumentException`.
+- It counts only while your app is pinned. Call it after `start`, and again each time your app
+  starts: after a restart it is a new process.
+- `stopHeartbeat()` ends it, before long work on the main thread that you expect, for example.
+- It doesn't wait for the Agent, so it may be called from the main thread.
+
+## The exit PIN
+
+Staff sometimes need the device outside the kiosk app: to change a setting, or to look at another
+app. With an exit PIN set, they open a keypad that the Agent draws over the kiosk app, type the
+PIN, and kiosk mode is lifted for the fleet's **Kiosk exit time** (10 minutes by default). It also
+ends when the screen turns off, or from **Back to kiosk now** in the notification. Then the same
+app is pinned again.
+
+The hub keeps only a slow salted hash of the PIN, and the device gets only that hash: the PIN
+itself is stored nowhere. The Management API and the portal show only that a PIN is set:
+`{"set": true}`. Without a PIN, only the hub can lift kiosk mode.
+
+Each wrong PIN locks the keypad for longer: 30 seconds after the first, 1 minute after the second,
+5 minutes after the third, then 15 minutes after each one, until the right PIN is typed. The count
+is kept when the device restarts.
+
+### Ways to open the keypad
+
+The fleet's **Ways to open the exit PIN** (`kiosk.exit_triggers`) picks which of these work. All
+four are on by default.
+
+| Value | Portal label | How |
+|---|---|---|
+| `power_menu` | Exit kiosk in the power menu | An **Exit kiosk** item in the power menu |
+| `keys` | A key sequence | **Exit key sequence**: volume down 5 times within 3 seconds (`volume_down_5`), or volume up and down held together for 5 seconds (`volume_both_hold`) |
+| `gesture` | Taps in a corner of the screen | 5 taps within 3 seconds in the **Exit taps corner** |
+| `app` | The kiosk app (Device SDK requestExit) | Your app calls `requestExit()`, from its own staff menu for example |
+
+The power menu item and the key sequence work once the device's OhrTech OS supports them. With the
+power menu item on, the power menu stays available in kiosk mode, so it also offers power off and
+restart.
+
+The corner is a square of an eighth of the screen's shorter side, at least 48 dp. The Agent
+watches the taps without taking them: your app gets every touch as before.
+
+### From your app
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+staffMenu.setOnClickListener {
+    lifecycleScope.launch {
+        try {
+            withContext(Dispatchers.IO) { sdk.kiosk.requestExit() }
+        } catch (e: OhrException.Unsupported) {
+            showMessage("No exit PIN is set for this device")
+        } catch (e: OhrException.NotAllowed) {
+            showMessage("The fleet doesn't let the app open the exit PIN")
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// On a background thread:
+try {
+    sdk.getKiosk().requestExit();
+} catch (OhrException.Unsupported e) {
+    // no exit PIN is set (or the Agent is older than 1061: e.getNeedsAgent())
+} catch (OhrException.NotAllowed e) {
+    // the fleet's ways to open the exit PIN don't include the app
+}
+```
+
+</TabItem>
+</Tabs>
+
+`requestExit()` opens the keypad and returns; it needs no grant. Your app must be the one pinned
+(`InvalidConfig` with `field` `kiosk` otherwise). It throws `NotAllowed("kiosk")` when `app` isn't
+one of the fleet's ways, and `Unsupported` when no exit PIN is set.
+
+### From the hub
+
+The hub can lift kiosk mode without the PIN, whether a PIN is set or not. In the portal, open the
+device and choose **Exit kiosk mode for a while** among its tasks: 5, 10, 15, 30 or 60 minutes, or
+**Back to kiosk mode now**. With the Management API (needs `EditSettings`):
+
+```sh
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/kiosk/exit \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"minutes": 30}'
+```
+
+`minutes` is 1 to 240, or 0 to go back to kiosk mode now. The response is the `KioskExit`
+[task](/management-api/guides/messages-and-tasks/#tasks). It fails when the device isn't in kiosk
+mode (or, for 0, when kiosk mode wasn't lifted). A lift also ends when the screen turns off.
+
+## What the person at the device sees
+
+| When | On screen |
+|---|---|
+| Kiosk mode is on | Only your app, with the features it was started with |
+| The keypad opens | **Exit kiosk mode**, "Enter the exit PIN.", digits, **Cancel** and **OK**. It is drawn by the Agent, so no keyboard app sees the PIN |
+| A wrong PIN | "Wrong PIN.", or "Too many wrong PINs. Try again in …" while it is locked |
+| Kiosk mode is lifted | The home screen, and a notification "Kiosk mode is off for now" counting down, with **Back to kiosk now** |
+| The app stopped | A cover: "*App* stopped", "Starting it again in …" |
+| The watchdog gave up | A cover: "*App* isn't working", "It stopped 5 times in the last 10 minutes. Your organisation has been told.", with **Try again** |
+
+The covers and the keypad are system windows above every app, the notification shade and the lock
+screen: the kiosk app can't hide them. When an exit PIN is set and at least one way to open it is
+on, the covers also have an **Exit kiosk** button that opens the keypad.
+
+## Grants and errors
+
+`start` and `stop` need the fleet's `kiosk` grant (`NotAllowed("kiosk")` without it). `state`,
+`modeChanges`, `requestExit` and `heartbeat` don't.
+
+| Exception | When |
+|---|---|
+| `NotAllowed("kiosk")` | No `kiosk` grant; `stop()` when the fleet keeps kiosk apps in; `requestExit()` when `app` isn't one of the ways |
+| `InvalidConfig` | `start` with a task that isn't your app's; `requestExit()` when your app isn't pinned |
+| `Unsupported` | `requestExit()` with no exit PIN; `requestExit` or `heartbeat` on an Agent older than 1061 |
+| `Failed` | Android didn't lock the task |

@@ -1,0 +1,258 @@
+---
+title: Diagnostics
+description: Crash reports for every app you install through OhrTech, your app's own events and log lines, and log bundles that support collects from one device.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+You get three kinds of diagnostics from your apps in the field:
+
+| | What you do in the app | Where you see it |
+|---|---|---|
+| [Crash reports](#crash-reports) | Nothing | The app's Crashes section, `GET /v1/apps/{appId}/crashes` |
+| [Events](#events) | `sdk.diagnostics.event(name, data)` | The device's events, `GET /v1/devices/{deviceId}/events` |
+| [Log lines](#log-lines-and-log-bundles) | `sdk.diagnostics.i(tag, message)`, … | Log bundles, collected on request |
+
+All three need Agent 1061 or later. On an older Agent, `sdk.diagnostics` calls throw
+`OhrException.Unsupported` with `needsAgent = 1061`.
+
+## Crash reports
+
+Crash reports are on by default for every app your organisation installs through OhrTech. The
+OhrTech Agent collects them as the system, so your app needs no SDK and no crash library:
+
+- **Java crashes**: the stack trace, with its "Caused by" chain.
+- **Native crashes**: the tombstone's signal and backtrace, without its memory dumps.
+- **ANRs** (app not responding): the reason, and the main thread's stack.
+
+Each report is trimmed to 16 KB and carries the app's last log lines before the crash (up to 300
+lines, 12 KB), the app version, the process, whether the app was in the foreground, and the OS
+build. A device that is offline keeps up to 30 reports and sends them when it reconnects. A crash
+that happens while the Agent isn't running is picked up when it starts again. The hub keeps
+reports for 90 days.
+
+To turn crash reports off for a fleet, set the fleet setting `apps.crash_reports` ("Crash
+reports") to `false`; nothing is collected then. See [settings](/management-api/guides/settings/).
+
+### Grouped by crash
+
+The hub groups reports by **signature**: the same crash on many devices and versions has one. The
+signature comes from the kind, what failed (the root cause's exception type, the signal, or ANR) and
+the top four frames, starting at your app's own code. Line numbers and addresses are left out, so a
+rebuild of the same code keeps the signature.
+
+`GET /v1/apps/{appId}/crashes` lists the app's crashes, the most frequent first. It needs
+`ManageApps` or `ViewDevices`, and counts only the devices you can see.
+
+| Query | |
+|---|---|
+| `days` | How far back: 1 to 90, default 30 |
+| `versionCode` | Only this version |
+
+```json
+[
+  {
+    "signature": "9c1f4e7a20b35d68",
+    "kind": "crash",
+    "title": "java.lang.IllegalStateException: printer not connected",
+    "count": 37,
+    "devices": 12,
+    "versionCodes": [43, 42],
+    "firstSeen": "2026-11-02T09:14:51Z",
+    "lastSeen": "2026-11-08T13:40:07Z"
+  },
+  {
+    "signature": "40d2be91c7a6f305",
+    "kind": "anr",
+    "title": "ANR in com.example.pos.sync.Uploader.flush: Input dispatching timed out",
+    "count": 4,
+    "devices": 3,
+    "versionCodes": [43],
+    "firstSeen": "2026-11-07T18:02:33Z",
+    "lastSeen": "2026-11-08T11:20:45Z"
+  }
+]
+```
+
+`kind` is `crash`, `native_crash` or `anr`.
+
+### The reports
+
+`GET /v1/apps/{appId}/crashes/{signature}` returns the reports of one crash, newest first, and
+`GET /v1/devices/{deviceId}/crashes` the crashes of every OhrTech-installed app on one device
+(needs `ViewDevices`). Both take `limit` (1 to 100, default 20).
+
+```json
+{
+  "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "packageName": "com.example.pos",
+  "versionCode": 43,
+  "versionHubShipped": true,
+  "kind": "crash",
+  "signature": "9c1f4e7a20b35d68",
+  "title": "java.lang.IllegalStateException: printer not connected",
+  "occurredAt": "2026-11-08T13:40:07Z",
+  "receivedAt": "2026-11-08T13:40:09Z",
+  "process": "com.example.pos",
+  "foreground": true,
+  "osBuild": "…",
+  "report": "java.lang.IllegalStateException: printer not connected\n\tat com.example.pos.print.Receipt.send(Receipt.kt:88)\n\t…",
+  "log": "11-08 13:40:06.912  4242  4242 I Checkout: paid, printing\n…"
+}
+```
+
+`versionHubShipped` is `false` when the installed APK is not one the hub shipped, such as a debug
+build you installed with `adb`.
+
+### In the portal
+
+The app's page has a **Crashes** section: the last 30 days, the count per version, and one row per
+crash with how often it happened, on how many devices, in which versions, and when it was first and
+last seen. Select a row to see its reports.
+
+## Events
+
+An event is something your app wants on the record, such as an order that failed or a printer that
+went offline. It shows with the device's events in the portal and the Management API.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+sdk.diagnostics.event("printer_offline", mapOf("port" to 9100, "retries" to 3))
+sdk.diagnostics.event("shift_started")
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+sdk.getDiagnostics().event("printer_offline", Map.of("port", 9100, "retries", 3));
+sdk.getDiagnostics().event("shift_started");
+```
+
+</TabItem>
+</Tabs>
+
+- `name` starts with a lowercase letter, then letters, digits, `_` and `.`, up to 64 characters in
+  all: `printer_offline`, `orderFailed`, `sync.retry`.
+- `data` is a map or a `JSONObject`, at most 2 KB as JSON.
+- A name or data that breaks these rules throws `IllegalArgumentException`, before anything is
+  sent.
+- Each app can send 60 events a minute. The Agent drops the ones over that.
+
+`event` is a one-way call: it doesn't wait for the Agent, so you can call it from any thread,
+including the main thread.
+
+### Read them
+
+`GET /v1/devices/{deviceId}/events` (needs `ViewDevices`) lists the device's events, newest first.
+It takes `limit` (1 to 500, default 50) and `before`, a time, for the next page. Your app's events
+have `source` `app`, `area` `app`, its name as `action`, and its data as `detail`:
+
+```json
+{
+  "at": "2026-11-08T13:39:58Z",
+  "receivedAt": "2026-11-08T13:40:01Z",
+  "source": "app",
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "packageName": "com.example.pos",
+  "area": "app",
+  "action": "printer_offline",
+  "result": "ok",
+  "detail": { "port": 9100, "retries": 3 }
+}
+```
+
+The same list holds what apps changed through the Device SDK (`source` `sdk`) and what the Agent
+did (`source` `agent`). The hub keeps events for 180 days. In the portal, they are on the device's
+**App activity** tab.
+
+## Log lines and log bundles
+
+Log lines your app writes through the SDK stay on the device. The Agent keeps the newest 500 per
+app, and they go to the hub only in a log bundle, which support asks for when they need it.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val diag = sdk.diagnostics
+diag.i("Checkout", "paid, printing receipt 1187")
+diag.w("Printer", "paper low")
+diag.e("Printer", "no answer on port 9100")
+diag.log(Log.DEBUG, "Sync", "42 orders queued")
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrDiagnostics diag = sdk.getDiagnostics();
+diag.i("Checkout", "paid, printing receipt 1187");
+diag.w("Printer", "paper low");
+diag.e("Printer", "no answer on port 9100");
+diag.log(Log.DEBUG, "Sync", "42 orders queued");
+```
+
+</TabItem>
+</Tabs>
+
+`priority` is one of `android.util.Log`'s levels. Tags are cut to 64 characters and messages to
+2,000. Like `event`, these are one-way calls you can make from any thread. The Agent keeps the
+lines in memory, so a restart of the Agent clears them.
+
+### Collect a log bundle
+
+`POST /v1/devices/{deviceId}/apps/{appId}/log-bundles` (needs `EditSettings`) asks the device for
+one app's logs. It returns the bundle at once (201), as a task that the device runs:
+
+```sh
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/log-bundles \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"allowMobileData": false}'
+```
+
+The device zips the logs and uploads them over Wi-Fi. It waits up to a day for Wi-Fi, after which
+the bundle fails. With `"allowMobileData": true` it uploads on any network.
+
+`GET /v1/devices/{deviceId}/log-bundles` (needs `EditSettings`) lists the device's bundles, newest
+first. It takes `limit` (1 to 50, default 20). Each finished bundle has a download link that works
+for an hour; list again for a fresh one.
+
+```json
+[
+  {
+    "taskId": "tsk_3f3mp3pjjs9t3vdhemwfsa3c69",
+    "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
+    "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    "status": "success",
+    "requestedAt": "2026-11-08T13:45:02Z",
+    "completedAt": "2026-11-08T13:45:20Z",
+    "bytes": 184322,
+    "error": null,
+    "downloadUrl": "https://…",
+    "downloadExpiresAt": "2026-11-08T14:51:37Z",
+    "requestedBy": "support@example.com"
+  }
+]
+```
+
+`status` is `pending`, `running`, `success` or `failed` (`error` says why, for example when the
+hub didn't install the app on that device), or `cancelled`.
+
+The zip holds:
+
+| File | |
+|---|---|
+| `info.json` | The package, `versionCode`, `versionName`, the app's uid, the OS build and when it was collected |
+| `logcat.txt` | The app's lines from every Android log buffer, the newest 4 MB |
+| `sdk-log.txt` | What the app logged through `sdk.diagnostics`, oldest first |
+| `events.json` | The app's recent events, up to 200 |
+
+### In the portal
+
+On the device's page, open **Tasks**, choose **New task**, then **Collect an app's logs**. Pick the
+app, and tick **Upload on mobile data too** if the device shouldn't wait for Wi-Fi. When the task
+has finished, its **Logs** tab has **Download the zip**.

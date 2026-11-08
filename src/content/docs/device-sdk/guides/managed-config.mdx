@@ -1,0 +1,303 @@
+---
+title: Managed configuration
+description: Declare your app's settings in app_restrictions.xml, set their values per fleet or per device, and read them in the app with typed getters.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Managed configuration gives your app settings that you set from the hub instead of building them
+into the APK: the server address, the store number, a printer, an API key. You declare the settings
+in the app. The hub reads them from the APK you upload, and the OhrTech Portal shows a form for
+them. You set the values for a fleet or for a single device, and the app reads them with
+`sdk.config`.
+
+This is Android's standard application restrictions mechanism. The OhrTech Agent sets the values as
+the app's application restrictions, so code that already reads them with `RestrictionsManager` works
+unchanged.
+
+## Declare the settings
+
+Put the settings in `res/xml/app_restrictions.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction android:key="server_url" android:restrictionType="string"
+        android:title="Server" android:defaultValue="https://pos.example.com" />
+    <restriction android:key="store_number" android:restrictionType="integer"
+        android:title="Store number" android:defaultValue="0" />
+    <restriction android:key="kiosk_on_start" android:restrictionType="bool"
+        android:title="Start in kiosk mode" android:defaultValue="false" />
+    <restriction android:key="mode" android:restrictionType="choice" android:title="Mode"
+        android:entries="@array/mode_labels" android:entryValues="@array/mode_values"
+        android:defaultValue="customer" />
+    <restriction android:key="features" android:restrictionType="multi-select" android:title="Features"
+        android:entries="@array/feature_labels" android:entryValues="@array/feature_values" />
+    <restriction android:key="api_key" android:restrictionType="hidden" android:title="API key" />
+    <restriction android:key="printer" android:restrictionType="bundle" android:title="Printer">
+        <restriction android:key="host" android:restrictionType="string" android:title="Host" />
+        <restriction android:key="port" android:restrictionType="integer" android:title="Port"
+            android:defaultValue="9100" />
+    </restriction>
+    <restriction android:key="lanes" android:restrictionType="bundle_array" android:title="Lanes">
+        <restriction android:key="lane" android:restrictionType="bundle" android:title="Lane">
+            <restriction android:key="name" android:restrictionType="string" android:title="Name" />
+        </restriction>
+    </restriction>
+</restrictions>
+```
+
+Then point to the file from the `<application>` element of your manifest:
+
+```xml
+<meta-data android:name="android.content.APP_RESTRICTIONS"
+    android:resource="@xml/app_restrictions" />
+```
+
+| `restrictionType` | The value | Getter |
+|---|---|---|
+| `string` | Text | `string(key)` |
+| `integer` | A 32-bit whole number | `int(key)` |
+| `bool` | `true` or `false` | `bool(key)` |
+| `choice` | One of `entryValues` | `string(key)` |
+| `multi-select` | Some of `entryValues` | `strings(key)` |
+| `hidden` | Text, entered as a secret (see [Secrets](#secrets)) | `string(key)` |
+| `bundle` | A group of settings | `bundle(key)` |
+| `bundle_array` | A list of groups. Its one child is the `bundle` each item repeats | `bundles(key)` |
+
+Bundles nest up to 4 levels deep.
+
+When you upload a version (see [your apps](/management-api/guides/apps/)), the hub reads the
+declaration from the APK. The form and the validation follow the newest version that declares
+settings. `GET /v1/apps/{appId}/config-schema` returns that declaration:
+
+```json
+{
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "versionCode": 42,
+  "restrictions": [
+    { "key": "store_number", "type": "integer", "title": "Store number", "description": null,
+      "default": 0, "entries": null, "entryValues": null, "children": null },
+    { "key": "printer", "type": "bundle", "title": "Printer", "description": null,
+      "default": null, "entries": null, "entryValues": null,
+      "children": [
+        { "key": "host", "type": "string", "title": "Host", "description": null,
+          "default": null, "entries": null, "entryValues": null, "children": null }
+      ] }
+  ]
+}
+```
+
+## Read the values
+
+`sdk.config` returns the value set for a key. If no value is set, it returns the default your XML
+declares, and if there is none, the fallback you pass.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val config = sdk.config                        // or OhrConfig(context), without connecting
+
+val server = config.string("server_url")       // "https://pos.example.com" unless the fleet sets it
+val store = config.int("store_number")
+val kiosk = config.bool("kiosk_on_start")
+val features = config.strings("features")      // List<String>
+val apiKey = config.string("api_key")          // the secret, in the clear
+val printer = config.bundle("printer")         // Bundle?, null unless the fleet sets it
+val lanes = config.bundles("lanes").map { it.getString("name") }
+
+// Every change while the app runs, as the new values:
+config.changes.collect { values -> reload(values) }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrConfig config = new OhrConfig(context);     // or sdk.getConfig()
+
+String server = config.string("server_url");
+int store = config.getInt("store_number");     // int(...) in Kotlin
+boolean kiosk = config.bool("kiosk_on_start");
+List<String> features = config.strings("features");
+Bundle printer = config.bundle("printer");
+List<Bundle> lanes = config.bundles("lanes");
+
+// Every change while the app runs; close it to stop:
+Closeable watch = config.listen(context.getMainExecutor(), values -> reload(values));
+```
+
+</TabItem>
+</Tabs>
+
+| Method | |
+|---|---|
+| `values()` | Every value set, as a `Bundle`. Keys the fleet doesn't set are absent |
+| `defaults()` | The settings the app declares, as Android `RestrictionEntry` objects with their defaults |
+| `isSet(key)` | Whether the fleet or the device sets `key` |
+| `string(key, fallback)`, `int(key, fallback)`, `bool(key, fallback)` | The value, else the declared default, else `fallback` (`null`, `0`, `false` if you pass none). From Java, `int` is `getInt` |
+| `strings(key)` | A `multi-select` value, else its declared default, else an empty list |
+| `bundle(key)`, `bundles(key)` | A `bundle` or `bundle_array` value. Declared defaults don't apply: `null` or an empty list when not set |
+| `changes` / `listen(executor, listener)` | The new values each time they change |
+
+`OhrConfig` doesn't connect to the Agent, needs no fleet grant and can be called from any thread.
+Changes arrive through Android's `ACTION_APPLICATION_RESTRICTIONS_CHANGED` broadcast, which is
+sent only while your app runs. Read the values each time the app starts, and watch for changes
+after that.
+
+Managed configuration needs Agent 1061 or later. An older Agent doesn't set any values, so the
+getters return your declared defaults. They don't throw.
+
+## Set values
+
+Values are set for one app, in a fleet or on one device:
+
+| Level | Endpoints |
+|---|---|
+| A fleet, and the fleets below it | `GET`, `PUT`, `DELETE /v1/fleets/{fleetId}/apps/{appId}/config` |
+| One device | `GET`, `PUT`, `DELETE /v1/devices/{deviceId}/apps/{appId}/config` |
+
+`GET` needs `ViewSettings`; `PUT` and `DELETE` need `EditSettings`.
+
+`PUT` replaces everything that level sets for the app. The hub sends the change to the devices
+straight away.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/config \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "values": {
+      "server_url": "https://pos-east.example.com",
+      "store_number": 42,
+      "features": ["scan", "pay"],
+      "printer": { "host": "printer-1.example.com", "port": 9100 },
+      "lanes": [{ "name": "1" }, { "name": "2" }],
+      "api_key": { "$secret": "sk_live_4f9c2e" }
+    }
+  }'
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp nocheck
+var config = await api.SetFleetAppConfigAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    new SetAppConfigRequest
+    {
+        Values = new()
+        {
+            ["server_url"] = "https://pos-east.example.com",
+            ["store_number"] = 42,
+            ["printer"] = new JsonObject { ["host"] = "printer-1.example.com", ["port"] = 9100 },
+            ["api_key"] = new JsonObject { ["$secret"] = "sk_live_4f9c2e" },
+        },
+    });
+```
+
+`SetFleetAppConfigAsync` and `SetDeviceAppConfigAsync` come in a .NET SDK release after 2.1.0.
+
+</TabItem>
+</Tabs>
+
+The response shows what this level sets (`own`) and what the app gets (`effective`), with secrets
+masked:
+
+```json
+{
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
+  "deviceId": null,
+  "own": { "store_number": 42, "api_key": { "$secret": "*" } },
+  "effective": {
+    "server_url": "https://pos.example.com",
+    "store_number": 42,
+    "api_key": { "$secret": "*" }
+  },
+  "problems": []
+}
+```
+
+For a device, `fleetId` is the device's fleet, and `effective` is what the app on that device gets.
+For a fleet, `effective` is what its devices get before their own overrides. `problems` lists the
+effective values that don't match the app's newest declaration, such as a key that a newer version
+dropped.
+
+`DELETE` removes everything that level sets for the app, so the levels above apply again.
+
+### Values
+
+| Setting | JSON |
+|---|---|
+| `string`, `choice` | A string, up to 8,192 characters |
+| `integer` | A whole number from -2147483648 to 2147483647 |
+| `bool` | `true` or `false` |
+| `multi-select` | A list of strings |
+| `bundle` | An object of the bundle's keys |
+| `bundle_array` | A list of objects, each with the item bundle's keys |
+| `hidden` | A secret, `{"$secret": "…"}`, or a string |
+| Any key | `null`: unset, so the app's default applies, whatever a parent fleet sets |
+
+Keys are 1 to 128 of `A-Z a-z 0-9 _ . -`. Lists hold up to 256 items, values nest up to 4 levels
+deep, and an app's configuration at one level is at most 64 KB.
+
+When the app declares its settings, the hub checks values against them. Unknown keys, wrong
+types and choices the app doesn't offer are refused with a 400, and nothing is stored:
+
+```json
+{
+  "title": "Not this app's configuration",
+  "status": 400,
+  "detail": "store_number: a whole number. mode: one of customer, staff."
+}
+```
+
+If no version of the app declares settings, the hub accepts any values of the shapes above.
+
+### How levels combine
+
+A device's app gets the values of its fleets from the top fleet down, then its own overrides. They
+merge **per app and per key**: a fleet that sets `store_number` leaves the `server_url` its parent
+sets alone. For each key, the deepest level that sets it wins: a child fleet over its parent, the
+device over its fleets. A `bundle` or `bundle_array` value is one key, so a deeper level replaces it
+as a whole.
+
+`null` at any level unsets the key for that level and the ones below, until a level further down
+sets it again.
+
+### Secrets
+
+Send a secret as `{"$secret": "value"}`. The hub seals it before storing it, and the API and the
+portal only ever show it as `{"$secret": "*"}`. The hub opens it only to send it to the device,
+and the app reads it as a plain string.
+
+To keep a stored secret when you change other values, send `{"$secret": "*"}` back unchanged. If
+nothing is stored for that key, the hub refuses it (400).
+
+Secrets are allowed for `hidden` and `string` settings. The portal shows `hidden` settings as
+password fields.
+
+## In the portal
+
+Open the fleet, go to its **Applications** tab and choose **Change** next to the app. Under
+**Configuration** you get a form built from the settings the app declares, named with the version
+it comes from. A setting this fleet doesn't set shows what it inherits from a parent fleet, or the
+app's default. **Save configuration** stores the values and sends them to the fleet's devices.
+**Stop configuring it in this fleet** does what `DELETE` does.
+
+The portal sets values for fleets. To set one device's overrides, use
+`PUT /v1/devices/{deviceId}/apps/{appId}/config`.
+
+## On the device
+
+The Agent sets the values as the app's application restrictions, typed by the settings the
+installed APK declares: an `integer` setting becomes an `int`, a `multi-select` setting a `String[]`, a
+`bundle` a `Bundle`, a `bundle_array` a `Bundle[]`. Android then sends the app
+`ACTION_APPLICATION_RESTRICTIONS_CHANGED`.
+
+- If the app isn't installed yet, it gets its values as soon as the hub installs it.
+- When no level sets anything for the app any more, it goes back to its defaults.
+- The device reports a fingerprint of the values it applied to the hub, never the values.

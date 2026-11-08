@@ -1,0 +1,211 @@
+---
+title: USB devices
+description: Pre-approve barcode scanners, receipt printers and payment terminals for your app, so they open in it with no "Allow access?" prompt.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+On Android, an app that opens a USB device has to ask the person using the device first: "Allow
+access?". A kiosk without staff can't answer that, and kiosk mode blocks the prompt anyway.
+With OhrTech you pre-approve the peripherals each app may use. When one of them is plugged in, the OhrTech Agent
+gives the app access to it and makes the app its default handler, so the prompt never appears.
+Your app then opens the device with Android's `UsbManager` as usual.
+
+This needs Agent 1061 or later.
+
+## Approve devices for an app
+
+The fleet setting `usb.devices` lists, per app, the USB devices and accessories it may use:
+
+| Entry | Fields |
+|---|---|
+| A USB device | `vendorId` and `productId`; optionally `serial`, to approve one unit only; optionally `name` |
+| A USB accessory (Android Open Accessory) | `manufacturer` and `model`; optionally `name` |
+
+- `vendorId` and `productId` are 0 to 65535, as numbers (`1504`) or as strings in hex (`"0x05e0"`)
+  or decimal. They are stored as numbers.
+- `name` is your label for it, up to 100 characters. The app sees it, and so does the portal.
+- `manufacturer` and `model` are up to 100 characters, `serial` up to 128. They must match what the
+  device reports exactly.
+- Each app can have up to 50 entries. Duplicates are removed.
+
+Set them with `PUT /v1/fleets/{fleetId}/apps/{appId}/usb-devices` (needs `EditSettings`). The body
+replaces this fleet's list for the app, and the hub sends it to the fleet's devices straight away:
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/usb-devices \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "devices": [
+      { "vendorId": "0x05e0", "productId": "0x1200", "name": "Barcode scanner" },
+      { "vendorId": "0x1234", "productId": "0x0001", "serial": "PT-10442", "name": "Lane 1 terminal" },
+      { "manufacturer": "Example Payments", "model": "Terminal X", "name": "Payment terminal" }
+    ]
+  }'
+```
+
+The response, like `GET` on the same path (needs `ViewSettings`), shows what applies on the
+fleet:
+
+```json
+{
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
+  "devices": [
+    { "vendorId": 1504, "productId": 4608, "name": "Barcode scanner" },
+    { "vendorId": 4660, "productId": 1, "serial": "PT-10442", "name": "Lane 1 terminal" },
+    { "manufacturer": "Example Payments", "model": "Terminal X", "name": "Payment terminal" }
+  ],
+  "own": [
+    { "vendorId": 1504, "productId": 4608, "name": "Barcode scanner" },
+    { "vendorId": 4660, "productId": 1, "serial": "PT-10442", "name": "Lane 1 terminal" },
+    { "manufacturer": "Example Payments", "model": "Terminal X", "name": "Payment terminal" }
+  ],
+  "inheritedFrom": null
+}
+```
+
+An entry that is wrong is refused with a 400, and nothing is stored:
+
+```json
+{
+  "title": "Bad USB devices",
+  "status": 400,
+  "detail": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w: a USB device has a vendorId and a productId (0-65535, or hex such as 0x05e0)"
+}
+```
+
+### Fleets and their parents
+
+The lists merge per app across fleets. For each app, the nearest fleet that has a list for it
+wins: a child fleet's list replaces its parent's for that app and leaves the parent's lists for
+other apps alone. `own` is this fleet's own list, or `null` when it inherits one, and
+`inheritedFrom` names the fleet it comes from.
+
+- An empty list (`"devices": []`) takes away what a parent fleet approves for the app.
+- `DELETE /v1/fleets/{fleetId}/apps/{appId}/usb-devices` removes this fleet's list, so the parent
+  fleet's applies again.
+
+### In the portal
+
+Open the fleet, go to its **Applications** tab and choose **Change** next to the app. Under **USB
+devices**, **Add a device** takes a name, the vendor and product ids (such as `0x05e0`) and an
+optional serial number; **Add an accessory** takes a name, a manufacturer and a model. **Save USB
+devices** stores them and sends them to the fleet's devices. **Stop setting them here** does what
+`DELETE` does.
+
+## Find a device's ids
+
+`GET /v1/devices/{deviceId}/usb-devices` (needs `ViewDevices`) lists every USB device and accessory
+attached to a device as of its last report, approved or not, with the apps each is approved for:
+
+```json
+{
+  "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
+  "reportedAt": "2026-11-08T14:02:11Z",
+  "attached": [
+    {
+      "deviceName": "/dev/bus/usb/001/004",
+      "vendorId": 1504,
+      "productId": 4608,
+      "manufacturer": "Example Scanners",
+      "product": "Handheld scanner",
+      "serial": "S24051880",
+      "approvedFor": ["com.example.pos"]
+    },
+    {
+      "accessory": true,
+      "manufacturer": "Example Payments",
+      "model": "Terminal X",
+      "version": "2.1",
+      "serial": "T7731",
+      "approvedFor": []
+    }
+  ]
+}
+```
+
+Plug the peripheral into one device, read its ids here, and approve them for the fleet. The device
+reports again each time something is attached or detached. In the portal, the device's **App
+activity** tab shows the same list.
+
+## On the device
+
+When an approved device or accessory is attached, the Agent grants every app it is approved for
+access to it, and makes the first of those apps (in the setting's order) its default handler. It
+does the same for what is already attached when the Agent starts or the approvals change.
+
+Each attach and detach is also recorded in the device's events (`source` `agent`, `area` `usb`,
+`action` `attached` or `detached`), with the apps the peripheral is approved for. Read them with
+`GET /v1/devices/{deviceId}/events`.
+
+### Open it in your app
+
+Open the device with Android's `UsbManager`, as you would without OhrTech. `hasPermission` is
+already true, so there is no need to call `requestPermission`:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val usbManager = context.getSystemService(UsbManager::class.java)
+
+for (approved in sdk.usb.devices()) {               // off the main thread
+    if (approved.accessory) continue
+    val device = usbManager.deviceList[approved.deviceName] ?: continue
+    val connection = usbManager.openDevice(device)   // no "Allow access?"
+    printers.connect(approved.name, device, connection)
+}
+
+// Approved devices as they come and go:
+sdk.usb.changes.collect { change ->
+    if (change.attached) connect(change.device) else disconnect(change.device)
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+UsbManager usbManager = context.getSystemService(UsbManager.class);
+
+for (OhrUsb.Device approved : sdk.getUsb().devices()) {     // off the main thread
+    if (approved.getAccessory()) continue;
+    UsbDevice device = usbManager.getDeviceList().get(approved.getDeviceName());
+    if (device == null) continue;
+    UsbDeviceConnection connection = usbManager.openDevice(device);   // no "Allow access?"
+    printers.connect(approved.getName(), device, connection);
+}
+
+// Approved devices as they come and go; close it to stop:
+Closeable watch = sdk.getUsb().listen(executor, change -> {
+    if (change.getAttached()) connect(change.getDevice()); else disconnect(change.getDevice());
+});
+```
+
+</TabItem>
+</Tabs>
+
+For an accessory, find it in `usbManager.accessoryList` by `manufacturer` and `model`, and open it
+with `openAccessory`.
+
+`sdk.usb` needs no fleet grant. It shows the app only the attached peripherals approved for it:
+
+| `sdk.usb` | |
+|---|---|
+| `devices()` | The approved devices and accessories attached now |
+| `changes` / `listen(executor, listener)` | A `Change` each time one is attached (`attached` true) or detached, with its `device` |
+
+| `OhrUsb.Device` | |
+|---|---|
+| `accessory` | `false` for a USB device, `true` for an accessory |
+| `deviceName` | A device's name in `UsbManager.deviceList`, such as `/dev/bus/usb/001/004` |
+| `vendorId`, `productId` | A device's ids; `-1` for an accessory |
+| `manufacturer`, `product`, `serial` | What the peripheral reports |
+| `model`, `version` | An accessory's model and version |
+| `name` | Your label for it from the approval, if it has one |
+| `hasPermission` | Whether the app may open it now |
+
+On an Agent older than 1061, `devices()`, `changes` and `listen` throw `OhrException.Unsupported`
+with `needsAgent = 1061`. See [access](/device-sdk/access/) for the errors and for Flow and
+listeners.

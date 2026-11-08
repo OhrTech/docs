@@ -7,6 +7,32 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-08: the Device SDK's server side
+
+For apps that use the [Device SDK](/device-sdk/) on your devices:
+
+- **Access:** which Device SDK areas an app may change on a fleet's devices: `GET`, `PUT` and
+  `DELETE /v1/fleets/{fleetId}/apps/{appId}/sdk-access`. `GET /v1/devices/{deviceId}/events` lists
+  what apps changed, what the Agent refused, and apps' own events.
+- **Push:** `POST /v1/push` sends up to 500 sealed, signed messages and needs the new `SendPush`
+  permission; `GET /v1/push/{id}` follows one; `GET /v1/devices/{deviceId}/push-tokens` lists a
+  device's tokens. See [Send push from your server](/device-sdk/server/send-push/).
+- **Attestation:** `POST /v1/attestations/verify`, `GET /v1/attestations/root` and
+  `GET /v1/attestations/status` (no sign-in), `POST /v1/devices/{deviceId}/attestation/revoke`, and
+  `POST /v1/devices/{deviceId}/key-attestations/verify` for an app's TEE keys. See
+  [Verify attestations](/device-sdk/server/verify-attestation/).
+- **Managed configuration:** `GET /v1/apps/{appId}/config-schema`, and `GET`, `PUT` and `DELETE` on
+  `/v1/fleets/{fleetId}/apps/{appId}/config` and `/v1/devices/{deviceId}/apps/{appId}/config`.
+- **Kiosk:** `POST /v1/devices/{deviceId}/kiosk/exit` lifts kiosk mode for some minutes without the
+  exit PIN.
+- **Crash reports and logs:** `GET /v1/apps/{appId}/crashes`, `/v1/apps/{appId}/crashes/{signature}`
+  and `/v1/devices/{deviceId}/crashes`; `POST` and `GET /v1/devices/{deviceId}/log-bundles`.
+- **USB devices:** `GET`, `PUT` and `DELETE /v1/fleets/{fleetId}/apps/{appId}/usb-devices`, and
+  `GET /v1/devices/{deviceId}/usb-devices` for what is attached.
+- **Certificates for apps:** issuing CAs under `/v1/orgs/{orgId}/issuing-cas`, an app's certificates
+  under `/v1/fleets/{fleetId}/apps/{appId}/certificates`, `GET /v1/devices/{deviceId}/certificates`, and
+  `GET /v1/device-identity/root` (no sign-in). See [Client certificates](/device-sdk/server/client-certificates/).
+
 ## 2026-11-06: what apps may do on a device
 
 - Apps the hub installs get the runtime and special-access permissions they request automatically,

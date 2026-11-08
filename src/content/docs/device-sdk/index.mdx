@@ -1,16 +1,45 @@
 ---
 title: Device SDK
-description: For the app you ship on OhrTech devices, to work with the OhrTech Agent on the device it runs on. Coming soon.
+description: An Android library for the app you ship on OhrTech devices, to work with the OhrTech Agent on the device it runs on.
 ---
 
-<p><span class="ohr-badge soon">Coming soon</span></p>
+<p><span class="ohr-badge live">Available</span></p>
 
 The Device SDK is the other half of the OhrTech SDK. Where the [Management API](/management-api/)
 runs on your servers and manages many devices, the Device SDK is an Android library for **your app,
-on the device**: it lets your app work with the OhrTech Agent on the device it runs on.
+on the device**: it lets your app work with the OhrTech Agent, the system app that manages the
+device it runs on.
 
-With it, your app will be able to change device settings, manage network and power, lock the screen
-to one app, reboot on a schedule and install its own updates.
+- **Package:** `net.ohrtech:device-sdk` on Maven Central, version `0.2.0`, for Kotlin and Java
+- **Runs on:** OhrTech devices, Android 13 (API 33) and later
+- **Who may use it:** apps your organisation installs through OhrTech. Reading is open to every such
+  app; changing the device needs the fleet's grant ([access, errors and versions](/device-sdk/access/))
+- **Source and sample app:** [OhrTech/device-sdk-android](https://github.com/OhrTech/device-sdk-android) (MIT)
+
+```kotlin
+val sdk = OhrDeviceSdk.connect(context)
+val info = sdk.device.infoAsync()        // info.deviceId is "dev_…", as the Management API names it
+if (sdk.session.mayUse("kiosk")) sdk.kiosk.start(activity)
+sdk.close()
+```
+
+The [quickstart](/device-sdk/quickstart/) takes you from the dependency to a kiosk app that reads its
+managed configuration.
+
+## What your app can do
+
+| Area | What your app can do |
+|---|---|
+| [Wi-Fi and networks](/device-sdk/guides/wifi-and-networks/) | Read Wi-Fi state and the networks around, save, join and forget networks, turn mobile data, airplane mode and roaming on and off, and embed Android's own Wi-Fi screen in your layout |
+| [Kiosk mode](/device-sdk/guides/kiosk/) | Pin your app to the screen, choose what stays available, offer staff the exit PIN, and have the Agent restart your app if it hangs |
+| [Device, power and settings](/device-sdk/guides/device-power-settings/) | Read who the device is (its id, fleet and organisation), read the battery, reboot now or on a schedule, set screen timeout and brightness, read and change OhrTech device settings, install your app's own updates |
+| [Managed configuration](/device-sdk/guides/managed-config/) | Read the settings your app declares, as each fleet or device sets them in the portal or the Management API |
+| [Push](/device-sdk/guides/push/) | Receive messages from your own server, end to end: OhrTech carries them but can't read them |
+| [Keys in the TEE](/device-sdk/guides/keys/) | Make ML-KEM, X-Wing and X25519 keys whose private halves never leave the device's TEE, and prove to your server where they are |
+| [Device attestation](/device-sdk/guides/attestation/) | Prove to your server that a request comes from your unmodified app on a genuine OhrTech device, with no secret in the APK |
+| [Client certificates](/device-sdk/guides/certificates/) | Get a TLS client certificate for a key made on the device, use certificates and private CAs the fleet gives your app |
+| [USB devices](/device-sdk/guides/usb-devices/) | Use the USB devices and accessories the fleet approves for your app, with no "Allow access?" prompt |
+| [Diagnostics](/device-sdk/guides/diagnostics/) | Send your app's own events to the device's history, and keep log lines for the log bundles support asks for |
 
 ## Which one do I need?
 
@@ -19,10 +48,30 @@ to one app, reboot on a schedule and install its own updates.
 | Runs | On your servers, scripts and desktop tools | Inside your app, on the device |
 | Acts on | Any device in your fleets | The device it runs on |
 | Talks to | `api.ohrtech.net` | The OhrTech Agent, on the device |
-| Typical jobs | Help desks, inventory sync, reports, alerts, fleet-wide changes | Kiosk and single-app setups, your app's own updates, on-device settings |
-| Status | [Available](/management-api/) | Coming soon |
+| Typical jobs | Help desks, inventory sync, reports, alerts, fleet-wide changes | Kiosk and single-app setups, your app's own updates, on-device settings, push and attestation for your own back end |
+| Status | [Available](/management-api/) | Available |
+
+## How the two fit together
 
 Many products use both: the app on the device uses the Device SDK, and your back office uses the
-Management API.
+Management API. They meet in a few places:
 
-Its documentation will be published here. Questions in the meantime: [info@ohrtech.net](mailto:info@ohrtech.net).
+- **The same ids.** `sdk.device.info().deviceId` is the device's `dev_…` id, and
+  `sdk.session.app` is your app's `app_…` id, as the Management API and the portal name them.
+- **Grants.** Your organisation decides, per fleet and per app, what the app may change on the
+  device: in the portal on the fleet's Applications tab, or with
+  `PUT /v1/fleets/{fleetId}/apps/{appId}/sdk-access`. See [access](/device-sdk/access/).
+- **Updates.** A version you upload and mark `available` with the
+  [Management API](/management-api/guides/apps/) is downloaded ahead; your app installs it when it
+  is ready, with `sdk.updates.install()`.
+- **Managed configuration.** You set the values your app reads with `sdk.config` per fleet or per
+  device, in the portal or with the Management API.
+- **Your server.** It sends [push messages](/device-sdk/server/send-push/), checks
+  [attestations](/device-sdk/server/verify-attestation/) and accepts
+  [client certificates](/device-sdk/server/client-certificates/) with the Management API and its
+  [.NET SDK](/management-api/sdks/dotnet/).
+- **History.** Every change an app makes through the Device SDK, and every change the Agent
+  refuses, appears in the device's events: in the portal, and with
+  `GET /v1/devices/{deviceId}/events`.
+
+Questions: [info@ohrtech.net](mailto:info@ohrtech.net).

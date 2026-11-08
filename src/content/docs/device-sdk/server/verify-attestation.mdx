@@ -1,0 +1,600 @@
+---
+title: Verify attestations on your server
+description: Check a device attestation from your app once, with the Management API or offline against the OhrTech Attestation Root, then check each request's token.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your app [attests](/device-sdk/guides/attestation/) once and then signs each request with a short
+token. Your server does two things:
+
+1. **Once, when the app registers:** check the attestation. If it passes, keep the device id and the
+   attested public key (two keys for the post-quantum suite).
+2. **On each request:** check the token with the key you kept.
+
+You can check attestations with the Management API, which also tells you the device's fleet and the
+app, or offline, against the OhrTech Attestation Root and a signed list of revoked devices. Tokens
+you always check yourself: they need only the key.
+
+## Give the app a challenge
+
+The challenge is what makes an attestation fresh: KeyMint writes it into the key's certificate, so
+a chain recorded earlier can't be replayed. Make 32 random bytes per registration, keep them with
+the session for a few minutes, send them to the app (base64, say), and use them once.
+
+```csharp
+var challenge = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+```
+
+## Check it with the Management API
+
+`POST /v1/attestations/verify` checks the chain to the OhrTech root, your challenge, that the key is
+in the TEE, OhrTech's boot policy, and that OhrTech still vouches for the device. Anyone signed in
+may call it: it needs no permission.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp nocheck
+// attestation: the app's Attestation.toJson(), read into your own type: suite, ec, mlDsa65
+var verdict = await api.VerifyAttestationAsync(new VerifyAttestationRequest
+{
+    Challenge = Convert.ToBase64String(challenge),
+    Ec = attestation.Ec,
+    MlDsa65 = attestation.MlDsa65,          // null for the ec suite
+    Package = "com.example.kiosk",
+});
+if (!verdict.Valid || verdict.Problems.Count > 0)
+    throw new UnauthorizedAccessException(verdict.Reason ?? string.Join("; ", verdict.Problems));
+if (!verdict.SignerSha256.Contains(MySigningCertSha256))
+    throw new UnauthorizedAccessException("not our build of the app");
+SaveDevice(verdict.DeviceId!, verdict.PublicKeys["ec"], verdict.PublicKeys.GetValueOrDefault("mlDsa65"));
+```
+
+`VerifyAttestationAsync` is in the .NET SDK after 2.1.0.
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/attestations/verify \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "challenge": "q83vEjRWeJCrze8SNFZ4kKvN7xI0VniQq83vEjRWeJA=",
+    "ec": ["MIICwzCC…", "MIICFzCC…", "MIIB9TCC…", "MIIB6TCC…"],
+    "package": "com.example.kiosk"
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `challenge` | The challenge you gave the app, base64. |
+| `ec` | The EC key's chain from `toJson()`, base64 DER, the key's certificate first. |
+| `mlDsa65` | For the `ec-mldsa65` suite, the ML-DSA-65 key's chain. Both chains must pass, from the same device and app. |
+| `package` | Optional: your app's package. A key made for another app is then a problem. |
+
+The answer:
+
+```json
+{
+  "valid": true,
+  "reason": null,
+  "problems": [],
+  "suite": "ec",
+  "deviceId": "dev_3swt6f457299btzpw1bxx4wf0q",
+  "inYourOrganisation": true,
+  "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "packageName": "com.example.kiosk",
+  "versionCode": 103,
+  "signerSha256": ["5f0c3a9e7d21b8e64f9a0c2d1e3b5a7f6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f"],
+  "securityLevel": "tee",
+  "verifiedBootState": "verified",
+  "deviceLocked": true,
+  "ohrTechBootKey": true,
+  "osVersion": 170000,
+  "osPatchLevel": 202611,
+  "vendorPatchLevel": 20261101,
+  "bootPatchLevel": 20260605,
+  "publicKeys": { "ec": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE…" }
+}
+```
+
+- **Accept only `valid` with no `problems`.** `valid` is false, with `reason`, when the chain or the
+  challenge fails, the key is not in the TEE, or OhrTech no longer vouches for the device (lost,
+  retired or compromised). `problems` lists what fails the boot policy (verified boot, a locked
+  bootloader, OhrTech's boot key, a minimum OS patch level when OhrTech sets one) and the
+  `package` you asked for.
+- **Check the signer yourself.** `signerSha256` is the SHA-256 of the app's signing certificates,
+  lowercase hex; the API does not compare it with anything. Compare it with your own (`apksigner
+  verify --print-certs`), or anyone's build of an app with your package name passes.
+- **Check `osPatchLevel`** (YYYYMM) against your own minimum, if you have one.
+- **`inYourOrganisation`** is true when the device is one of yours; only then are `fleetId` and
+  `appId` filled in. Devices of other organisations still verify, without them.
+- **Keep `deviceId` and `publicKeys`** (SubjectPublicKeyInfo, base64): `ec`, and `mlDsa65` for the
+  post-quantum suite. They check the app's tokens.
+
+## Check it yourself
+
+To check attestations offline, without a call per registration, verify the chain yourself against
+the OhrTech Attestation Root. The root is public:
+
+```sh
+curl https://api.ohrtech.net/v1/attestations/root -o ohrtech-attestation-root.pem
+openssl x509 -in ohrtech-attestation-root.pem -noout -fingerprint -sha256
+# sha256 Fingerprint=91:AF:93:36:A8:2E:92:C0:5A:DF:C5:AA:4F:CD:F9:B4:62:67:67:B2:BE:B9:0A:34:6C:D9:6D:15:73:51:A9:70
+```
+
+Download it once, check the fingerprint, and ship it with your server. It is valid until 2051.
+
+### What to check
+
+1. **The chain.** Exactly four certificates: the key's, the unit's attestation key, OhrTech
+   Attestation Intermediate 1, the root, each signed by the next, the last byte-for-byte the root
+   you trust. The unit's certificate and the intermediate must be valid now. Don't check the dates
+   of the key's own certificate: KeyMint gives it a nominal validity, often 1970 to 2048.
+2. **The device.** The unit's certificate (the second) names it in its subject alternative name, as
+   the URI `urn:ohrtech:device:dev_…`. A chain whose unit certificate names no device is not an
+   OhrTech device's.
+3. **The attestation**, the extension `1.3.6.1.4.1.11129.2.1.17` (Android's `KeyDescription`) of the
+   key's certificate:
+   - both security levels (attestation and KeyMint) are TEE or StrongBox, never software;
+   - `attestationChallenge` is your challenge, byte for byte;
+   - in `attestationApplicationId`: your package name, and the SHA-256 of your signing certificate;
+   - in `rootOfTrust` (hardware-enforced): `verifiedBootState` is Verified, `deviceLocked` is true,
+     and `verifiedBootKey` is OhrTech's: `2beb1f5c24417c079046e60db3348bba47858b4990eeda2f5b88729507ff2ada`;
+   - `osPatchLevel` (YYYYMM) is at least your minimum, if you have one.
+4. **For the post-quantum suite**, the same for the ML-DSA-65 key's chain, from the same device and
+   for the same app, and that the first key is EC and the second ML-DSA-65.
+5. **The status list**: the unit's certificate is not revoked (see below).
+
+### With the .NET SDK
+
+`DeviceAttestationVerifier` does all of this (.NET 10, in the SDK after 2.1.0):
+
+```csharp nocheck
+using OhrTech.Management.Attestation;
+
+using var http = new HttpClient();
+var status = await AttestationStatusList.FetchAsync(http);   // good for 24 hours: refresh a few times a day
+var verifier = new DeviceAttestationVerifier(new DeviceAttestationPolicy
+{
+    PackageName = "com.example.kiosk",
+    SignerSha256 = MySigningCertSha256,      // hex, as in apksigner verify --print-certs
+    MinOsPatchLevel = 202610,
+});
+var result = verifier.Verify(attestationJson, challenge, status);   // attestationJson: what toJson() sent
+if (!result.Accepted)
+    throw new UnauthorizedAccessException(result.Reason ?? string.Join("; ", result.Problems));
+SaveDevice(result.DeviceId!, result.EcPublicKey!, result.MlDsa65PublicKey);
+```
+
+`DeviceAttestationPolicy.RequireOhrTechBoot` (default true) requires verified boot, a locked
+bootloader and OhrTech's boot key. The SDK carries the root as `OhrTechAttestation.RootPem`.
+
+### In Python
+
+A complete verifier in one file, for Python with `cryptography` 48 or later (ML-DSA-65):
+
+```python
+# ohrattest.py
+"""Checks OhrTech Device SDK attestations on your server, offline: the chain to the OhrTech
+Attestation Root, what KeyMint attests, the signed status list of revoked units, and the app's
+per-request tokens. Needs the `cryptography` package, 48 or later (ML-DSA-65)."""
+import base64
+import functools
+import hmac
+import json
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, mldsa
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
+
+# SHA-256 of OhrTech's verified boot key, as an attestation's root of trust reports it.
+OHRTECH_BOOT_KEY = "2beb1f5c24417c079046e60db3348bba47858b4990eeda2f5b88729507ff2ada"
+KEY_DESCRIPTION = x509.ObjectIdentifier("1.3.6.1.4.1.11129.2.1.17")
+STATUS_SIGNING_EKU = x509.ObjectIdentifier("2.25.73147592544128211943638446974928104936")
+
+
+class AttestationError(Exception):
+    pass
+
+
+def _checked(f):
+    """Malformed input fails as AttestationError too."""
+    @functools.wraps(f)
+    def run(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except AttestationError:
+            raise
+        except Exception as e:
+            raise AttestationError(f"can't be read: {e!r}") from e
+    return run
+
+
+@dataclass
+class Result:
+    suite: str = "ec"
+    device_id: str = ""  # dev_…
+    unit_serials: list = field(default_factory=list)  # lowercase hex, as the status list keys them
+    package: str = ""
+    version_code: int = 0
+    signer_sha256: list = field(default_factory=list)  # the app's signing certificates, hex
+    security_level: str = ""  # tee or strongbox
+    boot_state: str = ""  # verified, self-signed, unverified or failed
+    device_locked: bool = False
+    boot_key_sha256: str = ""
+    os_patch_level: int = 0  # YYYYMM
+    ec_key: bytes = b""  # SubjectPublicKeyInfo: keep it for verify_token
+    mldsa65_key: bytes | None = None
+
+    def problems(self, package=None, signer_sha256=None, min_os_patch_level=None):
+        """What fails your policy (OhrTech's boot always); accept the device only when empty."""
+        p = []
+        if self.boot_state != "verified":
+            p.append(f"verified boot is {self.boot_state}")
+        if not self.device_locked:
+            p.append("the bootloader is not locked")
+        if self.boot_key_sha256 != OHRTECH_BOOT_KEY:
+            p.append("the device did not boot with OhrTech's key")
+        if min_os_patch_level and self.os_patch_level < min_os_patch_level:
+            p.append(f"OS patch level {self.os_patch_level} is older than {min_os_patch_level}")
+        if package and self.package != package:
+            p.append(f"the key is not {package}'s")
+        if signer_sha256 and signer_sha256.lower() not in self.signer_sha256:
+            p.append("the app is not signed with the expected key")
+        return p
+
+
+@_checked
+def verify(attestation_json, challenge: bytes, root: x509.Certificate, status=None, now=None) -> Result:
+    """Checks an attestation as the app's Attestation.toJson() sends it, for your challenge. With a
+    status list (from open_status), a revoked unit fails. Raises AttestationError."""
+    now = now or datetime.now(timezone.utc)
+    a = json.loads(attestation_json)
+    r = _verify_chain(a["ec"], root, challenge, now)
+    if not isinstance(load_der_public_key(r.ec_key), ec.EllipticCurvePublicKey):
+        raise AttestationError("the first key is not an EC key")
+    if a.get("mlDsa65"):
+        try:
+            pq = _verify_chain(a["mlDsa65"], root, challenge, now)
+        except AttestationError as e:
+            raise AttestationError(f"the ML-DSA-65 key: {e}")
+        if not isinstance(load_der_public_key(pq.ec_key), mldsa.MLDSA65PublicKey):
+            raise AttestationError("the second key is not an ML-DSA-65 key")
+        if (pq.device_id, pq.package) != (r.device_id, r.package):
+            raise AttestationError("the two keys come from different units or apps")
+        r.suite, r.mldsa65_key = "ec-mldsa65", pq.ec_key
+        r.unit_serials = sorted(set(r.unit_serials + pq.unit_serials))
+    if a.get("suite", r.suite) != r.suite:
+        raise AttestationError("the suite does not match the chains")
+    if status is not None:
+        if now > status["expires_at"]:
+            raise AttestationError("the status list has expired: fetch a new one")
+        for s in r.unit_serials:
+            if s in status["revoked"]:
+                raise AttestationError(f"OhrTech no longer vouches for this device ({status['revoked'][s]['reason']})")
+    return r
+
+
+def _check_issued(certs, now):
+    """Each certificate signed by the next, every issuer a CA; all but the first valid at now."""
+    for i, (child, issuer) in enumerate(zip(certs, certs[1:])):
+        try:
+            child.verify_directly_issued_by(issuer)
+            bc = issuer.extensions.get_extension_for_class(x509.BasicConstraints).value
+            ku = issuer.extensions.get_extension_for_class(x509.KeyUsage).value
+        except Exception as e:
+            raise AttestationError(f"the chain does not verify to the OhrTech Attestation Root: {e}")
+        if not bc.ca or not ku.key_cert_sign or (bc.path_length is not None and bc.path_length < i):
+            raise AttestationError("the chain does not verify: an issuer is not a CA for this path")
+    for c in certs[1:]:
+        if not c.not_valid_before_utc <= now <= c.not_valid_after_utc:
+            raise AttestationError(f"{c.subject.rfc4514_string()} is not valid now")
+
+
+def _verify_chain(chain_b64, root, challenge, now) -> Result:
+    certs = [x509.load_der_x509_certificate(base64.b64decode(c)) for c in chain_b64]
+    if len(certs) == 3:
+        certs.append(root)
+    # The key, the unit's attestation key, the intermediate, the root. KeyMint gives the key's own
+    # certificate a nominal validity (often 1970 to 2048), so its dates are not checked.
+    if len(certs) != 4 or certs[3] != root:
+        raise AttestationError("the chain is not the key, the unit, the intermediate and the OhrTech root")
+    _check_issued(certs, now)
+    leaf, unit = certs[0], certs[1]
+    r = Result(unit_serials=[_serial(unit)],
+               ec_key=leaf.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
+    try:
+        uris = unit.extensions.get_extension_for_class(x509.SubjectAlternativeName).value \
+            .get_values_for_type(x509.UniformResourceIdentifier)
+    except x509.ExtensionNotFound:
+        uris = []
+    r.device_id = next((u.removeprefix("urn:ohrtech:device:") for u in uris if u.startswith("urn:ohrtech:device:")), "")
+    if not r.device_id:
+        raise AttestationError("the unit's attestation key certificate does not name the device")
+
+    try:
+        kd = leaf.extensions.get_extension_for_oid(KEY_DESCRIPTION).value.value
+    except x509.ExtensionNotFound:
+        raise AttestationError("the key's certificate has no attestation")
+    f = [v for _, _, v in _items(_one(kd))]
+    levels = {1: "tee", 2: "strongbox"}
+    if _int(f[1]) not in levels or _int(f[3]) not in levels:
+        raise AttestationError("the key is not in the TEE")
+    r.security_level = levels[_int(f[1])]
+    if not hmac.compare_digest(f[4], challenge):
+        raise AttestationError("the challenge does not match")
+    for auth in (f[7], f[6]):  # hardware-enforced first; the app's identity is in the software list
+        _read_authorizations(auth, r)
+    return r
+
+
+def _read_authorizations(b, r):
+    for cls, tag, v in _items(b):
+        if cls != 2:
+            continue
+        v = _one(v)  # explicitly tagged
+        if tag == 704 and not r.boot_state:  # rootOfTrust
+            rot = [x for _, _, x in _items(v)]
+            r.boot_key_sha256, r.device_locked = rot[0].hex(), rot[1] != b"\x00"
+            r.boot_state = ["verified", "self-signed", "unverified", "failed"][min(_int(rot[2]), 3)]
+        elif tag == 706 and not r.os_patch_level:  # osPatchLevel
+            r.os_patch_level = _int(v)
+        elif tag == 709 and not r.package:  # attestationApplicationId
+            packages, digests = [x for _, _, x in _items(_one(v))]
+            first = [x for _, _, x in _items(next(_items(packages))[2])]
+            r.package, r.version_code = first[0].decode(), _int(first[1])
+            r.signer_sha256 = [d.hex() for _, _, d in _items(digests)]
+
+
+@_checked
+def open_status(jws: str, root: x509.Certificate, now=None) -> dict:
+    """Checks GET https://api.ohrtech.net/v1/attestations/status: an ES256 JWS whose x5c is the
+    status certificate and its intermediate, under root, with the status signing EKU."""
+    now = now or datetime.now(timezone.utc)
+    parts = jws.strip().split(".")
+    if len(parts) != 3:
+        raise AttestationError("not a JWS")
+    h = json.loads(_b64url(parts[0]))
+    if h.get("alg") != "ES256" or len(h.get("x5c", [])) != 2:
+        raise AttestationError("not an ES256 status list with x5c")
+    signer, intermediate = (x509.load_der_x509_certificate(base64.b64decode(c)) for c in h["x5c"])
+    _check_issued([signer, intermediate, root], now)
+    if not signer.not_valid_before_utc <= now <= signer.not_valid_after_utc:
+        raise AttestationError("the status certificate is not valid now")
+    bc = signer.extensions.get_extension_for_class(x509.BasicConstraints).value
+    eku = signer.extensions.get_extension_for_class(x509.ExtendedKeyUsage).value
+    if bc.ca or STATUS_SIGNING_EKU not in eku:
+        raise AttestationError("the signer is not an OhrTech Attestation Status certificate")
+    if not _es256(signer.public_key(), f"{parts[0]}.{parts[1]}", parts[2]):
+        raise AttestationError("the status list's signature does not verify")
+    p = json.loads(_b64url(parts[1]))
+    status = {"issued_at": _time(p["iat"]), "expires_at": _time(p["exp"]), "revoked": p["entries"]}
+    if now > status["expires_at"]:
+        raise AttestationError("the status list has expired")
+    return status
+
+
+@_checked
+def verify_token(token: str, audience: str, ec_key: bytes, mldsa65_key: bytes | None = None, now=None) -> dict:
+    """Checks a token from OhrAttestation.token(audience) with the keys you kept from the
+    attestation (with mldsa65_key, the token must carry both signatures). Returns its payload."""
+    now = now or datetime.now(timezone.utc)
+    parts = token.split(".")
+    alg, n = ("ES256+ML-DSA-65", 4) if mldsa65_key else ("ES256", 3)
+    if len(parts) != n:
+        raise AttestationError("not a token of this device's suite")
+    h = json.loads(_b64url(parts[0]))
+    if h.get("typ") != "ohr-attest" or h.get("alg") != alg:
+        raise AttestationError("not an OhrTech attestation token of this device's suite")
+    signed = f"{parts[0]}.{parts[1]}"
+    if not _es256(load_der_public_key(ec_key), signed, parts[2]):
+        raise AttestationError("the EC signature does not verify")
+    if mldsa65_key:
+        try:
+            load_der_public_key(mldsa65_key).verify(_b64url(parts[3]), signed.encode())
+        except Exception:
+            raise AttestationError("the ML-DSA-65 signature does not verify")
+    p = json.loads(_b64url(parts[1]))
+    iat, exp, t, skew = p["iat"], p["exp"], now.timestamp(), 60
+    if p["aud"] != audience:
+        raise AttestationError(f"the token is for {p['aud']}")
+    if exp - iat > 600:
+        raise AttestationError("the token lives too long")
+    if t + skew < iat or t - skew > exp:
+        raise AttestationError("the token is not valid now")
+    return p
+
+
+def _es256(key, signed: str, sig_b64url: str) -> bool:
+    sig = _b64url(sig_b64url)
+    if len(sig) != 64:
+        return False
+    try:
+        der = encode_dss_signature(int.from_bytes(sig[:32], "big"), int.from_bytes(sig[32:], "big"))
+        key.verify(der, signed.encode(), ec.ECDSA(hashes.SHA256()))
+        return True
+    except Exception:
+        return False
+
+
+def _b64url(s: str) -> bytes:
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+
+
+def _time(seconds: int) -> datetime:
+    return datetime.fromtimestamp(seconds, timezone.utc)
+
+
+def _serial(cert) -> str:
+    """The serial as the status list writes it: the DER integer's bytes, lowercase hex."""
+    n = cert.serial_number
+    return n.to_bytes(n.bit_length() // 8 + 1, "big").hex()
+
+
+# A small DER reader: enough for KeyMint's KeyDescription (tags above 30 included).
+def _items(b: bytes):
+    """Each element of a constructed value's contents: (class, tag, contents)."""
+    i = 0
+    while i < len(b):
+        first = b[i]
+        i += 1
+        cls, tag = first >> 6, first & 0x1F
+        if tag == 0x1F:
+            tag = 0
+            while True:
+                c = b[i]
+                i += 1
+                tag = (tag << 7) | (c & 0x7F)
+                if not c & 0x80:
+                    break
+        n = b[i]
+        i += 1
+        if n & 0x80:
+            k = n & 0x7F
+            n = int.from_bytes(b[i:i + k], "big")
+            i += k
+        yield cls, tag, b[i:i + n]
+        i += n
+
+
+def _one(b: bytes) -> bytes:
+    """The contents of the single element in b."""
+    return next(_items(b))[2]
+
+
+def _int(b: bytes) -> int:
+    return int.from_bytes(b, "big", signed=True)
+```
+
+Use it:
+
+```python
+import urllib.request
+from cryptography import x509
+import ohrattest
+
+root = x509.load_pem_x509_certificate(open("ohrtech-attestation-root.pem", "rb").read())
+jws = urllib.request.urlopen("https://api.ohrtech.net/v1/attestations/status").read().decode()
+status = ohrattest.open_status(jws, root)                          # refresh a few times a day
+
+# When the app registers: body is what Attestation.toJson() sent, challenge the bytes you gave it.
+result = ohrattest.verify(body, challenge, root, status)          # raises AttestationError
+problems = result.problems(package="com.example.kiosk", signer_sha256=MY_SIGNING_CERT_SHA256,
+                           min_os_patch_level=202610)
+if problems:
+    raise PermissionError("; ".join(problems))
+save_device(result.device_id, result.ec_key, result.mldsa65_key)
+
+# Each request: the token from the app's header, with the keys you kept for that device.
+claims = ohrattest.verify_token(token, "https://api.example.com", ec_key, mldsa65_key)
+```
+
+It is tested against real attestations from an OhrTech device, of both suites, and against the
+live status list.
+
+## The status list
+
+When a device is lost, retired or compromised, OhrTech stops vouching for its attestation keys. The
+Management API's `verify` refuses them at once. Offline, fetch the signed list of revoked unit
+certificates, `GET https://api.ohrtech.net/v1/attestations/status` (no sign-in), a few times a day,
+and refuse a chain whose unit certificate is on it.
+
+It is a JWS (`application/jwt`), ES256:
+
+- The header has `"typ": "ohr-attestation-status"` and `x5c`: the signing certificate, then its
+  intermediate, base64 DER.
+- The signing certificate is "OhrTech Attestation Status 1", issued by OhrTech Attestation
+  Intermediate 1 under the OhrTech Attestation Root. Check that chain, that the signing
+  certificate is not a CA, and that it has the extended key usage
+  `2.25.73147592544128211943638446974928104936` (a UUID OID), then the signature, as with any JWS.
+- The payload:
+
+```json
+{
+  "iat": 1794121531,
+  "exp": 1794207931,
+  "entries": {
+    "00c41f7a2b9e8d3c5a6f1e0d9b8c7a6f5e": { "status": "REVOKED", "reason": "lost", "revokedAt": "2026-11-08T07:05:30.5274706Z" }
+  }
+}
+```
+
+Each entry is keyed by the unit certificate's serial number in lowercase hex, as its DER integer
+is written (with a leading `00` when the first byte is 0x80 or more). `reason` is `retired`, `lost`
+or `compromised`. A list is good for 24 hours (`exp`): refuse to use an expired one. Certificates
+that have expired anyway leave the list.
+
+Go's `crypto/x509` can't parse the status certificate (its extended key usage OID has an arc
+larger than 64 bits): in Go, read that certificate with another ASN.1 parser, or use `verify`.
+
+To stop vouching for one of your own devices, for example one that was stolen:
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp nocheck
+int revoked = await api.RevokeDeviceAttestationAsync("dev_3swt6f457299btzpw1bxx4wf0q",
+    new RevokeAttestationRequest { Reason = "lost" });   // retired, lost or compromised
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/attestation/revoke \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"reason": "lost"}'
+```
+
+</TabItem>
+</Tabs>
+
+It needs `EditSettings`. It revokes every attestation key certificate OhrTech has issued to the
+device until then, and answers with how many. Chains through them fail in `verify` at once, and
+offline once you fetch the next status list. There is no call to undo it.
+
+## Check each request's token
+
+The token is `header.payload.ecSignature`, or `header.payload.ecSignature.mlDsa65Signature` for the
+post-quantum suite, each part base64url:
+
+| Part | |
+|---|---|
+| header | `{"typ":"ohr-attest","alg":"ES256"}`, or `"alg":"ES256+ML-DSA-65"` |
+| payload | `{"aud", "iat", "exp", "nonce"?}`: the audience, issued and expiry times in Unix seconds, and the nonce if the app passed one |
+| `ecSignature` | ECDSA P-256 with SHA-256 over `header.payload`, as JWS writes it (r and s, 32 bytes each). An `ES256` token is a standard JWS. |
+| `mlDsa65Signature` | ML-DSA-65 (pure, empty context) over the same `header.payload` |
+
+Check, with the key or keys you kept for that device:
+
+1. `typ` is `ohr-attest` and `alg` is the device's suite. A device registered with both keys must
+   send both signatures.
+2. The signatures verify.
+3. `aud` is your server.
+4. `iat` and `exp` hold now, with a minute's leeway, and `exp - iat` is at most 10 minutes.
+5. If you care about replay within those minutes, give the app a nonce and check it.
+
+```csharp nocheck
+var claims = AttestationToken.Verify(token, "https://api.example.com", device.EcPublicKey, device.MlDsa65PublicKey);
+```
+
+`AttestationToken.Verify` throws `CryptographicException` when any check fails. In Python,
+`ohrattest.verify_token` does the same.
+
+## When to attest again
+
+The key your server keeps lasts as long as the app keeps it: tokens keep verifying after the
+unit's attestation certificate expires. Ask the app to attest again when you want fresh proof of the
+boot state and patch level (say, every few weeks), when it reinstalls or its data was cleared, and
+when a token fails with the key you have. Each `attest` replaces the app's key, so register the new
+key and drop the old one.

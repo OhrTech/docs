@@ -5,7 +5,7 @@ import starlightSidebarTopics from 'starlight-sidebar-topics';
 import starlightLinksValidator from 'starlight-links-validator';
 
 // docs.ohrtech.net: the OhrTech SDK's two parts, each with its own sidebar. The Management API is
-// called from customers' servers and tools; the Device SDK (coming) from apps on the device.
+// called from customers' servers and tools; the Device SDK from apps on the device.
 export default defineConfig({
 	site: 'https://docs.ohrtech.net',
 	trailingSlash: 'always',
@@ -104,8 +104,36 @@ export default defineConfig({
 							link: '/device-sdk/',
 							icon: 'phone',
 							id: 'device-sdk',
-							badge: { text: 'Coming soon', variant: 'note' },
-							items: [{ label: 'Overview', slug: 'device-sdk' }],
+							items: [
+								{
+									label: 'Start here',
+									items: [{ label: 'Overview', slug: 'device-sdk' }, 'device-sdk/quickstart', 'device-sdk/access'],
+								},
+								{
+									label: 'Guides',
+									items: [
+										'device-sdk/guides/wifi-and-networks',
+										'device-sdk/guides/kiosk',
+										'device-sdk/guides/device-power-settings',
+										'device-sdk/guides/managed-config',
+										'device-sdk/guides/push',
+										'device-sdk/guides/keys',
+										'device-sdk/guides/attestation',
+										'device-sdk/guides/certificates',
+										'device-sdk/guides/usb-devices',
+										'device-sdk/guides/diagnostics',
+									],
+								},
+								{
+									label: 'On your server',
+									items: [
+										'device-sdk/server/send-push',
+										'device-sdk/server/verify-attestation',
+										'device-sdk/server/client-certificates',
+									],
+								},
+								{ label: 'Reference', items: ['device-sdk/changelog'] },
+							],
 						},
 					],
 					{ exclude: ['/'] },

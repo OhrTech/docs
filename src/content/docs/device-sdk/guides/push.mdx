@@ -1,0 +1,331 @@
+---
+title: Push messages
+description: Receive end-to-end encrypted messages from your own server in your app, without Google services, with the key in the device's TEE.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your server can wake your app on a device and hand it a message: a new order, a changed price list,
+a request to sync. The message is sealed to a key in the device's TEE and signed with your server's
+key. The OhrTech hub and the OhrTech Agent carry it but can't read it, and your app accepts only
+messages your server signed. No Google services are involved.
+
+The steps:
+
+1. The app declares a push service, the class that receives the messages.
+2. The app registers once, with your server's public sender keys. It gets a token (`psh_…`) and a
+   public key, and sends both to your server.
+3. Your server seals and signs each message and sends it with `POST /v1/push`. See
+   [send push messages](/device-sdk/server/send-push/).
+4. The library checks each message and passes the good ones to your service's `onMessage`.
+
+Push is open to every app your organisation installed through OhrTech: no fleet grant is needed. It
+needs OhrTech Agent 1059 or later and OhrTech OS 2026110702 or later, the OS with the OhrTech KEM
+app in the TEE. On an older OS, `register` throws `OhrException.Unsupported`.
+
+## Choose a suite
+
+A token has one suite, chosen when the app registers. Your server must seal with that suite.
+
+| | `x25519` (default) | `xwing-mldsa65` |
+|---|---|---|
+| Encryption | HPKE with X25519 | HPKE with X-Wing (ML-KEM-768 and X25519) |
+| Your server signs with | Ed25519 | Ed25519 and ML-DSA-65; both must verify |
+| Size added to your data | About 175 bytes, plus the length of your message id | About 4.6 KB |
+| The app's public key | 32 bytes | 1,216 bytes |
+| Use it for | Most messages: wake-ups, notices, ids to fetch | Content that must stay secret for years, even against a future quantum computer |
+
+Either way, a message carries up to 4,096 bytes of your data.
+
+## Declare the push service
+
+Subclass `OhrPushService`:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+class Push : OhrPushService() {
+    override fun onMessage(message: OhrPushMessage) {
+        val json = String(message.data)          // your bytes, as your server sealed them
+        if (message.highPriority) startForegroundService(Intent(this, SyncService::class.java))
+        else WorkManager.getInstance(this).enqueue(OneTimeWorkRequest.from(SyncWorker::class.java))
+    }
+
+    override fun onDropped(pushId: String, reason: String) {
+        Log.w("Push", "Dropped $pushId: $reason")
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+public class Push extends OhrPushService {
+    @Override
+    public void onMessage(OhrPushMessage message) {
+        String json = new String(message.getData(), StandardCharsets.UTF_8);
+        if (message.getHighPriority()) startForegroundService(new Intent(this, SyncService.class));
+        else WorkManager.getInstance(this).enqueue(OneTimeWorkRequest.from(SyncWorker.class));
+    }
+
+    @Override
+    public void onDropped(String pushId, String reason) {
+        Log.w("Push", "Dropped " + pushId + ": " + reason);
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+Declare it in your manifest, protected by the `RECEIVE_PUSH` permission. Only the OhrTech Agent holds
+that permission, so no other app can feed your service messages:
+
+```xml
+<service
+    android:name=".Push"
+    android:exported="true"
+    android:permission="net.ohrtech.device.permission.RECEIVE_PUSH">
+    <intent-filter>
+        <action android:name="net.ohrtech.device.action.PUSH" />
+    </intent-filter>
+</service>
+```
+
+The Agent refuses to deliver to a push service that doesn't require this permission. Its messages are
+dropped with the reason `push_service_unprotected`.
+
+The callbacks run one at a time on a worker thread of the service. The Agent binds the service to
+deliver and lets it go about 30 seconds after the last message, so start a foreground service or
+WorkManager for longer work.
+
+| `OhrPushService` | |
+|---|---|
+| `onMessage(message)` | A message that passed every check. You must override it |
+| `onDropped(pushId, reason)` | A message the library refused, and why (see [dropped messages](#dropped-messages)) |
+| `onTokenChanged(token)` | For a token that changed or ended (`null`: register again). The current OhrTech Agent doesn't call it yet; see [when a token ends](#when-a-token-ends) |
+| `senderKeys()` | The keys messages must be signed with. By default, the ones you gave `register` or `setSenderKeys` |
+
+| `OhrPushMessage` | |
+|---|---|
+| `id` | Your server's id for the message |
+| `data` | Your bytes, at most 4,096 |
+| `expiresAtMs` | When it expires, as your server sealed it (Unix milliseconds) |
+| `highPriority` | Sent with priority `high` |
+| `pushId` | The hub's id for this delivery (`pmsg_…`). Your server can look it up |
+
+## Register
+
+Register once, with your server's sender public keys, and send the token to your server. The sender
+keys are public; build them into the app, or deliver them with
+[managed configuration](/device-sdk/guides/managed-config/).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+// Your server's public keys, base64, as its push library printed them
+val senderKeys = listOf(SenderKey.fromBase64(PUSH_ED25519))
+
+lifecycleScope.launch {
+    OhrDeviceSdk.connect(context).use { sdk ->
+        sdk.push.setSenderKeys(senderKeys)
+        val token = withContext(Dispatchers.IO) { sdk.push.token() } ?: sdk.push.registerAsync(senderKeys)
+        myServer.savePushToken(token.token, token.suite.wireName, token.publicKeyBase64)
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// Your server's public keys, base64, as its push library printed them
+List<SenderKey> senderKeys = List.of(SenderKey.fromBase64(PUSH_ED25519));
+
+executor.execute(() -> {
+    try (OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(context)) {
+        OhrPush push = sdk.getPush();
+        push.setSenderKeys(senderKeys);
+        PushToken token = push.token();
+        if (token == null) token = push.register(senderKeys);
+        myServer.savePushToken(token.getToken(), token.getSuite().getWireName(), token.getPublicKeyBase64());
+    } catch (OhrException e) {
+        Log.w("Push", "Push is not available: " + e.getMessage());
+    }
+});
+```
+
+</TabItem>
+</Tabs>
+
+`register` makes the app's push key in the TEE, has the hub check the key's attestation, and waits
+for the hub's token, up to 30 seconds. Call it on a worker thread, or use `registerAsync` from a
+coroutine. For the post-quantum suite, pass sender keys that include ML-DSA-65 and the suite:
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+val senderKeys = listOf(SenderKey.fromBase64(PUSH_ED25519, PUSH_MLDSA65))
+val token = sdk.push.register(senderKeys, OhrPush.Suite.XWING_MLDSA65)
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+List<SenderKey> senderKeys = List.of(SenderKey.fromBase64(PUSH_ED25519, PUSH_MLDSA65));
+PushToken token = sdk.getPush().register(senderKeys, OhrPush.Suite.XWING_MLDSA65);
+```
+
+</TabItem>
+</Tabs>
+
+Send your server three things from the `PushToken`: `token` (`psh_…`), `suite.wireName` (`x25519`
+or `xwing-mldsa65`) and `publicKeyBase64`. The public key is what your server seals to; the token
+is what it sends to.
+
+Registering again makes a new key and a new token, and ends the old token. Messages still on their
+way to the old token are dropped. So don't register on every start: call `token()` first, as above,
+and register only when it returns `null`.
+
+Call `setSenderKeys` on every start. It is cheap and local, and the library keeps the keys in the
+app's own storage, which "Clear storage" in Android's settings empties. Without them every message
+is dropped with `signature`. Alternatively, override `senderKeys()` in your service to return
+constants.
+
+| `OhrPush` | |
+|---|---|
+| `register(senderKeys, suite = X25519)` | Makes the key and the token; ends any old token. `registerAsync` suspends |
+| `token()` | The current token, or `null` |
+| `unregister()` | Ends the token and deletes the push key |
+| `setSenderKeys(keys)`, `senderKeys()` | The keys messages must be signed with |
+
+| Error | When |
+|---|---|
+| `IllegalArgumentException` | No sender keys, or `XWING_MLDSA65` with no sender key that has ML-DSA-65 |
+| `OhrException.Unsupported` | The device's OS has no OhrTech KEM app |
+| `OhrException.Failed` | The hub can't be reached or didn't answer in 30 seconds (try again later), or it refused the key (`The hub refused: …`) |
+| `OhrException.NotManaged` | Your organisation didn't install this app through OhrTech |
+
+`SenderKey` checks the key sizes: an Ed25519 public key is 32 bytes, an ML-DSA-65 public key 1,952.
+
+## What the library checks
+
+Before `onMessage`, the library checks that:
+
+1. The envelope is well formed, version 1, and for the app's current token.
+2. Its suite is the token's.
+3. One of the sender keys made every signature the suite has: Ed25519, and for `xwing-mldsa65`
+   ML-DSA-65 too.
+4. It opens with the app's key in the TEE. The app opens it through the Agent; neither the app nor
+   the Agent ever holds the private key.
+5. It hasn't expired, by the device's clock, with 2 minutes' grace.
+6. Its `id` wasn't seen before. The library remembers ids until they expire, so your server can send
+   the same message again safely. It keeps up to 2,000 ids; with more, the ones that expire soonest
+   go first.
+
+A message that fails a check never reaches `onMessage`. The library drops it, tells the hub why, and
+calls `onDropped`.
+
+### Dropped messages
+
+| `reason` | Why |
+|---|---|
+| `malformed` | Not a push envelope, or what it sealed isn't a push message |
+| `token` | It is for a token the app no longer has |
+| `suite` | It was sealed with the other suite |
+| `signature` | None of the sender keys signed it |
+| `does_not_open` | It wasn't sealed to this app's key |
+| `expired` | Its expiry passed, plus 2 minutes |
+| `duplicate` | Its `id` was seen before |
+| `agent` | The OhrTech Agent failed while opening it, for example because it stopped |
+
+Your server sees these as the message's `dropped` status, with `app_` before the reason (for example
+`app_signature`). The Agent also drops some messages before they reach the app, for example when
+the app has no push service. See [message statuses](/device-sdk/server/send-push/#follow-a-message).
+
+## Priority and Doze
+
+Your server sends each message as `normal` (the default) or `high`.
+
+- **`high`**: before it delivers, the Agent puts your app on Android's temporary power allowlist for
+  20 seconds. That exempts it from Doze, and lets it start a foreground service from the background.
+  Use it for what the user or the business is waiting for.
+- **`normal`**: delivered the same way, without the exemption. A foreground service start from
+  `onMessage` may be refused, so use WorkManager.
+
+`message.highPriority` tells you which one it was.
+
+## Expiry and duplicates
+
+A message has two expiry times, set by your server:
+
+- The **expiry inside the sealed message**. The library drops the message after it (plus 2 minutes'
+  grace), however it arrived.
+- The **`ttl`** of the send, 1 second to 28 days (default 1 day). The hub keeps trying until then,
+  and the Agent drops a message that reaches the device later.
+
+The hub sends a message again until the Agent acknowledges it, so the same message can arrive
+twice. The library drops the repeat as `duplicate`. Give each new message a new `id`, and keep the
+`id` when you send the same message again.
+
+## Rotate keys
+
+**Your server's sender keys.** The library accepts a message signed by any key in its list, so
+rotate in three steps:
+
+1. Ship the new key next to the old one: `setSenderKeys(listOf(oldKey, newKey))`.
+2. When the apps have it, sign with the new key.
+3. Drop the old key: `setSenderKeys(listOf(newKey))`.
+
+**The app's push key.** Call `register` again. The app gets a new key and token, the old token ends,
+and messages still queued for it are dropped. Send the new token to your server.
+
+## When a token ends
+
+| What happened | What to do |
+|---|---|
+| The app registered again | Use the new token |
+| The app called `unregister()` | Nothing. Register again to receive messages |
+| The app was uninstalled | Nothing. The token and the app's keys are deleted with it |
+| The device moved to a fleet without the app, or the app was removed from the device's fleet | Nothing. The token ends at the next message your server sends to it |
+
+Your server learns that a token ended when `POST /v1/push` refuses a message with
+`the token has ended (…)`. Then drop the token, and wait for the app to send a new one.
+
+`onTokenChanged` is meant to tell the app about these changes, but the current OhrTech Agent doesn't
+call it yet. Until it does, check `token()` when the app starts, as in [Register](#register), and
+send the token to your server again when it differs from what you last sent.
+
+## Unregister
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) { sdk.push.unregister() }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+sdk.getPush().unregister();   // on a worker thread
+```
+
+</TabItem>
+</Tabs>
+
+The token ends, the push key is deleted, and messages still on their way are dropped. Calling it
+when the app isn't registered does nothing.
+
+## See also
+
+- [Send push messages](/device-sdk/server/send-push/): the server side, with code for C#, Node, Go
+  and Python.
+- [Keys in the TEE](/device-sdk/guides/keys/): the same TEE, for your own keys.
+- [Access](/device-sdk/access/): which apps may use what, and the Agent versions.

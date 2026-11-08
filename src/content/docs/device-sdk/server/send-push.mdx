@@ -1,0 +1,683 @@
+---
+title: Send push messages
+description: Seal and sign messages to your app's push tokens on your own server, send them with POST /v1/push, and follow each one to the app.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Your server sends a push message to one app on one device. It seals the message to the app's public
+key, signs it with your sender key, and posts it to `POST /v1/push`. The OhrTech hub queues it and
+the device's OhrTech Agent delivers it. Neither can read it, and the app accepts it only with your
+signature. The app side is in [push messages](/device-sdk/guides/push/).
+
+You need:
+
+- **The app's token, suite and public key.** The app sends them to your server when it registers.
+- **Your sender keys.** You make them once, below.
+- **A service account with `SendPush`** in the device's organisation. Every member of the
+  organisation has it; give it to a service account explicitly (see
+  [permissions](/management-api/permissions/)).
+
+## Make your sender keys
+
+Your sender keys are two 32-byte seeds: an Ed25519 seed for every message, and an ML-DSA-65 seed
+for the `xwing-mldsa65` suite. Keep the seeds secret, in your secrets store, not in your code. The
+app gets the public keys.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp nocheck
+using OhrTech.Management.Push;
+
+using var key = PushSenderKey.Generate();   // Generate(postQuantum: false): Ed25519 only
+
+// Secret: store these two seeds
+Console.WriteLine(Convert.ToBase64String(key.Ed25519Seed));
+Console.WriteLine(Convert.ToBase64String(key.MlDsa65Seed!));
+// Public: build these into the app, as SenderKey.fromBase64(ed25519, mlDsa65)
+Console.WriteLine(Convert.ToBase64String(key.PublicKeys.Ed25519));
+Console.WriteLine(Convert.ToBase64String(key.PublicKeys.MlDsa65!));
+```
+
+</TabItem>
+<TabItem label="Node, Go, Python">
+
+A seed is 32 random bytes:
+
+```sh
+openssl rand -base64 32   # OHR_PUSH_ED25519_SEED
+openssl rand -base64 32   # OHR_PUSH_MLDSA65_SEED
+```
+
+The samples below print the public keys from the seeds: `senderPublicKeys()` (Node),
+`Sender.PublicKeys()` (Go), `Sender.public_keys()` (Python).
+
+</TabItem>
+</Tabs>
+
+The seeds mean the same in every language: keys made with one sample work with the others.
+
+The app carries the public keys as its sender keys:
+
+```kotlin
+val senderKeys = listOf(SenderKey.fromBase64(PUSH_ED25519, PUSH_MLDSA65))
+```
+
+An Ed25519 public key is 32 bytes and an ML-DSA-65 public key 1,952 bytes. To rotate keys, see
+[rotate keys](/device-sdk/guides/push/#rotate-keys).
+
+## Seal and send
+
+Each sample seals and signs a message for one token, then sends it. Use the suite the app's token
+has.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+`PushSealer` and `PushSenderKey` are in the `OhrTech.Management.Push` namespace, for .NET 10. They
+and `SendPushAsync` come with the release of OhrTech.Management after 2.1.0.
+
+```csharp nocheck
+using System.Text;
+using OhrTech.Management;
+using OhrTech.Management.Push;
+
+using var api = OhrManagementClient.ForServiceAccount(Environment.GetEnvironmentVariable("OHR_TOKEN")!);
+using var sender = PushSenderKey.Import(
+    Convert.FromBase64String(Environment.GetEnvironmentVariable("OHR_PUSH_ED25519_SEED")!),
+    Convert.FromBase64String(Environment.GetEnvironmentVariable("OHR_PUSH_MLDSA65_SEED")!));
+
+// token, suite and publicKey: what the app sent your server when it registered
+var message = PushSealer.SealBase64(token, suite, Convert.FromBase64String(publicKey), sender,
+    id: "order-42", expires: DateTimeOffset.UtcNow.AddHours(1), data: Encoding.UTF8.GetBytes("""{"order":42}"""));
+
+var response = await api.SendPushAsync(new PushRequest
+{
+    Messages = [new PushRequestMessage { Token = token, Message = message, Priority = "high", Ttl = 3600 }],
+});
+Console.WriteLine(response.Results[0].Id ?? response.Results[0].Error);
+```
+
+For the `x25519` suite only, `PushSenderKey.Import(ed25519Seed, null)`.
+
+</TabItem>
+<TabItem label="Node">
+
+```js title="push.mjs"
+// push.mjs: seal, sign and send OhrTech push messages. npm install hpke
+import crypto from 'node:crypto';
+import * as HPKE from 'hpke';
+
+const LABEL = 'ohrtech-push-v1';
+const API = process.env.OHR_API ?? 'https://api.ohrtech.net';
+
+// Your sender keys: the two 32-byte seeds, base64. The ML-DSA-65 one only for xwing-mldsa65.
+const ed25519 = crypto.createPrivateKey({
+  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'),
+    Buffer.from(process.env.OHR_PUSH_ED25519_SEED, 'base64')]),
+  format: 'der', type: 'pkcs8',
+});
+const mlDsa65 = process.env.OHR_PUSH_MLDSA65_SEED && crypto.createPrivateKey({
+  key: Buffer.concat([Buffer.from('3034020100300b060960864801650304031204228020', 'hex'),
+    Buffer.from(process.env.OHR_PUSH_MLDSA65_SEED, 'base64')]),
+  format: 'der', type: 'pkcs8',
+});
+
+/** The public keys to build into your app (SenderKey.fromBase64). */
+export function senderPublicKeys() {
+  const raw = (key, field) => Buffer.from(crypto.createPublicKey(key).export({ format: 'jwk' })[field], 'base64url').toString('base64');
+  return { ed25519: raw(ed25519, 'x'), mlDsa65: mlDsa65 ? raw(mlDsa65, 'pub') : null };
+}
+
+// The CBOR the format needs: definite lengths, shortest heads.
+function head(major, n) {
+  if (n < 24) return Buffer.from([(major << 5) | n]);
+  if (n < 0x100) return Buffer.from([(major << 5) | 24, n]);
+  const b = Buffer.alloc(n < 0x10000 ? 3 : 5);
+  b[0] = (major << 5) | (n < 0x10000 ? 25 : 26);
+  n < 0x10000 ? b.writeUInt16BE(n, 1) : b.writeUInt32BE(n, 1);
+  return b;
+}
+const uint = (n) => head(0, n);
+const bstr = (b) => Buffer.concat([head(2, b.length), b]);
+const tstr = (s) => {
+  const b = Buffer.from(s, 'utf8');
+  return Buffer.concat([head(3, b.length), b]);
+};
+
+/**
+ * The envelope for POST /v1/push, base64. token, suite and publicKey (base64) are what the app sent
+ * you; id (1-64 characters) is your id for the message; expires a Date; data a Buffer (at most 4,096 bytes).
+ */
+export async function seal({ token, suite, publicKey, id, expires, data }) {
+  const kem = { 'x25519': HPKE.KEM_DHKEM_X25519_HKDF_SHA256, 'xwing-mldsa65': HPKE.KEM_MLKEM768_X25519 }[suite];
+  if (!kem) throw new Error(`unknown suite ${suite}`);
+  const hpke = new HPKE.CipherSuite(kem, HPKE.KDF_HKDF_SHA256, HPKE.AEAD_AES_128_GCM);
+
+  const plaintext = Buffer.concat([head(5, 3), tstr('id'), tstr(id),
+    tstr('exp'), uint(Math.floor(expires.getTime() / 1000)), tstr('data'), bstr(data)]);
+  const info = Buffer.concat([Buffer.from(LABEL), Buffer.from([0]), Buffer.from(token)]);
+  const recipient = await hpke.DeserializePublicKey(Buffer.from(publicKey, 'base64'));
+  const { encapsulatedSecret: enc, ciphertext: ct } = await hpke.Seal(recipient, plaintext, { info });
+
+  const signed = Buffer.concat([head(4, 5), tstr(LABEL), tstr(token), tstr(suite), bstr(enc), bstr(ct)]);
+  const sig = [tstr('ed25519'), bstr(crypto.sign(null, signed, ed25519))];
+  if (suite === 'xwing-mldsa65') sig.push(tstr('mldsa65'), bstr(crypto.sign(null, signed, mlDsa65)));
+  return Buffer.concat([head(5, 5), tstr('v'), uint(1), tstr('suite'), tstr(suite),
+    tstr('enc'), bstr(enc), tstr('ct'), bstr(ct), tstr('sig'), head(5, sig.length / 2), ...sig]).toString('base64');
+}
+
+/** POST /v1/push: up to 500 messages; one result per message, in order. */
+export async function send(messages) {
+  const res = await fetch(`${API}/v1/push`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.OHR_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+  if (!res.ok) throw new Error(`POST /v1/push: ${res.status} ${await res.text()}`);
+  return (await res.json()).results;
+}
+```
+
+```js
+import { seal, send } from './push.mjs';
+
+// token, suite and publicKey: what the app sent your server when it registered
+const message = await seal({
+  token, suite, publicKey,
+  id: 'order-42',
+  expires: new Date(Date.now() + 60 * 60 * 1000),
+  data: Buffer.from(JSON.stringify({ order: 42 })),
+});
+const [result] = await send([{ token, message, priority: 'high', ttl: 3600 }]);
+console.log(result.id ?? result.error);
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go title="ohrpush/push.go"
+// Package ohrpush seals, signs and sends OhrTech push messages. Go 1.27 or later; standard library only.
+package ohrpush
+
+import (
+	"bytes"
+	"crypto/ecdh"
+	"crypto/ed25519"
+	"crypto/hpke"
+	"crypto/mldsa"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+)
+
+const label = "ohrtech-push-v1"
+
+// Sender holds your sender keys. MLDSA65 is needed only for the xwing-mldsa65 suite.
+type Sender struct {
+	Ed25519 ed25519.PrivateKey
+	MLDSA65 *mldsa.PrivateKey
+}
+
+// NewSender loads the keys from their 32-byte seeds; mlDsa65Seed may be nil.
+func NewSender(ed25519Seed, mlDsa65Seed []byte) (*Sender, error) {
+	s := &Sender{Ed25519: ed25519.NewKeyFromSeed(ed25519Seed)}
+	if mlDsa65Seed != nil {
+		k, err := mldsa.NewPrivateKey(mldsa.MLDSA65(), mlDsa65Seed)
+		if err != nil {
+			return nil, err
+		}
+		s.MLDSA65 = k
+	}
+	return s, nil
+}
+
+// PublicKeys returns the public keys to build into your app (SenderKey.fromBase64), base64.
+func (s *Sender) PublicKeys() (ed, mlDsa65 string) {
+	ed = base64.StdEncoding.EncodeToString(s.Ed25519.Public().(ed25519.PublicKey))
+	if s.MLDSA65 != nil {
+		mlDsa65 = base64.StdEncoding.EncodeToString(s.MLDSA65.PublicKey().Bytes())
+	}
+	return
+}
+
+// Seal returns the envelope for POST /v1/push, base64. token, suite and publicKey are what the app
+// sent you; id (1-64 characters) is your id for the message; data is at most 4,096 bytes.
+func (s *Sender) Seal(token, suite string, publicKey []byte, id string, expires time.Time, data []byte) (string, error) {
+	var kem hpke.KEM
+	switch suite {
+	case "x25519":
+		kem = hpke.DHKEM(ecdh.X25519())
+	case "xwing-mldsa65":
+		kem = hpke.MLKEM768X25519()
+	default:
+		return "", fmt.Errorf("unknown suite %q", suite)
+	}
+	pk, err := kem.NewPublicKey(publicKey)
+	if err != nil {
+		return "", err
+	}
+	enc, sealer, err := hpke.NewSender(pk, hpke.HKDFSHA256(), hpke.AES128GCM(), []byte(label+"\x00"+token))
+	if err != nil {
+		return "", err
+	}
+	var p cbor
+	p.head(5, 3)
+	p.tstr("id")
+	p.tstr(id)
+	p.tstr("exp")
+	p.head(0, uint64(expires.Unix()))
+	p.tstr("data")
+	p.bstr(data)
+	ct, err := sealer.Seal(nil, p.Bytes())
+	if err != nil {
+		return "", err
+	}
+
+	var signed cbor
+	signed.head(4, 5)
+	signed.tstr(label)
+	signed.tstr(token)
+	signed.tstr(suite)
+	signed.bstr(enc)
+	signed.bstr(ct)
+	var e cbor
+	e.head(5, 5)
+	e.tstr("v")
+	e.head(0, 1)
+	e.tstr("suite")
+	e.tstr(suite)
+	e.tstr("enc")
+	e.bstr(enc)
+	e.tstr("ct")
+	e.bstr(ct)
+	e.tstr("sig")
+	if suite == "x25519" {
+		e.head(5, 1)
+	} else {
+		e.head(5, 2)
+	}
+	e.tstr("ed25519")
+	e.bstr(ed25519.Sign(s.Ed25519, signed.Bytes()))
+	if suite == "xwing-mldsa65" {
+		if s.MLDSA65 == nil {
+			return "", fmt.Errorf("the xwing-mldsa65 suite needs an ML-DSA-65 sender key")
+		}
+		sig, err := s.MLDSA65.Sign(rand.Reader, signed.Bytes(), &mldsa.Options{})
+		if err != nil {
+			return "", err
+		}
+		e.tstr("mldsa65")
+		e.bstr(sig)
+	}
+	return base64.StdEncoding.EncodeToString(e.Bytes()), nil
+}
+
+// cbor writes the CBOR the format needs: definite lengths, shortest heads.
+type cbor struct{ bytes.Buffer }
+
+func (c *cbor) head(major byte, n uint64) {
+	m := major << 5
+	switch {
+	case n < 24:
+		c.WriteByte(m | byte(n))
+	case n < 1<<8:
+		c.Write([]byte{m | 24, byte(n)})
+	case n < 1<<16:
+		c.Write(binary.BigEndian.AppendUint16([]byte{m | 25}, uint16(n)))
+	case n < 1<<32:
+		c.Write(binary.BigEndian.AppendUint32([]byte{m | 26}, uint32(n)))
+	default:
+		c.Write(binary.BigEndian.AppendUint64([]byte{m | 27}, n))
+	}
+}
+
+func (c *cbor) bstr(b []byte) { c.head(2, uint64(len(b))); c.Write(b) }
+func (c *cbor) tstr(s string) { c.head(3, uint64(len(s))); c.WriteString(s) }
+
+// Message is one message of POST /v1/push.
+type Message struct {
+	Token       string `json:"token"`
+	Message     string `json:"message"`
+	Priority    string `json:"priority,omitempty"`
+	TTL         int    `json:"ttl,omitempty"`
+	CollapseKey string `json:"collapseKey,omitempty"`
+}
+
+// Result is the API's answer for one message: its ID (pmsg_…), or the Error.
+type Result struct {
+	ID    string `json:"id"`
+	Error string `json:"error"`
+}
+
+// Send posts up to 500 messages; one result per message, in order.
+func Send(messages []Message) ([]Result, error) {
+	api := os.Getenv("OHR_API")
+	if api == "" {
+		api = "https://api.ohrtech.net"
+	}
+	body, _ := json.Marshal(map[string]any{"messages": messages})
+	req, _ := http.NewRequest("POST", api+"/v1/push", bytes.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+os.Getenv("OHR_TOKEN"))
+	req.Header.Set("Content-Type", "application/json")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("POST /v1/push: %s", res.Status)
+	}
+	var out struct{ Results []Result }
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out.Results, nil
+}
+```
+
+```go
+s, err := ohrpush.NewSender(ed25519Seed, mlDsa65Seed) // the seeds, decoded from base64
+if err != nil {
+	log.Fatal(err)
+}
+// token, suite and publicKey: what the app sent your server when it registered
+msg, err := s.Seal(token, suite, publicKey, "order-42", time.Now().Add(time.Hour), []byte(`{"order":42}`))
+if err != nil {
+	log.Fatal(err)
+}
+res, err := ohrpush.Send([]ohrpush.Message{{Token: token, Message: msg, Priority: "high", TTL: 3600}})
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(res[0].ID, res[0].Error)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python title="push.py"
+"""push.py: seal, sign and send OhrTech push messages. pip install "cryptography>=50" cbor2"""
+import base64
+import json
+import os
+import urllib.request
+
+import cbor2
+from cryptography.hazmat.primitives import hpke
+from cryptography.hazmat.primitives.asymmetric import ed25519, mldsa, mlkem, x25519
+
+LABEL = "ohrtech-push-v1"
+API = os.environ.get("OHR_API", "https://api.ohrtech.net")
+
+
+class Sender:
+    """Your sender keys, from their 32-byte seeds. The ML-DSA-65 one only for xwing-mldsa65."""
+
+    def __init__(self, ed25519_seed: bytes, mldsa65_seed: bytes | None = None):
+        self.ed25519 = ed25519.Ed25519PrivateKey.from_private_bytes(ed25519_seed)
+        self.mldsa65 = mldsa.MLDSA65PrivateKey.from_seed_bytes(mldsa65_seed) if mldsa65_seed else None
+
+    def public_keys(self) -> dict:
+        """The public keys to build into your app (SenderKey.fromBase64), base64."""
+        b64 = lambda k: base64.b64encode(k.public_key().public_bytes_raw()).decode()
+        return {"ed25519": b64(self.ed25519), "mlDsa65": b64(self.mldsa65) if self.mldsa65 else None}
+
+    def seal(self, token: str, suite: str, public_key: bytes, id: str, expires: int, data: bytes) -> str:
+        """The envelope for POST /v1/push, base64. token, suite and public_key are what the app sent
+        you; id (1-64 characters) is your id for the message; expires is Unix seconds; data is at
+        most 4,096 bytes."""
+        if suite == "x25519":
+            kem = hpke.KEM.X25519
+            recipient = x25519.X25519PublicKey.from_public_bytes(public_key)
+        elif suite == "xwing-mldsa65":
+            kem = hpke.KEM.MLKEM768_X25519
+            recipient = hpke.MLKEM768X25519PublicKey(
+                mlkem.MLKEM768PublicKey.from_public_bytes(public_key[:1184]),
+                x25519.X25519PublicKey.from_public_bytes(public_key[1184:]))
+        else:
+            raise ValueError(f"unknown suite {suite}")
+
+        plaintext = cbor2.dumps({"id": id, "exp": expires, "data": data})
+        info = LABEL.encode() + b"\x00" + token.encode()
+        sealed = hpke.Suite(kem, hpke.KDF.HKDF_SHA256, hpke.AEAD.AES_128_GCM).encrypt(plaintext, recipient, info)
+        enc, ct = sealed[:kem.enc_length()], sealed[kem.enc_length():]
+
+        signed = cbor2.dumps([LABEL, token, suite, enc, ct])
+        sig = {"ed25519": self.ed25519.sign(signed)}
+        if suite == "xwing-mldsa65":
+            sig["mldsa65"] = self.mldsa65.sign(signed)
+        envelope = {"v": 1, "suite": suite, "enc": enc, "ct": ct, "sig": sig}
+        return base64.b64encode(cbor2.dumps(envelope)).decode()
+
+
+def send(messages: list[dict]) -> list[dict]:
+    """POST /v1/push: up to 500 messages; one result per message, in order."""
+    req = urllib.request.Request(
+        f"{API}/v1/push", data=json.dumps({"messages": messages}).encode(),
+        headers={"Authorization": f"Bearer {os.environ['OHR_TOKEN']}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req) as res:
+        return json.load(res)["results"]
+```
+
+```python
+import base64, os, time
+from push import Sender, send
+
+sender = Sender(base64.b64decode(os.environ["OHR_PUSH_ED25519_SEED"]),
+                base64.b64decode(os.environ["OHR_PUSH_MLDSA65_SEED"]))
+# token, suite and public_key: what the app sent your server when it registered
+message = sender.seal(token, suite, base64.b64decode(public_key), "order-42", int(time.time()) + 3600, b'{"order":42}')
+[result] = send([{"token": token, "message": message, "priority": "high", "ttl": 3600}])
+print(result.get("id") or result["error"])
+```
+
+</TabItem>
+<TabItem label="curl">
+
+With a message sealed as above:
+
+```sh
+curl https://api.ohrtech.net/v1/push \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"messages": [{"token": "psh_5n8w2q7r4x1c9v3m6k0t2y4z8b", "message": "'"$MESSAGE"'", "priority": "high", "ttl": 3600}]}'
+```
+
+</TabItem>
+</Tabs>
+
+The samples were tested with OhrTech.Management built from source (the release after 2.1.0) on
+.NET 10, Node.js 26.13 with `hpke` 1.1.8, Go 1.27.3, and Python 3.14 with `cryptography` 50.0.2 and
+`cbor2` 6.2.1. Every sample's messages, in both suites, were opened and checked by the same checks
+the Device SDK 0.2.0 makes on the device. The Go sample needs Go 1.27 or later for `crypto/mldsa`.
+
+## POST /v1/push
+
+Send 1 to 500 messages per call, to any of your tokens:
+
+```json
+{
+  "messages": [
+    { "token": "psh_5n8w2q7r4x1c9v3m6k0t2y4z8b", "message": "pWF2AWVzdWl0ZWZ4MjU1MTlj…", "priority": "high", "ttl": 3600 },
+    { "token": "psh_7c2v9k4m1q8x3r5n6t0w2y4z6b", "message": "pWF2AWVzdWl0ZW14d2luZy1tbGRzYTY1…", "collapseKey": "prices" }
+  ]
+}
+```
+
+| Field | |
+|---|---|
+| `token` | The app's push token (`psh_…`) |
+| `message` | The sealed, signed envelope, base64 |
+| `priority` | `normal` (default) or `high`. High lets the app out of Doze and start a foreground service (see [priority](/device-sdk/guides/push/#priority-and-doze)) |
+| `ttl` | Seconds the hub keeps trying, 1 to 2,419,200 (28 days). Default 86,400 (1 day) |
+| `collapseKey` | 1 to 64 characters. A message to the same token with the same key that is still on its way (`queued` or `sent`) is replaced by this one |
+
+The answer has one result per message, in order: the message's id, or why it was refused. The
+others are queued regardless.
+
+```json
+{
+  "results": [
+    { "id": "pmsg_3k9x2m7q4w8r1c6v5n0t2y4z8b", "error": null },
+    { "id": null, "error": "the token has ended (replaced)" }
+  ]
+}
+```
+
+| `error` | |
+|---|---|
+| `not a push token (psh_…)` | `token` isn't a push token id |
+| `no such push token` | There is no such token in your organisations |
+| `needs SendPush in …` | You may see the device but not send it push messages |
+| `the token has ended (…)` | See below. Drop the token; the app will send a new one |
+| `message is not base64` | |
+| `not a sealed push message: …` | The envelope's shape is wrong: why follows |
+| `the token's suite is …, not …` | You sealed with the other suite |
+| `priority is normal or high` | |
+| `ttl is 1 to 2419200 seconds` | |
+| `collapseKey is 1 to 64 characters` | |
+
+A token ends with one of these reasons:
+
+| Reason | |
+|---|---|
+| `replaced` | The app registered again and has a new token |
+| `unregistered` | The app called `unregister()` |
+| `uninstalled` | The app was uninstalled |
+| `left_fleet` | The device moved to a fleet without the app, or the app was removed from its fleet |
+
+The hub checks the envelope's shape: version, suite, sizes. It can't check your signature, since it
+doesn't know your sender keys, and it can't read the message.
+
+## Follow a message
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp nocheck
+var status = await api.GetPushStatusAsync("pmsg_3k9x2m7q4w8r1c6v5n0t2y4z8b");
+Console.WriteLine($"{status.Status} {status.Reason}");
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl https://api.ohrtech.net/v1/push/pmsg_3k9x2m7q4w8r1c6v5n0t2y4z8b -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+</TabItem>
+</Tabs>
+
+```json
+{
+  "id": "pmsg_3k9x2m7q4w8r1c6v5n0t2y4z8b",
+  "token": "psh_5n8w2q7r4x1c9v3m6k0t2y4z8b",
+  "status": "dropped",
+  "reason": "app_signature",
+  "createdAt": "2026-11-08T14:02:11Z",
+  "statusAt": "2026-11-08T14:02:12Z",
+  "expiresAt": "2026-11-08T15:02:11Z",
+  "attempts": 1
+}
+```
+
+Needs `SendPush`. `attempts` counts the times the hub sent it to the device.
+
+| `status` | |
+|---|---|
+| `queued` | Not yet at the device |
+| `sent` | Sent to the device, not yet acknowledged. The hub sends it again every 5 minutes, and when the device connects, until it expires |
+| `delivered` | The Agent handed it to the app's push service |
+| `dropped` | Refused on the way or by the app; `reason` says why |
+| `expired` | Its `ttl` passed before it was delivered |
+| `replaced` | A later message with the same `collapseKey` took its place |
+
+A `delivered` message can still become `dropped`: the app checks the message after the Agent
+hands it over.
+
+| `reason` of a dropped message | |
+|---|---|
+| `app_signature`, `app_does_not_open`, `app_expired`, `app_duplicate`, … | The app's library refused it. The part after `app_` is the [reason the app got](/device-sdk/guides/push/#dropped-messages) |
+| `token replaced`, `token unregistered`, `token uninstalled`, `token left_fleet` | Its token ended while it was on its way |
+| `expired` | It reached the device after its `ttl` |
+| `not_installed` | The app is no longer on the device |
+| `token_unknown` | The device doesn't know the token: the app registered again or unregistered |
+| `no_push_service` | The app has no push service |
+| `push_service_unprotected` | The app's push service doesn't require the `RECEIVE_PUSH` permission |
+| `bind_failed` | The Agent couldn't start the app's push service |
+| `malformed` | The message didn't arrive intact |
+
+The hub keeps a message's envelope only until it is delivered, dropped, expired or replaced.
+
+A device's active tokens, one per app that registered:
+
+```sh
+curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/push-tokens -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+```json
+[
+  {
+    "token": "psh_5n8w2q7r4x1c9v3m6k0t2y4z8b",
+    "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    "packageName": "com.example.orders",
+    "suite": "x25519",
+    "createdAt": "2026-11-02T09:15:40Z"
+  }
+]
+```
+
+This needs `ViewDevices`. It lists the tokens, not their public keys: those come from the app.
+
+## The message format
+
+To seal in a language without a sample, build exactly this. All CBOR (RFC 8949) uses definite
+lengths and the shortest heads.
+
+**1. The plaintext**, a CBOR map:
+
+```
+{"id": tstr, "exp": uint, "data": bstr}
+```
+
+`id` is your id for the message, 1 to 64 characters: the app drops a second message with the same
+`id` until `exp`. `exp` is when it expires, in Unix seconds. `data` is your bytes, at most 4,096.
+
+**2. Seal it** with HPKE (RFC 9180), base mode, one message per context:
+
+| | `x25519` | `xwing-mldsa65` |
+|---|---|---|
+| KEM | `0x0020` DHKEM(X25519, HKDF-SHA256) | `0x647a` X-Wing (MLKEM768-X25519) |
+| KDF | `0x0001` HKDF-SHA256 | `0x0001` HKDF-SHA256 |
+| AEAD | `0x0001` AES-128-GCM | `0x0001` AES-128-GCM |
+| The app's public key | 32 bytes | 1,216 bytes: the ML-KEM-768 key (1,184), then the X25519 key (32) |
+| `enc` | 32 bytes | 1,120 bytes |
+
+`info` is the ASCII bytes `ohrtech-push-v1`, a zero byte, and the ASCII token. `aad` is empty. The
+sealed ciphertext `ct` is the plaintext plus a 16-byte tag.
+
+**3. Sign** the CBOR array
+
+```
+["ohrtech-push-v1", token (tstr), suite (tstr), enc (bstr), ct (bstr)]
+```
+
+with Ed25519, and for `xwing-mldsa65` also with ML-DSA-65 (FIPS 204, pure, empty context). The
+signature covers the token, the suite and the sealed message, so a message can't be moved to
+another token or suite, or changed.
+
+**4. The envelope**, a CBOR map, base64 for `message`:
+
+```
+{"v": 1, "suite": tstr, "enc": bstr, "ct": bstr, "sig": {"ed25519": bstr, "mldsa65": bstr}}
+```
+
+`suite` is `x25519` or `xwing-mldsa65`. `sig.ed25519` is 64 bytes. `sig.mldsa65` is 3,309 bytes,
+present for `xwing-mldsa65` only. Any other field makes the envelope invalid.
