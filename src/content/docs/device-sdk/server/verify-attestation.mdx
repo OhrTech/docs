@@ -35,7 +35,7 @@ may call it: it needs no permission.
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-```csharp nocheck
+```csharp
 // attestation: the app's Attestation.toJson(), read into your own type: suite, ec, mlDsa65
 var verdict = await api.VerifyAttestationAsync(new VerifyAttestationRequest
 {
@@ -50,7 +50,7 @@ if (!verdict.Valid || verdict.Problems.Count > 0)
 SaveDevice(verdict.DeviceId!, verdict.PublicKeys["ec"], verdict.PublicKeys.GetValueOrDefault("mlDsa65"));
 ```
 
-`VerifyAttestationAsync` is in the .NET SDK after 2.1.0.
+`VerifyAttestationAsync` needs OhrTech.Management 2.2.0 or later.
 
 </TabItem>
 <TabItem label="curl">
@@ -154,9 +154,9 @@ Download it once, check the fingerprint, and ship it with your server. It is val
 
 ### With the .NET SDK
 
-`DeviceAttestationVerifier` does all of this (.NET 10, in the SDK after 2.1.0):
+`DeviceAttestationVerifier` does all of this (.NET 10, OhrTech.Management 2.2.0 or later):
 
-```csharp nocheck
+```csharp
 using OhrTech.Management.Attestation;
 
 using var http = new HttpClient();
@@ -541,7 +541,7 @@ To stop vouching for one of your own devices, for example one that was stolen:
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-```csharp nocheck
+```csharp
 int revoked = await api.RevokeDeviceAttestationAsync("dev_3swt6f457299btzpw1bxx4wf0q",
     new RevokeAttestationRequest { Reason = "lost" });   // retired, lost or compromised
 ```
@@ -583,7 +583,7 @@ Check, with the key or keys you kept for that device:
 4. `iat` and `exp` hold now, with a minute's leeway, and `exp - iat` is at most 10 minutes.
 5. If you care about replay within those minutes, give the app a nonce and check it.
 
-```csharp nocheck
+```csharp
 var claims = AttestationToken.Verify(token, "https://api.example.com", device.EcPublicKey, device.MlDsa65PublicKey);
 ```
 

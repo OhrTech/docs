@@ -15,6 +15,728 @@
     }
   ],
   "paths": {
+    "/v1/apps/{appId}/config-schema": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Get app config schema",
+        "operationId": "GetAppConfigSchema",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigSchemaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The app's managed configuration: the settings its newest version declares (app_restrictions.xml)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar schema = await api.GetAppConfigSchemaAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}/config": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Get fleet app config",
+        "operationId": "GetFleetAppConfig",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The app's configuration in a fleet: what the fleet sets, and what its devices get",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.GetFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Set fleet app config",
+        "operationId": "SetFleetAppConfig",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Replace what a fleet sets in an app's configuration, and send it to the fleet's devices",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.SetFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppConfigRequest\n{\n    Values = new()\n    {\n        [\"server_url\"] = \"https://orders.example.com\",\n        [\"store_number\"] = 42,\n    },\n});"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Clear fleet app config",
+        "operationId": "ClearFleetAppConfig",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop setting an app's configuration in a fleet (parent fleets' values apply)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.ClearFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/apps/{appId}/config": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Get device app config",
+        "operationId": "GetDeviceAppConfig",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The app's configuration on one device: its own overrides, and what the app gets",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.GetDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Set device app config",
+        "operationId": "SetDeviceAppConfig",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppConfigRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Replace a device's own overrides of an app's configuration, and send them",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.SetDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppConfigRequest\n{\n    Values = new() { [\"store_number\"] = 17 },\n});"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Clear device app config",
+        "operationId": "ClearDeviceAppConfig",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfigDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Remove a device's own overrides of an app's configuration (its fleet's values apply)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar config = await api.ClearDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
     "/v1/apps": {
       "get": {
         "tags": [
@@ -1702,6 +2424,2367 @@
         ]
       }
     },
+    "/v1/device-identity/root": {
+      "get": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Get device identity root",
+        "operationId": "GetDeviceIdentityRoot",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/x-pem-file": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "The OhrTech Device Identity Root, PEM: trust it to check any app certificate's device",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rootPem = await api.GetDeviceIdentityRootAsync();"
+          }
+        ]
+      }
+    },
+    "/v1/orgs/{orgId}/issuing-cas": {
+      "post": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Create issuing ca",
+        "operationId": "CreateIssuingCa",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "description": "An organisation id (org_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIssuingCaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuingCaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Make an issuing CA for your apps' client certificates: OhrTech keeps its key; you get its CSR for your client root",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar ca = await api.CreateIssuingCaAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", new CreateIssuingCaRequest { Name = \"Stores\", LeafDays = 90 });\n// Sign ca.CsrPem with your client root, then upload the result with UploadIssuingCaCertificateAsync."
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "List issuing cas",
+        "operationId": "ListIssuingCas",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "description": "An organisation id (org_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IssuingCaDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Your organisation's issuing CAs",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar cas = await api.ListIssuingCasAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\");"
+          }
+        ]
+      }
+    },
+    "/v1/orgs/{orgId}/issuing-cas/{issuingCaId}/org-certificate": {
+      "put": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Upload issuing ca certificate",
+        "operationId": "UploadIssuingCaCertificate",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "description": "An organisation id (org_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "issuingCaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadOrgCertificateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuingCaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Upload the CA certificate your client root issued from the CSR, with its chain",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar ca = await api.UploadIssuingCaCertificateAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\", new UploadOrgCertificateRequest\n{\n    CertificatePem = File.ReadAllText(\"stores-issuing-ca.pem\"),\n    ChainPem = File.ReadAllText(\"client-root.pem\"),\n});"
+          }
+        ]
+      }
+    },
+    "/v1/orgs/{orgId}/issuing-cas/{issuingCaId}/revoke": {
+      "post": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Revoke issuing ca",
+        "operationId": "RevokeIssuingCa",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "description": "An organisation id (org_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^org_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "org_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "issuingCaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuingCaDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop the issuing CA issuing (certificates already issued stay valid until they expire)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar ca = await api.RevokeIssuingCaAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\");"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}/certificates": {
+      "get": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Get app certificates",
+        "operationId": "GetAppCertificates",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCertificatesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "An app's certificates on a fleet: its issuing CA, private CAs and imported certificates",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar certificates = await api.GetAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Set app certificates",
+        "operationId": "SetAppCertificates",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppCertificatesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCertificatesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Give an app an issuing CA, private CAs to trust and imported client certificates (PKCS#12, sealed)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar certificates = await api.SetAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppCertificatesRequest\n{\n    IssuingCaId = \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\",\n    Trust = [File.ReadAllText(\"private-ca.pem\")],\n});"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "Clear app certificates",
+        "operationId": "ClearAppCertificates",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppCertificatesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop setting the app's certificates on this fleet (a parent fleet's apply)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar certificates = await api.ClearAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/certificates": {
+      "get": {
+        "tags": [
+          "Certificates for apps"
+        ],
+        "summary": "List device certificates",
+        "operationId": "ListDeviceCertificates",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceCertificateDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The client certificates issued to the device's apps, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar certificates = await api.ListDeviceCertificatesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}/crashes": {
+      "get": {
+        "tags": [
+          "Crash reports"
+        ],
+        "summary": "List app crashes",
+        "operationId": "ListAppCrashes",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "description": "How far back (1-90, default 30).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "versionCode",
+            "in": "query",
+            "description": "Only this version.",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CrashGroupDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "An app's crashes, grouped: how often, on how many devices, in which versions, first and last seen",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar crashes = await api.ListAppCrashesAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", days: 7);\nforeach (var c in crashes) Console.WriteLine($\"{c.Count} x {c.Title}\");"
+          }
+        ]
+      }
+    },
+    "/v1/apps/{appId}/crashes/{signature}": {
+      "get": {
+        "tags": [
+          "Crash reports"
+        ],
+        "summary": "List crash reports",
+        "operationId": "ListCrashReports",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "signature",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-100, default 20).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CrashReportDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The reports of one crash, newest first: device, version, stack and the app's last log lines",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar reports = await api.ListCrashReportsAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", \"3f9c1a7e5b2d8c40\", limit: 10);"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/crashes": {
+      "get": {
+        "tags": [
+          "Crash reports"
+        ],
+        "summary": "List device crashes",
+        "operationId": "ListDeviceCrashes",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-100, default 20).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CrashReportDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The crashes of the hub's apps on one device, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar crashes = await api.ListDeviceCrashesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", limit: 20);"
+          }
+        ]
+      }
+    },
+    "/v1/attestations/verify": {
+      "post": {
+        "tags": [
+          "Device attestation"
+        ],
+        "summary": "Verify attestation",
+        "operationId": "VerifyAttestation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyAttestationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationVerdictDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Check an app key's attestation chain: which OhrTech unit made it, for which app, and whether to trust it",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nbyte[] challenge = new byte[32];      // the challenge your server gave the app\nList<string> ec = [];                  // the app's Attestation.toJson()[\"ec\"]: the chain, base64 DER\nvar verdict = await api.VerifyAttestationAsync(new VerifyAttestationRequest\n{\n    Challenge = Convert.ToBase64String(challenge),\n    Ec = ec,\n    Package = \"com.example.kiosk\",\n    SignerSha256 = \"5f0c3a9e7d21b8e64f9a0c2d1e3b5a7f6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f\",\n});\nvar trusted = verdict.Valid && verdict.Problems.Count == 0;"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/attestation/revoke": {
+      "post": {
+        "tags": [
+          "Device attestation"
+        ],
+        "summary": "Revoke device attestation",
+        "operationId": "RevokeDeviceAttestation",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeAttestationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop vouching for a device (lost, retired or compromised): its attestation chains fail, and it gets no new attestation keys",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar revoked = await api.RevokeDeviceAttestationAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new RevokeAttestationRequest { Reason = \"lost\" });"
+          }
+        ]
+      }
+    },
+    "/v1/attestations/root": {
+      "get": {
+        "tags": [
+          "Device attestation"
+        ],
+        "summary": "Get attestation root",
+        "operationId": "GetAttestationRoot",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/x-pem-file": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "The OhrTech Attestation Root, PEM: what an offline verifier trusts",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar rootPem = await api.GetAttestationRootAsync();"
+          }
+        ]
+      }
+    },
+    "/v1/attestations/status": {
+      "get": {
+        "tags": [
+          "Device attestation"
+        ],
+        "summary": "Get attestation status",
+        "operationId": "GetAttestationStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/jwt": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "The unit attestation key certificates OhrTech no longer vouches for, by serial: a JWS signed by the OhrTech Attestation Status certificate (no sign-in)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar statusJws = await api.GetAttestationStatusAsync();\n// Or, checked: OhrTech.Management.Attestation.AttestationStatusList.FetchAsync(http)"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}/sdk-access": {
+      "get": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Get sdk access",
+        "operationId": "GetSdkAccess",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SdkAccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "What an app may change through the Device SDK on the fleet's devices",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar access = await api.GetSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Set sdk access",
+        "operationId": "SetSdkAccess",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSdkAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SdkAccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Grant an app Device SDK areas on the fleet's devices (and the fleets below it)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar access = await api.SetSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetSdkAccessRequest { Areas = [\"wifi\", \"kiosk\"] });"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Clear sdk access",
+        "operationId": "ClearSdkAccess",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SdkAccessDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Drop the fleet's own grant for an app, so it inherits its parent fleet's",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar access = await api.ClearSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/key-attestations/verify": {
+      "post": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Verify key attestation",
+        "operationId": "VerifyKeyAttestation",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KeyAttestationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyAttestationVerdictDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Check that an app's Device SDK key (OhrKeys) was made in this device's TEE, for that app and your challenge",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// The fields of the app's OhrKeys.attest() result, as the app sent them.\nvar keyAttestation = new KeyAttestationDto\n{\n    Alg = \"x-wing\", PublicKey = \"<base64>\", Owner = \"<owner>\", Challenge = \"<base64>\", CoseSign1 = \"<base64>\", DiceChain = \"<base64>\",\n};\nvar verdict = await api.VerifyKeyAttestationAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", keyAttestation);\nif (!verdict.Valid) throw new UnauthorizedAccessException(verdict.Reason);"
+          }
+        ]
+      }
+    },
+    "/v1/fleets/{fleetId}/apps/{appId}/usb-devices": {
+      "get": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Get usb devices",
+        "operationId": "GetUsbDevices",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsbDevicesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The USB devices an app may use without asking on a fleet's devices: its own, or a parent fleet's",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar usb = await api.GetUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Set usb devices",
+        "operationId": "SetUsbDevices",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUsbDevicesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsbDevicesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Pre-approve USB devices (vendor and product id, optionally serial) and accessories (manufacturer and model) for an app",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar usb = await api.SetUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetUsbDevicesRequest\n{\n    Devices =\n    [\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"vendorId\": \"0x05e0\", \"productId\": \"0x1200\", \"name\": \"Barcode scanner\"}\"\"\")!,\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"manufacturer\": \"Ingenico\", \"model\": \"Lane/3000\", \"name\": \"Payment terminal\"}\"\"\")!,\n    ],\n});"
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "Clear usb devices",
+        "operationId": "ClearUsbDevices",
+        "parameters": [
+          {
+            "name": "fleetId",
+            "in": "path",
+            "description": "A fleet id (flt_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^flt_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "flt_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsbDevicesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop setting the app's USB devices on this fleet (a parent fleet's apply)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar usb = await api.ClearUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/usb-devices": {
+      "get": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "List device peripherals",
+        "operationId": "ListDevicePeripherals",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeripheralsDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The USB devices and accessories attached to the device, as it last reported, and which apps they're approved for",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar peripherals = await api.ListDevicePeripheralsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/events": {
+      "get": {
+        "tags": [
+          "Device SDK"
+        ],
+        "summary": "List device events",
+        "operationId": "ListDeviceEvents",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceEventDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "What apps changed through the Device SDK, and what the Agent refused, newest first",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar events = await api.ListDeviceEventsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", limit: 50);"
+          }
+        ]
+      }
+    },
     "/v1/me": {
       "get": {
         "tags": [
@@ -2358,6 +5441,222 @@
             "lang": "csharp",
             "label": "C# SDK",
             "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar checkIn = await api.RequestCheckInAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/apps/{appId}/log-bundles": {
+      "post": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "Request log bundle",
+        "operationId": "RequestLogBundle",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "appId",
+            "in": "path",
+            "description": "An app id (app_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^app_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "app_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestLogBundleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogBundleDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Ask the device for one app's logs: its logcat, what it logged through the Device SDK, its recent events (a LogBundle task)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar bundle = await api.RequestLogBundleAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new RequestLogBundleRequest { AllowMobileData = false });"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/log-bundles": {
+      "get": {
+        "tags": [
+          "Diagnostics"
+        ],
+        "summary": "List log bundles",
+        "operationId": "ListLogBundles",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "At most this many (1-50, default 20).",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LogBundleDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's log bundles, newest first, with a download link for each one uploaded",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar bundles = await api.ListLogBundlesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");\n// Each uploaded one has a DownloadUrl, good for an hour."
           }
         ]
       }
@@ -3042,6 +6341,279 @@
             "lang": "csharp",
             "label": "C# SDK",
             "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// OhrTech staff only, for OhrTech's apps.\nawait api.WithdrawAppPermissionAsync(\"app_3k7fx2qd0m9b4tz1s8c6ve5hwy\", \"android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST\");"
+          }
+        ]
+      }
+    },
+    "/v1/push": {
+      "post": {
+        "tags": [
+          "Push"
+        ],
+        "summary": "Send push",
+        "operationId": "SendPush",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Send sealed, signed push messages to apps' push tokens (up to 500)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\n// From the app: its token, the token's suite and public key. Yours: the sender key the app trusts.\nstring token = \"psh_4n7q2x9m3k8v1c5b0z6p2r7t4w\", suite = \"x25519\", appPublicKey = \"<the token's public key, base64>\";\nvar sender = OhrTech.Management.Push.PushSenderKey.Import(Convert.FromBase64String(Environment.GetEnvironmentVariable(\"PUSH_ED25519_SEED\")!), null);\nvar message = OhrTech.Management.Push.PushSealer.SealBase64(token, suite, Convert.FromBase64String(appPublicKey), sender,\n    \"order-1234\", DateTimeOffset.UtcNow.AddHours(1), \"{\\\"order\\\": 1234}\"u8.ToArray());\nvar result = await api.SendPushAsync(new PushRequest\n{\n    Messages = [new PushRequestMessage { Token = token, Message = message, Priority = \"high\" }],\n});"
+          }
+        ]
+      }
+    },
+    "/v1/push/{id}": {
+      "get": {
+        "tags": [
+          "Push"
+        ],
+        "summary": "Get push status",
+        "operationId": "GetPushStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushStatusDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Where a push message is: queued, sent, delivered, dropped, expired or replaced",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar status = await api.GetPushStatusAsync(\"pmsg_0km64jzn2t8qrb11c8t9x8abdp\");"
+          }
+        ]
+      }
+    },
+    "/v1/devices/{deviceId}/push-tokens": {
+      "get": {
+        "tags": [
+          "Push"
+        ],
+        "summary": "List push tokens",
+        "operationId": "ListPushTokens",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PushTokenDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "The device's active push tokens: one per app that registered for push",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar tokens = await api.ListPushTokensAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");"
           }
         ]
       }
@@ -4911,6 +8483,108 @@
         ]
       }
     },
+    "/v1/devices/{deviceId}/kiosk/exit": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Exit kiosk",
+        "operationId": "ExitKiosk",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "description": "A device id (dev_…).",
+            "required": true,
+            "schema": {
+              "pattern": "^dev_[0-7][0-9a-hjkmnp-tv-z]{25}$",
+              "type": "string"
+            },
+            "example": "dev_01jftb4z0y9nn9yesabj71tyt0"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExitKioskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "description": "Lift kiosk mode on the device for some minutes, without the exit PIN, or end that early (a KioskExit task)",
+        "x-codeSamples": [
+          {
+            "lang": "csharp",
+            "label": "C# SDK",
+            "source": "using OhrTech.Management;\n\nusing var api = OhrManagementClient.ForServiceAccount(token);\n\nvar task = await api.ExitKioskAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new ExitKioskRequest { Minutes = 15 });"
+          }
+        ]
+      }
+    },
     "/v1/devices/{deviceId}/shell": {
       "post": {
         "tags": [
@@ -5113,6 +8787,94 @@
         },
         "additionalProperties": false
       },
+      "AppCertificatesDto": {
+        "required": [
+          "appId",
+          "fleetId"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "own": {},
+          "applies": {},
+          "inheritedFrom": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppConfigDto": {
+        "required": [
+          "appId",
+          "effective",
+          "own",
+          "problems"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string",
+            "nullable": true
+          },
+          "deviceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "own": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "What this fleet or device sets (secrets masked)."
+          },
+          "effective": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "What the app gets here after every level above (for a fleet: its devices, before their own overrides)."
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Where the effective values don't fit the app's newest schema (unknown keys, wrong types)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AppConfigSchemaDto": {
+        "required": [
+          "appId",
+          "restrictions"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "versionCode": {
+            "type": "integer",
+            "description": "The version whose schema this is: the newest that declares one (null: none does,\n            and any values are accepted).",
+            "format": "int64",
+            "nullable": true
+          },
+          "restrictions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppRestrictionDto"
+            },
+            "description": "The app's settings, as its app_restrictions.xml declares them."
+          }
+        },
+        "additionalProperties": false
+      },
       "AppDto": {
         "required": [
           "package"
@@ -5250,6 +9012,52 @@
         },
         "additionalProperties": false
       },
+      "AppRestrictionDto": {
+        "required": [
+          "key",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "default": {},
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "entryValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppRestrictionDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AppVersionDto": {
         "required": [
           "appId",
@@ -5341,6 +9149,112 @@
         },
         "additionalProperties": false
       },
+      "AttestationVerdictDto": {
+        "required": [
+          "inYourOrganisation",
+          "problems",
+          "publicKeys",
+          "signerSha256",
+          "suite",
+          "valid"
+        ],
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "The chain(s) verify to the OhrTech root, the key is in the TEE, the challenge matches, and the hub\n            still vouches for the unit. Problems lists what fails OhrTech's policy (boot state, boot key, patch\n            level, the package asked for): a server should accept only Valid with no Problems."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "suite": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string",
+            "description": "The unit (dev_…). Null when its attestation key certificate predates units being named.",
+            "nullable": true
+          },
+          "inYourOrganisation": {
+            "type": "boolean",
+            "description": "The device is one of the caller's; only then are FleetId and the app named."
+          },
+          "fleetId": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "versionCode": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "signerSha256": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "securityLevel": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedBootState": {
+            "type": "string",
+            "nullable": true
+          },
+          "deviceLocked": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "ohrTechBootKey": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "osVersion": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "osPatchLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "vendorPatchLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "bootPatchLevel": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "publicKeys": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The attested keys' SubjectPublicKeyInfo, base64: ec, and mlDsa65 for the hybrid suite. Pin them."
+          }
+        },
+        "additionalProperties": false
+      },
       "BatteryDto": {
         "required": [
           "charging"
@@ -5427,6 +9341,132 @@
         },
         "additionalProperties": false
       },
+      "CrashGroupDto": {
+        "required": [
+          "count",
+          "devices",
+          "firstSeen",
+          "kind",
+          "lastSeen",
+          "signature",
+          "title",
+          "versionCodes"
+        ],
+        "type": "object",
+        "properties": {
+          "signature": {
+            "type": "string",
+            "description": "What groups the same crash (16 hex): pass it to ListCrashReports."
+          },
+          "kind": {
+            "type": "string",
+            "description": "crash, native_crash or anr."
+          },
+          "title": {
+            "type": "string",
+            "description": "The exception, signal or ANR and where."
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "devices": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "versionCodes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The app versions it happened in, newest first."
+          },
+          "firstSeen": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CrashReportDto": {
+        "required": [
+          "appId",
+          "deviceId",
+          "kind",
+          "occurredAt",
+          "packageName",
+          "receivedAt",
+          "report",
+          "signature",
+          "title",
+          "versionHubShipped"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "versionCode": {
+            "type": "integer",
+            "description": "The installed version's code; VersionHubShipped false when the APK wasn't the one the hub shipped.",
+            "format": "int64",
+            "nullable": true
+          },
+          "versionHubShipped": {
+            "type": "boolean"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "process": {
+            "type": "string",
+            "nullable": true
+          },
+          "foreground": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "osBuild": {
+            "type": "string",
+            "nullable": true
+          },
+          "report": {
+            "type": "string",
+            "description": "The stack (Java), the backtrace (native) or the main thread (ANR), trimmed."
+          },
+          "log": {
+            "type": "string",
+            "description": "The app's last log lines before it.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateAppRequest": {
         "required": [
           "name",
@@ -5453,6 +9493,23 @@
         },
         "additionalProperties": false
       },
+      "CreateIssuingCaRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "leafDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateTaskRequest": {
         "required": [
           "taskClass"
@@ -5468,6 +9525,57 @@
               "type": "string"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DeviceCertificateDto": {
+        "required": [
+          "alias",
+          "appId",
+          "certificateId",
+          "certificatePem",
+          "issuingCaId",
+          "notAfter",
+          "notBefore",
+          "serial"
+        ],
+        "type": "object",
+        "properties": {
+          "certificateId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "serial": {
+            "type": "string"
+          },
+          "notBefore": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notAfter": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revokeReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "issuingCaId": {
+            "type": "string"
+          },
+          "certificatePem": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -5659,6 +9767,49 @@
         "additionalProperties": false,
         "description": "One row of GET /v1/devices."
       },
+      "DeviceEventDto": {
+        "required": [
+          "action",
+          "area",
+          "at",
+          "receivedAt",
+          "result",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "area": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "detail": {}
+        },
+        "additionalProperties": false
+      },
       "DeviceLoginRequest": {
         "type": "object",
         "properties": {
@@ -5816,6 +9967,20 @@
         },
         "additionalProperties": false
       },
+      "ExitKioskRequest": {
+        "required": [
+          "minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "minutes": {
+            "type": "integer",
+            "description": "1 to 240: how long kiosk mode is lifted (it also ends when the screen turns off). 0: back to\n            kiosk mode now.",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "FleetDto": {
         "required": [
           "deviceCount",
@@ -5883,6 +10048,190 @@
           }
         },
         "additionalProperties": {}
+      },
+      "IssuingCaDto": {
+        "required": [
+          "createdAt",
+          "issued",
+          "issuingCaId",
+          "leafDays",
+          "name",
+          "ohrTechCertificatePem",
+          "ohrTechChainPem",
+          "orgId",
+          "subject"
+        ],
+        "type": "object",
+        "properties": {
+          "issuingCaId": {
+            "type": "string"
+          },
+          "orgId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "leafDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "csrPem": {
+            "type": "string",
+            "description": "Sign it with your client root (a CA certificate for the same subject and key) and upload the result.",
+            "nullable": true
+          },
+          "ohrTechCertificatePem": {
+            "type": "string",
+            "description": "OhrTech's certificate for it, and OhrTechChainPem up to the OhrTech Device Identity Root."
+          },
+          "ohrTechChainPem": {
+            "type": "string"
+          },
+          "orgCertificatePem": {
+            "type": "string",
+            "description": "Your root's certificate for it, once uploaded.",
+            "nullable": true
+          },
+          "orgChainPem": {
+            "type": "string",
+            "nullable": true
+          },
+          "issued": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KeyAttestationDto": {
+        "required": [
+          "alg",
+          "challenge",
+          "coseSign1",
+          "diceChain",
+          "owner",
+          "publicKey"
+        ],
+        "type": "object",
+        "properties": {
+          "alg": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "challenge": {
+            "type": "string"
+          },
+          "coseSign1": {
+            "type": "string"
+          },
+          "diceChain": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "description": "A key attestation as the app got it from OhrKeys.attest (byte fields base64), and the challenge you issued."
+      },
+      "KeyAttestationVerdictDto": {
+        "required": [
+          "valid"
+        ],
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Whether the key was made in this device's TEE for that app, bound to that challenge.\nReason says why not; AppId and PackageName are the app it belongs to."
+      },
+      "LogBundleDto": {
+        "required": [
+          "deviceId",
+          "requestedAt",
+          "status",
+          "taskId"
+        ],
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "description": "pending, running, success or failed (the task's)."
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "bytes": {
+            "type": "integer",
+            "description": "The zip's size, once uploaded.",
+            "format": "int64",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "downloadUrl": {
+            "type": "string",
+            "description": "Where to download the zip, for an hour (DownloadExpiresAt); null until it is uploaded.",
+            "nullable": true
+          },
+          "downloadExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "ManagedAppDto": {
         "required": [
@@ -6155,6 +10504,27 @@
         },
         "additionalProperties": false
       },
+      "PeripheralsDto": {
+        "required": [
+          "attached",
+          "deviceId"
+        ],
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "attached": {
+            "description": "As the device reported it: {\"vendorId\", \"productId\", \"manufacturer\", \"product\", \"serial\", \"approvedFor\": [package]}\n            for devices, {\"accessory\": true, \"manufacturer\", \"model\", ...} for accessories."
+          }
+        },
+        "additionalProperties": false
+      },
       "PermissionApprovalDto": {
         "required": [
           "approvedAt",
@@ -6242,6 +10612,85 @@
         },
         "additionalProperties": {}
       },
+      "PushRequest": {
+        "required": [
+          "messages"
+        ],
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushRequestMessage"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PushRequestMessage": {
+        "required": [
+          "message",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "The app's push token (psh_…)."
+          },
+          "message": {
+            "type": "string",
+            "description": "The sealed, signed envelope, base64 (PushSealer, or docs/push.md §2)."
+          },
+          "priority": {
+            "type": "string",
+            "description": "\"normal\" (default) or \"high\": wakes the device from Doze and lets the app start a foreground service.",
+            "nullable": true
+          },
+          "ttl": {
+            "type": "integer",
+            "description": "Seconds the hub keeps trying, 1 to 2,419,200 (28 days); default 86,400.",
+            "format": "int32",
+            "nullable": true
+          },
+          "collapseKey": {
+            "type": "string",
+            "description": "A message still on its way with the same token and key is replaced.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PushResponse": {
+        "required": [
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushResult"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PushResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "Per message, in order: its id (pmsg_…), or why it was refused."
+      },
       "PushSettingsRequest": {
         "type": "object",
         "properties": {
@@ -6252,6 +10701,80 @@
             },
             "description": "Set settings to apply again now, overwriting what the person at the device changed them to.",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PushStatusDto": {
+        "required": [
+          "attempts",
+          "createdAt",
+          "expiresAt",
+          "id",
+          "status",
+          "statusAt",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "queued, sent, delivered, dropped, expired or replaced."
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "statusAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PushTokenDto": {
+        "required": [
+          "appId",
+          "createdAt",
+          "packageName",
+          "suite",
+          "token"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "packageName": {
+            "type": "string"
+          },
+          "suite": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "additionalProperties": false
@@ -6372,6 +10895,31 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/SettingStateDto"
             }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestLogBundleRequest": {
+        "required": [
+          "allowMobileData"
+        ],
+        "type": "object",
+        "properties": {
+          "allowMobileData": {
+            "type": "boolean",
+            "description": "Upload on mobile data too; otherwise the device waits for Wi-Fi (up to a day)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "RevokeAttestationRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -6524,6 +11072,51 @@
         },
         "additionalProperties": false
       },
+      "SdkAccessDto": {
+        "required": [
+          "alwaysAllowed",
+          "appId",
+          "areas",
+          "fleetId"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What the app may change on this fleet's devices: this fleet's grant, or the nearest parent fleet's."
+          },
+          "own": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "This fleet's own grant, or null when it inherits one (or none).",
+            "nullable": true
+          },
+          "inheritedFrom": {
+            "type": "string",
+            "description": "The fleet whose grant applies when this fleet has none of its own.",
+            "nullable": true
+          },
+          "alwaysAllowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What every app the hub installs may do without a grant."
+          }
+        },
+        "additionalProperties": false
+      },
       "ServiceAccountLimitsDto": {
         "type": "object",
         "properties": {
@@ -6549,6 +11142,43 @@
               "type": "string"
             },
             "description": "The only web origins its remote control sessions may be embedded in; null for any.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAppCertificatesRequest": {
+        "type": "object",
+        "properties": {
+          "issuingCaId": {
+            "type": "string",
+            "description": "The organisation's issuing CA for the app's device-made keys; null: none.",
+            "nullable": true
+          },
+          "trust": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Private CAs (PEM) the app trusts besides the system's.",
+            "nullable": true
+          },
+          "imported": {
+            "type": "array",
+            "items": {},
+            "description": "Client certificates from your PKI: {\"alias\", \"pkcs12\" (base64), \"password\"}; \"*\" keeps a stored one.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetAppConfigRequest": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "The keys to set (null unsets one: the app's default applies, whatever a parent set).\n            Secrets as {\"$secret\": \"…\"}; {\"$secret\": \"*\"} keeps the stored one.",
             "nullable": true
           }
         },
@@ -6595,6 +11225,36 @@
             "type": "boolean",
             "description": "For a catalog or platform app (OhrTech staff): the release fixes security vulnerabilities.",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetSdkAccessRequest": {
+        "required": [
+          "areas"
+        ],
+        "type": "object",
+        "properties": {
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Areas from the settings catalogue's sdk.access options. Empty takes away what a parent fleet grants."
+          }
+        },
+        "additionalProperties": false
+      },
+      "SetUsbDevicesRequest": {
+        "required": [
+          "devices"
+        ],
+        "type": "object",
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {},
+            "description": "Each {\"vendorId\", \"productId\", \"serial\"?, \"name\"?} (ids 0-65535 or hex \"0x05e0\") or {\"manufacturer\", \"model\", \"name\"?}.\n            Empty takes away what a parent fleet approves."
           }
         },
         "additionalProperties": false
@@ -6970,6 +11630,95 @@
         },
         "additionalProperties": false
       },
+      "UploadOrgCertificateRequest": {
+        "required": [
+          "certificatePem",
+          "chainPem"
+        ],
+        "type": "object",
+        "properties": {
+          "certificatePem": {
+            "type": "string",
+            "description": "The CA certificate your client root issued from the CSR."
+          },
+          "chainPem": {
+            "type": "string",
+            "description": "Its issuers up to and including your self-signed root."
+          }
+        },
+        "additionalProperties": false
+      },
+      "UsbDevicesDto": {
+        "required": [
+          "appId",
+          "devices",
+          "fleetId"
+        ],
+        "type": "object",
+        "properties": {
+          "appId": {
+            "type": "string"
+          },
+          "fleetId": {
+            "type": "string"
+          },
+          "devices": {
+            "type": "array",
+            "items": {},
+            "description": "What applies on the fleet: its own entries, or the nearest parent fleet's."
+          },
+          "own": {
+            "type": "array",
+            "items": {},
+            "description": "This fleet's own entries; null when it inherits (InheritedFrom).",
+            "nullable": true
+          },
+          "inheritedFrom": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyAttestationRequest": {
+        "required": [
+          "challenge",
+          "ec"
+        ],
+        "type": "object",
+        "properties": {
+          "challenge": {
+            "type": "string",
+            "description": "The server's challenge the app attested with, base64."
+          },
+          "ec": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The EC key's chain, base64 DER, the key's certificate first."
+          },
+          "mlDsa65": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For the ec-mldsa65 suite, the ML-DSA-65 key's chain. Both must pass.",
+            "nullable": true
+          },
+          "package": {
+            "type": "string",
+            "description": "The package the key must belong to, if the server wants it checked.",
+            "nullable": true
+          },
+          "signerSha256": {
+            "type": "string",
+            "description": "The SHA-256 of the app's signing certificate (hex), if the server wants it checked: a\n            Problem unless one of the app's signers matches. Without it, compare `signerSha256` in the answer yourself.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "WaitingVersionDto": {
         "required": [
           "releasedAt",
@@ -7017,16 +11766,37 @@
   ],
   "tags": [
     {
+      "name": "App configuration"
+    },
+    {
       "name": "Apps"
     },
     {
+      "name": "Certificates for apps"
+    },
+    {
+      "name": "Crash reports"
+    },
+    {
+      "name": "Device attestation"
+    },
+    {
+      "name": "Device SDK"
+    },
+    {
       "name": "Devices"
+    },
+    {
+      "name": "Diagnostics"
     },
     {
       "name": "Fleets"
     },
     {
       "name": "Permissions"
+    },
+    {
+      "name": "Push"
     },
     {
       "name": "Remote ADB"

@@ -39,15 +39,31 @@ const prelude = {
 	token: 'var token = "ohrs_";',
 	patch: 'var patch = new PolicyPatchDto();',
 	deviceId: 'var deviceId = "dev_3swt6f457299btzpw1bxx4wf0q";',
+	// What an app sent your server: a push token's suite and key, a TEE key's attestation, a device attestation.
+	suite: 'var suite = "x25519";',
+	publicKey: 'var publicKey = "";',
+	owner: 'var owner = "";',
+	coseSign1: 'var coseSign1 = "";',
+	diceChain: 'var diceChain = "";',
+	challenge: 'var challenge = new byte[32];',
+	attestation: 'var attestation = new { Ec = new List<string>(), MlDsa65 = (List<string>?)null };',
+	attestationJson: 'var attestationJson = "{}";',
+	// Yours: the app's signing certificate, and where you keep a device's keys.
+	MySigningCertSha256: 'var MySigningCertSha256 = "";',
+	device: 'var device = new { EcPublicKey = new byte[65], MlDsa65PublicKey = (byte[]?)null };',
+	SaveDevice: 'void SaveDevice(params object?[] keys) { }',
 };
 
+// A snippet's own using directives go to the top of the file, as C# wants them.
+const usings = new Set(['using OhrTech.Management;']);
 const functions = snippets.map(({ where, code }, i) => {
+	for (const l of code.split('\n')) if (/^using [\w.]+;\s*$/.test(l)) usings.add(l.trim());
 	const body = code
 		.split('\n')
 		.filter((l) => !/^using [\w.]+;\s*$/.test(l) && !l.startsWith('#:'))
 		.join('\n')
 		.replace(/<iframe[^\n]*$/gm, '');
-	const declared = (name) => new RegExp(`\\b(var|using var|long|string)\\s+${name}\\b`).test(body);
+	const declared = (name) => new RegExp(`[\\w>\\]?]\\s+${name}\\s*[=;(]`).test(body);
 	const needed = Object.entries(prelude)
 		.filter(([name]) => new RegExp(`\\b${name}\\b`).test(body) && !declared(name))
 		.map(([, line]) => line);
@@ -57,7 +73,7 @@ const functions = snippets.map(({ where, code }, i) => {
 await writeFile(
 	join(root, 'examples/.page-snippets.cs'),
 	`${sdk}\n// Written by scripts/check-snippets.mjs from the pages' C# snippets. Do not edit.\n` +
-		`#pragma warning disable CS8321, CS0168, CS8625, CS0219, CS1998\nusing OhrTech.Management;\n\n` +
+		`#pragma warning disable CS8321, CS0168, CS8625, CS0219, CS1998\n${[...usings].join('\n')}\n\n` +
 		`await Task.CompletedTask;\n\n${functions.join('\n\n')}\n`,
 );
 console.log(`check-snippets: ${snippets.length} snippets written to examples/.page-snippets.cs`);

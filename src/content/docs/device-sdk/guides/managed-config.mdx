@@ -184,7 +184,9 @@ curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/app
 </TabItem>
 <TabItem label="C#">
 
-```csharp nocheck
+```csharp
+using System.Text.Json.Nodes;
+
 var config = await api.SetFleetAppConfigAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
     new SetAppConfigRequest
     {
@@ -198,7 +200,7 @@ var config = await api.SetFleetAppConfigAsync("flt_2dn47a2xa58j1txv8m28spkmyb", 
     });
 ```
 
-`SetFleetAppConfigAsync` and `SetDeviceAppConfigAsync` come in a .NET SDK release after 2.1.0.
+`SetFleetAppConfigAsync` and `SetDeviceAppConfigAsync` need OhrTech.Management 2.2.0 or later.
 
 </TabItem>
 </Tabs>

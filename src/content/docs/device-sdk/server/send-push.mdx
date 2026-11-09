@@ -27,7 +27,7 @@ app gets the public keys.
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-```csharp nocheck
+```csharp
 using OhrTech.Management.Push;
 
 using var key = PushSenderKey.Generate();   // Generate(postQuantum: false): Ed25519 only
@@ -76,9 +76,9 @@ has.
 <TabItem label="C#">
 
 `PushSealer` and `PushSenderKey` are in the `OhrTech.Management.Push` namespace, for .NET 10. They
-and `SendPushAsync` come with the release of OhrTech.Management after 2.1.0.
+and `SendPushAsync` need OhrTech.Management 2.2.0 or later.
 
-```csharp nocheck
+```csharp
 using System.Text;
 using OhrTech.Management;
 using OhrTech.Management.Push;
@@ -492,7 +492,7 @@ curl https://api.ohrtech.net/v1/push \
 </TabItem>
 </Tabs>
 
-The samples were tested with OhrTech.Management built from source (the release after 2.1.0) on
+The samples were tested with OhrTech.Management 2.2.0 on
 .NET 10, Node.js 26.13 with `hpke` 1.1.8, Go 1.27.3, and Python 3.14 with `cryptography` 50.0.2 and
 `cbor2` 6.2.1. Every sample's messages, in both suites, were opened and checked by the same checks
 the Device SDK 0.2.0 makes on the device. The Go sample needs Go 1.27 or later for `crypto/mldsa`.
@@ -560,7 +560,7 @@ doesn't know your sender keys, and it can't read the message.
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-```csharp nocheck
+```csharp
 var status = await api.GetPushStatusAsync("pmsg_3k9x2m7q4w8r1c6v5n0t2y4z8b");
 Console.WriteLine($"{status.Status} {status.Reason}");
 ```

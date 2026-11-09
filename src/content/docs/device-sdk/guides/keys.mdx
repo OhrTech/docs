@@ -254,9 +254,9 @@ Your server sends it, with the challenge it issued, to
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-`VerifyKeyAttestationAsync` comes with the release of OhrTech.Management after 2.1.0.
+`VerifyKeyAttestationAsync` needs OhrTech.Management 2.2.0 or later.
 
-```csharp nocheck
+```csharp
 var verdict = await api.VerifyKeyAttestationAsync("dev_3swt6f457299btzpw1bxx4wf0q", new KeyAttestationDto
 {
     Alg = "X-Wing",

@@ -101,6 +101,83 @@ const samples = {
 		'var approval = await api.ApproveAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");',
 	WithdrawAppPermission:
 		'// OhrTech staff only, for OhrTech\'s apps.\nawait api.WithdrawAppPermissionAsync("app_3k7fx2qd0m9b4tz1s8c6ve5hwy", "android.permission.CHANGE_DEVICE_IDLE_TEMP_WHITELIST");',
+	// The Device SDK's server side (2.2.0).
+	GetAppConfigSchema:
+		"var schema = await api.GetAppConfigSchemaAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	GetFleetAppConfig:
+		"var config = await api.GetFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetFleetAppConfig:
+		"var config = await api.SetFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppConfigRequest\n{\n    Values = new()\n    {\n        [\"server_url\"] = \"https://orders.example.com\",\n        [\"store_number\"] = 42,\n    },\n});",
+	ClearFleetAppConfig:
+		"var config = await api.ClearFleetAppConfigAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	GetDeviceAppConfig:
+		"var config = await api.GetDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetDeviceAppConfig:
+		"var config = await api.SetDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppConfigRequest\n{\n    Values = new() { [\"store_number\"] = 17 },\n});",
+	ClearDeviceAppConfig:
+		"var config = await api.ClearDeviceAppConfigAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	GetDeviceIdentityRoot:
+		"var rootPem = await api.GetDeviceIdentityRootAsync();",
+	CreateIssuingCa:
+		"var ca = await api.CreateIssuingCaAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", new CreateIssuingCaRequest { Name = \"Stores\", LeafDays = 90 });\n// Sign ca.CsrPem with your client root, then upload the result with UploadIssuingCaCertificateAsync.",
+	ListIssuingCas:
+		"var cas = await api.ListIssuingCasAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\");",
+	UploadIssuingCaCertificate:
+		"var ca = await api.UploadIssuingCaCertificateAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\", new UploadOrgCertificateRequest\n{\n    CertificatePem = File.ReadAllText(\"stores-issuing-ca.pem\"),\n    ChainPem = File.ReadAllText(\"client-root.pem\"),\n});",
+	RevokeIssuingCa:
+		"var ca = await api.RevokeIssuingCaAsync(\"org_1g8kq3zr5m2x9v4c7b6n0p3t8w\", \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\");",
+	GetAppCertificates:
+		"var certificates = await api.GetAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetAppCertificates:
+		"var certificates = await api.SetAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetAppCertificatesRequest\n{\n    IssuingCaId = \"ica_4x8n2q7m5k1v9c3b6z0p8r2t5w\",\n    Trust = [File.ReadAllText(\"private-ca.pem\")],\n});",
+	ClearAppCertificates:
+		"var certificates = await api.ClearAppCertificatesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	ListDeviceCertificates:
+		"var certificates = await api.ListDeviceCertificatesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");",
+	ListAppCrashes:
+		"var crashes = await api.ListAppCrashesAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", days: 7);\nforeach (var c in crashes) Console.WriteLine($\"{c.Count} x {c.Title}\");",
+	ListCrashReports:
+		"var reports = await api.ListCrashReportsAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", \"3f9c1a7e5b2d8c40\", limit: 10);",
+	ListDeviceCrashes:
+		"var crashes = await api.ListDeviceCrashesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", limit: 20);",
+	VerifyAttestation:
+		"byte[] challenge = new byte[32];      // the challenge your server gave the app\nList<string> ec = [];                  // the app's Attestation.toJson()[\"ec\"]: the chain, base64 DER\nvar verdict = await api.VerifyAttestationAsync(new VerifyAttestationRequest\n{\n    Challenge = Convert.ToBase64String(challenge),\n    Ec = ec,\n    Package = \"com.example.kiosk\",\n    SignerSha256 = \"5f0c3a9e7d21b8e64f9a0c2d1e3b5a7f6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f\",\n});\nvar trusted = verdict.Valid && verdict.Problems.Count == 0;",
+	RevokeDeviceAttestation:
+		"var revoked = await api.RevokeDeviceAttestationAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new RevokeAttestationRequest { Reason = \"lost\" });",
+	GetAttestationRoot:
+		"var rootPem = await api.GetAttestationRootAsync();",
+	GetAttestationStatus:
+		"var statusJws = await api.GetAttestationStatusAsync();\n// Or, checked: OhrTech.Management.Attestation.AttestationStatusList.FetchAsync(http)",
+	GetSdkAccess:
+		"var access = await api.GetSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetSdkAccess:
+		"var access = await api.SetSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetSdkAccessRequest { Areas = [\"wifi\", \"kiosk\"] });",
+	ClearSdkAccess:
+		"var access = await api.ClearSdkAccessAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	VerifyKeyAttestation:
+		"// The fields of the app's OhrKeys.attest() result, as the app sent them.\nvar keyAttestation = new KeyAttestationDto\n{\n    Alg = \"x-wing\", PublicKey = \"<base64>\", Owner = \"<owner>\", Challenge = \"<base64>\", CoseSign1 = \"<base64>\", DiceChain = \"<base64>\",\n};\nvar verdict = await api.VerifyKeyAttestationAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", keyAttestation);\nif (!verdict.Valid) throw new UnauthorizedAccessException(verdict.Reason);",
+	GetUsbDevices:
+		"var usb = await api.GetUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetUsbDevices:
+		"var usb = await api.SetUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetUsbDevicesRequest\n{\n    Devices =\n    [\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"vendorId\": \"0x05e0\", \"productId\": \"0x1200\", \"name\": \"Barcode scanner\"}\"\"\")!,\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"manufacturer\": \"Ingenico\", \"model\": \"Lane/3000\", \"name\": \"Payment terminal\"}\"\"\")!,\n    ],\n});",
+	ClearUsbDevices:
+		"var usb = await api.ClearUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	ListDevicePeripherals:
+		"var peripherals = await api.ListDevicePeripheralsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");",
+	ListDeviceEvents:
+		"var events = await api.ListDeviceEventsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", limit: 50);",
+	RequestLogBundle:
+		"var bundle = await api.RequestLogBundleAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new RequestLogBundleRequest { AllowMobileData = false });",
+	ListLogBundles:
+		"var bundles = await api.ListLogBundlesAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");\n// Each uploaded one has a DownloadUrl, good for an hour.",
+	SendPush:
+		"// From the app: its token, the token's suite and public key. Yours: the sender key the app trusts.\nstring token = \"psh_4n7q2x9m3k8v1c5b0z6p2r7t4w\", suite = \"x25519\", appPublicKey = \"<the token's public key, base64>\";\nvar sender = OhrTech.Management.Push.PushSenderKey.Import(Convert.FromBase64String(Environment.GetEnvironmentVariable(\"PUSH_ED25519_SEED\")!), null);\nvar message = OhrTech.Management.Push.PushSealer.SealBase64(token, suite, Convert.FromBase64String(appPublicKey), sender,\n    \"order-1234\", DateTimeOffset.UtcNow.AddHours(1), \"{\\\"order\\\": 1234}\"u8.ToArray());\nvar result = await api.SendPushAsync(new PushRequest\n{\n    Messages = [new PushRequestMessage { Token = token, Message = message, Priority = \"high\" }],\n});",
+	GetPushStatus:
+		"var status = await api.GetPushStatusAsync(\"pmsg_0km64jzn2t8qrb11c8t9x8abdp\");",
+	ListPushTokens:
+		"var tokens = await api.ListPushTokensAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");",
+	ExitKiosk:
+		"var task = await api.ExitKioskAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new ExitKioskRequest { Minutes = 15 });",
 };
 
 const signIn =
