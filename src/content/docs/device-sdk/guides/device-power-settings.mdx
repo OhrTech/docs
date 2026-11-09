@@ -9,35 +9,60 @@ Four areas of the Device SDK:
 
 | Area | Reads | Changes |
 |---|---|---|
-| [`device`](#device) | Always | (nothing to change) |
-| [`updates`](#your-apps-updates) | Always | Always: it only touches your app |
-| [`power`](#power) | Always | The fleet's `power` grant |
-| [`settings`](#settings) | Always | The fleet's `settings` grant |
+| [`device`](#device) (`OhrDevice`) | Always | (nothing to change) |
+| [`updates`](#your-apps-updates) (`OhrUpdates`) | Always | Always: it only touches your app |
+| [`power`](#power) (`OhrPower`) | Always | The fleet's `power` grant |
+| [`settings`](#settings) (`OhrSettings`) | Always | The fleet's `settings` grant |
 
-All four need OhrTech Agent 1059 or later. Each call is a blocking call into the OhrTech Agent:
-make it off the main thread. In Kotlin,
-`device.infoAsync()` does that itself; wrap the others in `withContext(Dispatchers.IO)`. See
-[access](/device-sdk/access/) for grants and errors.
+All four need OhrTech Agent 1059 or later. In Kotlin and Java each call is a blocking call into the
+OhrTech Agent: make it off the main thread. `OhrDevice.infoAsync()` does that itself; wrap the others
+in `withContext(Dispatchers.IO)`, or call them from a thread of your own in Java. In Dart, TypeScript
+and C# the calls are asynchronous already; C# names them `…Async` (`GetInfoAsync()`,
+`GetBatteryAsync()`, ...). See [access](/device-sdk/access/) for grants and errors.
 
 ## Device
 
-`device.info()` says which device your app runs on, as the hub and the
+`OhrDevice.info()` says which device your app runs on, as the hub and the
 [Management API](/management-api/) name it.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val info = sdk.device.infoAsync()
-log("${info.deviceId} in ${info.fleet?.name}, Agent ${info.agentVersion}, online: ${info.online}")
+val info = OhrDevice.infoAsync()
+show("${info.deviceId} in ${info.fleet?.name}, Agent ${info.agentVersion}, online: ${info.online}")
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-OhrDevice.Info info = sdk.getDevice().info();   // off the main thread
+OhrDevice.Info info = OhrDevice.info();   // off the main thread
 String fleet = info.getFleet() != null ? info.getFleet().getName() : null;
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final info = await OhrDevice.info();
+show('${info.deviceId} in ${info.fleet?.name}, Agent ${info.agentVersion}, online: ${info.online}');
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const info = await OhrDevice.info();
+const text = `${info.deviceId} in ${info.fleet?.name}, Agent ${info.agentVersion}, online: ${info.online}`;
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var info = await OhrDevice.GetInfoAsync();
+label.Text = $"{info.DeviceId} in {info.Fleet?.Name}, Agent {info.AgentVersion}, online: {info.Online}";
 ```
 
 </TabItem>
@@ -56,6 +81,8 @@ String fleet = info.getFleet() != null ? info.getFleet().getName() : null;
 | `agentVersion` | The OhrTech Agent's version code |
 | `online` | The Agent is connected to the hub now |
 
+In C# the fields are properties (`DeviceId`, `Fleet.Name`, ...).
+
 `deviceId` is the id to send to your server: it is the one the Management API uses in
 `/v1/devices/{deviceId}`.
 
@@ -71,8 +98,8 @@ of a shift.
 
 ```kotlin
 withContext(Dispatchers.IO) {
-    val update = sdk.updates.available()
-    if (update != null) sdk.updates.install(whenIdle = true)
+    val update = OhrUpdates.available()
+    if (update != null) OhrUpdates.install(whenIdle = true)
 }
 ```
 
@@ -80,15 +107,39 @@ withContext(Dispatchers.IO) {
 <TabItem label="Java">
 
 ```java
-OhrUpdates.Update update = sdk.getUpdates().available();   // off the main thread
-if (update != null) sdk.getUpdates().install(true);          // true: when the screen is next off
+OhrUpdates.Update update = OhrUpdates.available();   // off the main thread
+if (update != null) OhrUpdates.install(true);        // true: when the screen is next off
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final update = await OhrUpdates.available();
+if (update != null) await OhrUpdates.install(whenIdle: true);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const update = await OhrUpdates.available();
+if (update !== null) await OhrUpdates.install({ whenIdle: true });
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var update = await OhrUpdates.GetAvailableAsync();
+if (update is not null) await OhrUpdates.InstallAsync(whenIdle: true);
 ```
 
 </TabItem>
 </Tabs>
 
-`available()` returns the offered version, or `null` when none is offered or your app already runs
-it or a newer one.
+`available()` (`GetAvailableAsync()` in C#) returns the offered version, or `null` when none is
+offered or your app already runs it or a newer one.
 
 | `Update` field | |
 |---|---|
@@ -97,21 +148,26 @@ it or a newer one.
 | `notes` | The release notes uploaded with the version, or `null` |
 | `downloaded` | `true`: the device has it |
 
-`install(whenIdle)` installs it now (`false`, the default in Kotlin) or the next time the screen
-turns off (`true`). Java has no default: pass the value. The call returns at once; the install
-follows. Installing replaces your app, so its process stops. If it was on screen, the device starts
-it again afterwards; in [kiosk mode](/device-sdk/guides/kiosk/) the watchdog pins it again. The
-device reports the outcome to the hub. `install` throws `Unsupported` when nothing is offered.
+`install(whenIdle)` installs it now (`false`, the default) or the next time the screen turns off
+(`true`). In TypeScript it takes `{ whenIdle }`. The call returns at once; the install follows.
+Installing replaces your app, so its process stops. If it was on screen, the device starts it again
+afterwards; in [kiosk mode](/device-sdk/guides/kiosk/) the watchdog pins it again. The device
+reports the outcome to the hub. `install` throws `Unsupported` when nothing is offered.
 
-`changes` (Kotlin `Flow`) or `listen(executor, listener)` (Java) give the offer each time it
-changes. When the offer is withdrawn, they give `OhrUpdates.NONE` (`versionCode` 0).
+The offer, each time it changes, comes from `OhrUpdates.changes` (a Kotlin `Flow`, a Dart stream),
+`listen(executor, listener)` in Java, `addChangeListener(listener)` in TypeScript, and the `Changed`
+event or `Changes(ct)` in C#. When the offer is withdrawn, they give an update with `versionCode` 0:
+`OhrUpdates.NONE` in Kotlin and Java, `none` in Dart, `IsNone` in C#. When the Agent restarts, they
+give the offer as it is then.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-sdk.updates.changes.collect { update ->
-    updateBanner.isVisible = update != OhrUpdates.NONE
+import android.view.View
+
+OhrUpdates.changes.collect { update ->
+    updateBanner.visibility = if (update != OhrUpdates.NONE) View.VISIBLE else View.GONE
 }
 ```
 
@@ -119,8 +175,34 @@ sdk.updates.changes.collect { update ->
 <TabItem label="Java">
 
 ```java
-Closeable watch = sdk.getUpdates().listen(getMainExecutor(), update ->
+import android.view.View;
+
+Closeable watch = OhrUpdates.listen(activity.getMainExecutor(), update ->
     updateBanner.setVisibility(update.equals(OhrUpdates.NONE) ? View.GONE : View.VISIBLE));
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final sub = OhrUpdates.changes.listen((update) => show(update.none ? null : update.versionName));
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+let offered = false;
+const sub = OhrUpdates.addChangeListener((update) => {
+  offered = update.versionCode !== 0;
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+OhrUpdates.Changed += (_, e) => label.Visibility = e.Update.IsNone ? Android.Views.ViewStates.Gone : Android.Views.ViewStates.Visible;
 ```
 
 </TabItem>
@@ -133,7 +215,7 @@ grant.
 
 ### Battery
 
-`power.battery()` returns:
+`OhrPower.battery()` (`GetBatteryAsync()` in C#) returns:
 
 | Field | |
 |---|---|
@@ -144,8 +226,53 @@ grant.
 | `temperatureC` | The battery's temperature, in °C |
 | `screenOn` | The screen is on |
 
-`batteryChanges` (Kotlin `Flow`) or `listenBattery(executor, listener)` (Java) give it again each
-time it changes, and when the screen turns on or off.
+It comes again each time it changes, and when the screen turns on or off, from
+`OhrPower.batteryChanges` (a Kotlin `Flow`, a Dart stream), `listenBattery(executor, listener)` in
+Java, `addBatteryListener(listener)` in TypeScript, and the `BatteryChanged` event or
+`BatteryChanges(ct)` in C#.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+OhrPower.batteryChanges.collect { b -> show("${b.level} %, charging: ${b.charging}") }
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+Closeable watch = OhrPower.listenBattery(activity.getMainExecutor(), b ->
+    show(b.getLevel() + " %, charging: " + b.getCharging()));
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final sub = OhrPower.batteryChanges.listen((b) => show('${b.level} %, charging: ${b.charging}'));
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+let text = '';
+const sub = OhrPower.addBatteryListener((b) => {
+  text = `${b.level} %, charging: ${b.charging}`;
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await foreach (var b in OhrPower.BatteryChanges(cancellationToken))
+    label.Text = $"{b.Level} %, charging: {b.Charging}";
+```
+
+</TabItem>
+</Tabs>
 
 ### Reboot
 
@@ -160,7 +287,7 @@ is recorded as `app`.
 ```kotlin
 withContext(Dispatchers.IO) {
     // 03:30 every night except Sunday
-    sdk.power.scheduleReboot(OhrPower.Schedule("03:30", setOf(1, 2, 3, 4, 5, 6), "nightly"))
+    OhrPower.scheduleReboot(OhrPower.Schedule("03:30", setOf(1, 2, 3, 4, 5, 6), "nightly"))
 }
 ```
 
@@ -169,33 +296,103 @@ withContext(Dispatchers.IO) {
 
 ```java
 // 03:30 every night except Sunday
-sdk.getPower().scheduleReboot(new OhrPower.Schedule("03:30", Set.of(1, 2, 3, 4, 5, 6), "nightly"));
+OhrPower.scheduleReboot(new OhrPower.Schedule("03:30", Set.of(1, 2, 3, 4, 5, 6), "nightly"));
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+// 03:30 every night except Sunday
+await OhrPower.scheduleReboot(const OhrRebootSchedule('03:30', {1, 2, 3, 4, 5, 6}, 'nightly'));
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+// 03:30 every night except Sunday
+await OhrPower.scheduleReboot({ time: '03:30', days: [1, 2, 3, 4, 5, 6], reason: 'nightly' });
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+// 03:30 every night except Sunday
+await OhrPower.ScheduleRebootAsync(new OhrRebootSchedule("03:30", new HashSet<int> { 1, 2, 3, 4, 5, 6 }, "nightly"));
 ```
 
 </TabItem>
 </Tabs>
 
-| `Schedule` field | |
+| Schedule field | |
 |---|---|
 | `time` | `HH:mm`, 24-hour |
 | `days` | 1 to 7, Monday = 1; at least one day |
 | `reason` | What the hub records for each reboot |
 
-A device has one schedule: the last app to set it wins. It is kept across reboots.
-`rebootSchedule()` returns it, or `null`; `scheduleReboot(null)` removes it. A time or day that
-isn't valid throws `InvalidConfig` with `field` `schedule`.
+The schedule is `OhrPower.Schedule` in Kotlin and Java, `OhrRebootSchedule` in Dart, TypeScript and
+C#. A device has one schedule: the last app to set it wins. It is kept across reboots.
+`rebootSchedule()` (`GetRebootScheduleAsync()` in C#) returns it, or `null`; `scheduleReboot(null)`
+removes it. A time or day that isn't valid throws `InvalidConfig` with `field` `schedule`.
 
 ### Screen timeout and brightness
 
 | Call | |
 |---|---|
-| `setScreenTimeout(seconds)` | Any whole number of seconds, 1 to 2147483 (Android's limit); `InvalidConfig("seconds")` otherwise |
+| `setScreenTimeout(seconds)` | Any whole number of seconds, 1 to 2147483 (Android's limit); `InvalidConfig("seconds")` otherwise. Dart takes a `Duration`, C# a `TimeSpan`, in whole seconds |
 | `setBrightness(percent)` | 0 to 100; `InvalidConfig("percent")` otherwise. Turns adaptive brightness off |
 
 They change the same settings as the fleet's **Screen timeout** (`display.timeout`) and
 **Brightness** (`display.brightness`). When the fleet locks one, the call throws `FleetLocked` with
 that key. Otherwise your app's value holds until the fleet changes the setting, as with
-[`settings.set`](#change-a-setting).
+[`OhrSettings.set`](#change-a-setting).
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) {
+    OhrPower.setScreenTimeout(120)
+    OhrPower.setBrightness(80)
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrPower.setScreenTimeout(120);   // off the main thread
+OhrPower.setBrightness(80);
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrPower.setScreenTimeout(const Duration(minutes: 2));
+await OhrPower.setBrightness(80);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+await OhrPower.setScreenTimeout(120);
+await OhrPower.setBrightness(80);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await OhrPower.SetScreenTimeoutAsync(TimeSpan.FromMinutes(2));
+await OhrPower.SetBrightnessAsync(80);
+```
+
+</TabItem>
+</Tabs>
 
 ## Settings
 
@@ -211,9 +408,9 @@ values and its options.
 
 ```kotlin
 withContext(Dispatchers.IO) {
-    val keys = sdk.settings.keys()                     // what apps may use on this device
-    val dark = sdk.settings.get("display.dark_theme")  // value true or false, mode "set"
-    if (!dark.locked) sdk.settings.set("display.dark_theme", true)
+    val keys = OhrSettings.keys()                     // what apps may use on this device
+    val dark = OhrSettings.get("display.dark_theme")  // value true or false, mode "set"
+    if (!dark.locked) OhrSettings.set("display.dark_theme", true)
 }
 ```
 
@@ -221,31 +418,62 @@ withContext(Dispatchers.IO) {
 <TabItem label="Java">
 
 ```java
-List<String> keys = sdk.getSettings().keys();            // off the main thread
-OhrSettings.Setting dark = sdk.getSettings().get("display.dark_theme");
-if (!dark.getLocked()) sdk.getSettings().set("display.dark_theme", true);
+List<String> keys = OhrSettings.keys();            // off the main thread
+OhrSettings.Setting dark = OhrSettings.get("display.dark_theme");
+if (!dark.getLocked()) OhrSettings.set("display.dark_theme", true);
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final keys = await OhrSettings.keys();                  // what apps may use on this device
+final dark = await OhrSettings.get('display.dark_theme');
+if (!dark.locked) await OhrSettings.set('display.dark_theme', true);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const keys = await OhrSettings.keys();                  // what apps may use on this device
+const dark = await OhrSettings.get('display.dark_theme');
+if (dark.mode !== 'locked') await OhrSettings.set('display.dark_theme', true);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var keys = await OhrSettings.GetKeysAsync();            // what apps may use on this device
+var dark = await OhrSettings.GetAsync("display.dark_theme");
+if (!dark.Locked) await OhrSettings.SetAsync("display.dark_theme", true);
 ```
 
 </TabItem>
 </Tabs>
 
-`keys()` lists the keys apps may read and change on this device. `get(key)` returns a `Setting`:
+`keys()` (`GetKeysAsync()` in C#) lists the keys apps may read and change on this device.
+`get(key)` (`GetAsync(key)`) returns a setting:
 
 | Field | |
 |---|---|
 | `key` | The key |
-| `value` | The value on the device now: `Boolean`, `Int`, `String`, `JSONArray`, `JSONObject` or `null` |
+| `value` | The value on the device now: a boolean, a number, a string, an array, an object or `null` |
 | `mode` | `unmanaged` (the fleet leaves it alone), `set` (the fleet set it; it may be changed) or `locked` (the fleet locks it) |
-| `locked` | `mode` is `locked` |
+| `locked` | `mode` is `locked` (not in TypeScript: compare `mode`) |
 
-The value has the catalogue's shape for that key. A choice is a string even when it looks like a
-number: `display.timeout` is `"300"`, not `300`. `display.brightness` reads `-1` while adaptive
-brightness is on. A key that isn't in `keys()` throws `Unsupported`.
+The value is a `Boolean`, `Int`, `String`, `JSONArray`, `JSONObject` or `null` in Kotlin and Java,
+the decoded JSON (`bool`, `num`, `String`, `List`, `Map` or `null`) in Dart and TypeScript, and a
+`JsonNode?` in C#. It has the catalogue's shape for that key. A choice is a string even when it
+looks like a number: `display.timeout` is `"300"`, not `300`. `display.brightness` reads `-1` while
+adaptive brightness is on. A key that isn't in `keys()` throws `Unsupported`.
 
 ### Change a setting
 
-Needs the `settings` grant. `set(key, value)` takes a `Boolean`, a number, a `String`, a
-`JSONArray`, a `JSONObject` or `null`, in the catalogue's shape:
+Needs the `settings` grant. `set(key, value)` (`SetAsync(key, value)` in C#) takes a value in the
+catalogue's shape: a boolean, a number, a string, an array, an object or `null` (in Kotlin and Java
+`JSONArray` and `JSONObject` for the last two, in C# a `JsonNode`).
 
 These are the settings an app can read and change, with the values each takes:
 
@@ -259,11 +487,59 @@ These are the settings an app can read and change, with the values each takes:
 | Time zone | `system.time_zone` | An IANA zone, such as `Europe/Amsterdam` |
 | Lists | `system.languages`; `system.input_methods` | Language tags such as `de-DE`; input method ids such as `com.example.keyboard/.ImeService`, or `default` |
 
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
 ```kotlin
-sdk.settings.set("display.auto_rotate", true)
-sdk.settings.set("display.timeout", 45)
-sdk.settings.set("system.languages", JSONArray(listOf("de-DE", "en-US")))
+import org.json.JSONArray
+
+withContext(Dispatchers.IO) {
+    OhrSettings.set("display.auto_rotate", true)
+    OhrSettings.set("display.timeout", 45)
+    OhrSettings.set("system.languages", JSONArray(listOf("de-DE", "en-US")))
+}
 ```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+import org.json.JSONArray;
+
+OhrSettings.set("display.auto_rotate", true);   // off the main thread
+OhrSettings.set("display.timeout", 45);
+OhrSettings.set("system.languages", new JSONArray(List.of("de-DE", "en-US")));
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrSettings.set('display.auto_rotate', true);
+await OhrSettings.set('display.timeout', 45);
+await OhrSettings.set('system.languages', ['de-DE', 'en-US']);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+await OhrSettings.set('display.auto_rotate', true);
+await OhrSettings.set('display.timeout', 45);
+await OhrSettings.set('system.languages', ['de-DE', 'en-US']);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await OhrSettings.SetAsync("display.auto_rotate", true);
+await OhrSettings.SetAsync("display.timeout", 45);
+await OhrSettings.SetAsync("system.languages", new JsonArray("de-DE", "en-US"));
+```
+
+</TabItem>
+</Tabs>
 
 A value that doesn't fit throws `InvalidConfig` (`field` `value`, and `reason` says what it must be),
 before anything changes. The device applies a valid value straight away and reports it to the hub,
@@ -288,15 +564,18 @@ apps' reach until it is added here. Kiosk mode and Wi-Fi networks have their own
 
 ### Follow changes
 
-`changes` (Kotlin `Flow`) or `listen(executor, listener)` (Java) give a `Setting` each time a
-setting's value changes on the device, whoever changed it: the fleet, your app, another app or the
-person at the device.
+A setting comes each time its value changes on the device, whoever changed it: the fleet, your
+app, another app or the person at the device. It comes from `OhrSettings.changes` (a Kotlin `Flow`,
+a Dart stream), `listen(executor, listener)` in Java, `addChangeListener(listener)` in TypeScript,
+and the `Changed` event or `Changes(ct)` in C#. They go on when the Agent restarts, but a change
+made while it was away isn't sent: read the settings you need again then (see
+[following changes](/device-sdk/access/#following-changes)).
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-sdk.settings.changes
+OhrSettings.changes
     .filter { it.key == "display.dark_theme" }
     .collect { applyTheme(dark = it.value == true) }
 ```
@@ -305,9 +584,38 @@ sdk.settings.changes
 <TabItem label="Java">
 
 ```java
-Closeable watch = sdk.getSettings().listen(getMainExecutor(), setting -> {
+Closeable watch = OhrSettings.listen(activity.getMainExecutor(), setting -> {
     if (setting.getKey().equals("display.dark_theme")) applyTheme(Boolean.TRUE.equals(setting.getValue()));
 });
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final sub = OhrSettings.changes
+    .where((s) => s.key == 'display.dark_theme')
+    .listen((s) => applyTheme(dark: s.value == true));
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+let dark = false;
+const sub = OhrSettings.addChangeListener((s) => {
+  if (s.key === 'display.dark_theme') dark = s.value === true;
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+OhrSettings.Changed += (_, e) =>
+{
+    if (e.Setting.Key == "display.dark_theme") label.Text = e.Setting.Value?.GetValue<bool>() == true ? "Dark" : "Light";
+};
 ```
 
 </TabItem>
@@ -322,3 +630,7 @@ Closeable watch = sdk.getSettings().listen(getMainExecutor(), setting -> {
 | `InvalidConfig(field, reason)` | A setting value, screen timeout, brightness or reboot schedule that isn't valid |
 | `Unsupported` | `install` with nothing offered; `get` or `set` of a key apps can't use |
 | `Failed(reason)` | The device couldn't apply it |
+
+These are the Kotlin and Java names (`OhrException.NotAllowed`, ...). Dart and TypeScript name them
+`OhrNotAllowed`, `OhrFleetLocked`, ...; C# `OhrNotAllowedException`, `OhrFleetLockedException`, ...
+See [errors](/device-sdk/access/#errors).

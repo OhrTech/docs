@@ -7,16 +7,18 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 Two areas cover the device's connectivity:
 
-- `wifi`: Wi-Fi on or off, the networks in range, saved networks, and saving, joining and
+- `wifi` (`OhrWifi`): Wi-Fi on or off, the networks in range, saved networks, and saving, joining and
   forgetting networks of every type the device supports, enterprise and Passpoint included.
-- `network`: the active network, mobile data, airplane mode and data roaming.
+- `network` (`OhrNetwork`): the active network, mobile data, airplane mode and data roaming.
 
 Any app the hub installed can read both. Changing anything needs the fleet's grant: `wifi` for the
 Wi-Fi area and the embedded Wi-Fi screen, `network` for mobile data, airplane mode and roaming. See
 [access](/device-sdk/access/) for how grants are set.
 
-Both areas, and the embedded screen, need OhrTech Agent 1059 or later. Every call on this page
-except the `Flow` properties is a blocking call into the OhrTech Agent: make it off the main thread.
+Both areas, and the embedded screen, need OhrTech Agent 1059 or later. In Kotlin and Java every call
+on this page except the `Flow`s and listeners is a blocking call into the OhrTech Agent: make it off
+the main thread. In Dart, TypeScript and C# the calls are asynchronous already. See
+[threading](/device-sdk/access/#threading).
 
 ## Join a network
 
@@ -24,10 +26,9 @@ except the `Flow` properties is a blocking call into the OhrTech Agent: make it 
 <TabItem label="Kotlin">
 
 ```kotlin
-val sdk = OhrDeviceSdk.connect(context)
 withContext(Dispatchers.IO) {
-    if (sdk.session.mayUse("wifi")) {
-        val identity = sdk.wifi.connect(WifiConfig.psk("Store-Backoffice", "correct horse battery"))
+    if (OhrAccess.mayUse("wifi")) {
+        val identity = OhrWifi.connect(WifiConfig.psk("Store-Backoffice", "correct horse battery"))
         // identity is "ssid:Store-Backoffice"
     }
 }
@@ -37,30 +38,63 @@ withContext(Dispatchers.IO) {
 <TabItem label="Java">
 
 ```java
-OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(context);   // off the main thread
-if (sdk.getSession().mayUse("wifi")) {
-    String identity = sdk.getWifi().connect(WifiConfig.psk("Store-Backoffice", "correct horse battery"));
+// On a background thread:
+if (OhrAccess.mayUse("wifi")) {
+    String identity = OhrWifi.connect(WifiConfig.psk("Store-Backoffice", "correct horse battery"));
+}
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+if (await OhrAccess.mayUse('wifi')) {
+  final identity = await OhrWifi.connectConfig(WifiConfig.psk('Store-Backoffice', 'correct horse battery'));
+  // identity is 'ssid:Store-Backoffice'
+}
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+if (await OhrAccess.mayUse('wifi')) {
+  const identity = await OhrWifi.connectConfig(WifiConfig.psk('Store-Backoffice', 'correct horse battery'));
+  // identity is 'ssid:Store-Backoffice'
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+if (await OhrAccess.MayUseAsync("wifi"))
+{
+    var identity = await OhrWifi.ConnectAsync(WifiConfig.Psk("Store-Backoffice", "correct horse battery"));
+    // identity is "ssid:Store-Backoffice"
 }
 ```
 
 </TabItem>
 </Tabs>
 
-`connect(config)` saves the network, then joins it. `save(config)` only saves it. Both return the
-network's **identity**: `ssid:<name>`, or `passpoint:<fqdn>` for a Passpoint provider. Saving
-replaces any saved network with the same SSID, whatever its security, or the same Passpoint
-provider.
+`connect(config)` saves the network, then joins it; in Dart and TypeScript it is
+`connectConfig(config)`. `save(config)` only saves it. Both return the network's **identity**:
+`ssid:<name>`, or `passpoint:<fqdn>` for a Passpoint provider. Saving replaces any saved network
+with the same SSID, whatever its security, or the same Passpoint provider.
 
 ## Read the Wi-Fi state
 
-| Call | Returns |
-|---|---|
-| `state()` | `State`: `enabled`, `state` (`on`, `off`, `turningOn`, `turningOff`), `connected` (the current network as JSON, or `null`) |
-| `networks()` | The networks in range, as `Network` |
-| `scan()` | Starts a scan; the results arrive in `networks()` and `networkChanges` |
-| `saved()` | The saved networks, as JSON objects |
+| Kotlin, Java, Dart, TypeScript | C# | Returns |
+|---|---|---|
+| `state()` | `GetStateAsync()` | `enabled`, `state` (`on`, `off`, `turningOn`, `turningOff`), `connected` (the current network as JSON, or `null`) |
+| `networks()` | `GetNetworksAsync()` | The networks in range |
+| `scan()` | `ScanAsync()` | Starts a scan; the results arrive in `networks()` and the network changes |
+| `saved()` | `GetSavedAsync()` | The saved networks, as JSON objects |
 
-Each `Network` has:
+In Dart and C# the state also has `ssid` (`Ssid`): the current network's SSID, or `null`.
+
+Each network in range has:
 
 | Field | |
 |---|---|
@@ -68,14 +102,17 @@ Each `Network` has:
 | `title` | The name to show |
 | `ssid` | The SSID, or `null` (Passpoint) |
 | `security` | The security types it offers, such as `["psk", "sae"]` |
-| `level` | Signal level, as Android's Settings shows it |
+| `level` | Signal level, 0 to 4 as Android's Settings shows it, or -1 |
 | `saved`, `connected` | Saved on the device; the device is connected to it now |
 | `fleet` | One of the fleet's networks (read-only to apps) |
 | `json` | The full JSON, which also has `internet`, `metered`, `summary` and `connected` as `connected`, `connecting` or `disconnected` |
 
+In TypeScript a network is that JSON itself: `connected` is the string, and `internet` and
+`metered` are fields of their own. In C# the fields are properties (`Key`, `Title`, ...).
+
 The first `networks()` call can take up to about 3 seconds while the list starts. The list then
-keeps running for a minute, or for as long as you follow `networkChanges`, so later calls answer
-at once.
+keeps running for a minute, or for as long as you follow the network changes, so later calls
+answer at once.
 
 `saved()` lists each network as `{"ssid", "security", "fleet"}`, or a Passpoint provider as
 `{"security": "passpoint", "passpoint": {"fqdn", "friendlyName"}, "fleet"}`. It never contains a
@@ -85,15 +122,15 @@ password.
 
 Needs the `wifi` grant.
 
-| Call | |
-|---|---|
-| `save(config)` | Saves a network; returns its identity |
-| `connect(config)` | Saves, then joins; returns the identity |
-| `connect(keyOrIdentity)` | Joins a network in range by its `key`, or a saved network by its `ssid:` identity |
-| `disconnect()` | Leaves the current network |
-| `forget(identity)` | Removes a saved network (`ssid:…` or `passpoint:…`) |
-| `setEnabled(on)` | Turns Wi-Fi on or off. `FleetLocked("wifi.enabled")` when the fleet locks it |
-| `connectQr(text)` | Saves and joins the network in a Wi-Fi QR code your app scanned |
+| Kotlin, Java, Dart, TypeScript | C# | |
+|---|---|---|
+| `save(config)` | `SaveAsync(config)` | Saves a network; returns its identity |
+| `connect(config)`; Dart, TypeScript: `connectConfig(config)` | `ConnectAsync(config)` | Saves, then joins; returns the identity |
+| `connect(keyOrIdentity)` | `ConnectAsync(keyOrIdentity)` | Joins a network in range by its `key`, or a saved network by its `ssid:` identity |
+| `disconnect()` | `DisconnectAsync()` | Leaves the current network |
+| `forget(identity)` | `ForgetAsync(identity)` | Removes a saved network (`ssid:…` or `passpoint:…`) |
+| `setEnabled(on)` | `SetEnabledAsync(on)` | Turns Wi-Fi on or off. `FleetLocked("wifi.enabled")` when the fleet locks it |
+| `connectQr(text)` | `ConnectQrAsync(text)` | Saves and joins the network in a Wi-Fi QR code your app scanned; returns the identity |
 
 `connect(key)` with a key that is not in range, or an identity that is not saved, throws
 `InvalidConfig` with `field` `network`. To join a network that isn't saved and needs a password or
@@ -118,7 +155,9 @@ throws `InvalidConfig` with `field` `qr`. Easy Connect codes (`DPP:…`) throw `
 
 A config is a JSON object in the OhrTech Wi-Fi model: the same model as the fleet setting
 **Saved Wi-Fi networks** (`wifi.networks`) in the portal and the
-[Management API](/management-api/guides/settings/). `WifiConfig` builds the common ones:
+[Management API](/management-api/guides/settings/). It is a `JSONObject` in Kotlin and Java, a
+`Map<String, Object?>` in Dart, a plain object in TypeScript and a `JsonObject` in C#. `WifiConfig`
+builds the common ones:
 
 | Builder | `security` |
 |---|---|
@@ -127,7 +166,8 @@ A config is a JSON object in the OhrTech Wi-Fi model: the same model as the flee
 | `WifiConfig.psk(ssid, password, hidden)` | `psk` (WPA/WPA2-Personal) |
 | `WifiConfig.sae(ssid, password, hidden)` | `sae` (WPA3-Personal) |
 
-`hidden` is optional and `false` by default. For everything else, build the JSON. The device checks
+`hidden` is optional and `false` by default (in Dart a named parameter, `hidden: true`; in C# the
+builders are `Open`, `Owe`, `Psk` and `Sae`). For everything else, build the JSON. The device checks
 a config strictly, with the same rules as the hub: an unknown field, a value of the wrong type or a
 missing value throws `InvalidConfig`, whose `field` is the JSON path (`password`,
 `eap.domain`, `passpoint.credential.imsi`) and whose `reason` says what to fix.
@@ -192,6 +232,8 @@ certificate with its private key, not a CA certificate.
 <TabItem label="Kotlin">
 
 ```kotlin
+import org.json.JSONObject
+
 val config = JSONObject()
     .put("ssid", "Example-Corp")
     .put("security", "eap")
@@ -202,13 +244,15 @@ val config = JSONObject()
         .put("password", staffPassword)
         .put("ca", "system")
         .put("domain", "radius.example.com"))
-withContext(Dispatchers.IO) { sdk.wifi.connect(config) }
+withContext(Dispatchers.IO) { OhrWifi.connect(config) }
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
+import org.json.JSONObject;
+
 JSONObject config = new JSONObject()
     .put("ssid", "Example-Corp")
     .put("security", "eap")
@@ -219,7 +263,65 @@ JSONObject config = new JSONObject()
         .put("password", staffPassword)
         .put("ca", "system")
         .put("domain", "radius.example.com"));
-sdk.getWifi().connect(config);
+OhrWifi.connect(config);   // on a background thread
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrWifi.connectConfig({
+  'ssid': 'Example-Corp',
+  'security': 'eap',
+  'eap': {
+    'method': 'peap',
+    'phase2': 'mschapv2',
+    'identity': 'store-0042',
+    'password': staffPassword,
+    'ca': 'system',
+    'domain': 'radius.example.com',
+  },
+});
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+async function joinCorp(staffPassword: string) {
+  await OhrWifi.connectConfig({
+    ssid: 'Example-Corp',
+    security: 'eap',
+    eap: {
+      method: 'peap',
+      phase2: 'mschapv2',
+      identity: 'store-0042',
+      password: staffPassword,
+      ca: 'system',
+      domain: 'radius.example.com',
+    },
+  });
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await OhrWifi.ConnectAsync(new JsonObject
+{
+    ["ssid"] = "Example-Corp",
+    ["security"] = "eap",
+    ["eap"] = new JsonObject
+    {
+        ["method"] = "peap",
+        ["phase2"] = "mschapv2",
+        ["identity"] = "store-0042",
+        ["password"] = staffPassword,
+        ["ca"] = "system",
+        ["domain"] = "radius.example.com",
+    },
+});
 ```
 
 </TabItem>
@@ -274,6 +376,17 @@ Agent inside your own layout: the Wi-Fi switch, the networks in range, joining o
 **Add network** and **Saved networks**. Touch, the keyboard and TalkBack work as in your own views.
 It needs the `wifi` grant.
 
+There is nothing to open or attach: the view opens the screen by itself once it is laid out, and
+again when it is attached to a window again or after the Agent restarted (a crash, its own
+update). It makes its calls to the Agent on a thread of its own, so it never blocks your UI. It
+closes when the view leaves the window. Its error callback gets an `OhrException` when the Agent
+refuses, such as `NotAllowed` without the `wifi` grant.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+Put the view in your layout:
+
 ```xml
 <net.ohrtech.device.OhrWifiView
     android:id="@+id/wifi"
@@ -281,37 +394,128 @@ It needs the `wifi` grant.
     android:layout_height="match_parent" />
 ```
 
-<Tabs syncKey="lang">
-<TabItem label="Kotlin">
+Set its `listener` (and its [`options`](#what-it-offers)) in `onCreate`, before it is laid out:
 
 ```kotlin
-val wifiView = findViewById<OhrWifiView>(R.id.wifi)
+// wifiView = findViewById(R.id.wifi), in onCreate
 wifiView.listener = object : OhrWifiView.Listener {
-    override fun onConnected(ssid: String) { showStatus("Joined $ssid") }
-    override fun onError(error: Exception) { showStatus("Wi-Fi screen: ${error.message}") }
+    override fun onConnected(ssid: String) { show("Joined $ssid") }
+    override fun onError(error: Exception) { show("Wi-Fi screen: ${error.message}") }
 }
-wifiView.attach(sdk)
 ```
+
+With `layout_height="wrap_content"` the view takes the screen's own height.
 
 </TabItem>
 <TabItem label="Java">
 
+Put the view in your layout:
+
+```xml
+<net.ohrtech.device.OhrWifiView
+    android:id="@+id/wifi"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
+```
+
+Set its listener (and its [options](#what-it-offers)) in `onCreate`, before it is laid out:
+
 ```java
-OhrWifiView wifiView = findViewById(R.id.wifi);
+// wifiView = findViewById(R.id.wifi), in onCreate
 wifiView.setListener(new OhrWifiView.Listener() {
-    @Override public void onConnected(String ssid) { showStatus("Joined " + ssid); }
-    @Override public void onError(Exception error) { showStatus("Wi-Fi screen: " + error.getMessage()); }
+    @Override public void onConnected(String ssid) { show("Joined " + ssid); }
+    @Override public void onError(Exception error) { show("Wi-Fi screen: " + error.getMessage()); }
 });
-wifiView.attach(sdk);
+```
+
+With `layout_height="wrap_content"` the view takes the screen's own height.
+
+</TabItem>
+<TabItem label="Dart">
+
+`OhrWifiView` is a widget. It is an Android view shown with hybrid composition (the Agent's screen
+is a `SurfaceView`, which the texture-based modes can't show), so give it a bounded size: inside an
+`Expanded`, or a `SizedBox` with a height.
+
+```dart
+class WifiPage extends StatelessWidget {
+  const WifiPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Wi-Fi')),
+        body: Column(children: [
+          Expanded(
+            child: OhrWifiView(
+              onConnected: (ssid) => show('Joined $ssid'),
+              onError: (e) => show('Wi-Fi screen: ${e.message}'),
+            ),
+          ),
+        ]),
+      );
+}
 ```
 
 </TabItem>
-</Tabs>
+<TabItem label="TypeScript">
 
-`attach` may be called from the main thread: the view opens the screen once it is laid out and
-makes its calls to the Agent on a thread of its own. It closes when the view leaves the window.
-With `layout_height="wrap_content"` the view takes the screen's own height. `onError` gets an
-`OhrException` when the Agent refuses, such as `NotAllowed` without the `wifi` grant.
+`<OhrWifiView>` is a Fabric component (New Architecture). Give it a size, such as `flex: 1`:
+
+```tsx
+import { Alert } from 'react-native';
+
+function WifiScreen() {
+  return (
+    <OhrWifiView
+      style={{ flex: 1 }}
+      onConnected={(ssid) => Alert.alert(`Joined ${ssid}`)}
+      onError={(e) => Alert.alert('Wi-Fi screen', e.message)}
+    />
+  );
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+In .NET for Android, `OhrTech.Device.OhrWifiView` is an Android view. Its events are raised on the
+main thread:
+
+```csharp
+using Android.App;
+using Android.OS;
+
+[Activity(Label = "Wi-Fi")]
+public class WifiScreenActivity : Activity
+{
+    protected override void OnCreate(Bundle? savedInstanceState)
+    {
+        base.OnCreate(savedInstanceState);
+        var wifiView = new OhrWifiView(this);
+        wifiView.Connected += (_, e) => Title = $"Joined {e.Ssid}";
+        wifiView.Error += (_, e) => Title = $"Wi-Fi screen: {e.Error.Message}";
+        SetContentView(wifiView);
+    }
+}
+```
+
+In MAUI, add `OhrTech.Device.Maui` and register its control in `MauiProgram`:
+
+```csharp nocheck
+builder.UseMauiApp<App>()
+       .UseOhrTechDevice();
+```
+
+```xml
+<ohr:OhrWifiView xmlns:ohr="clr-namespace:OhrTech.Device.Maui;assembly=OhrTech.Device.Maui"
+                 Connected="OnWifiConnected" Error="OnWifiError" />
+```
+
+`OhrTech.Device.Maui.OhrWifiView` has the same `Connected` and `Error` events, and `Theme` and
+`Options` as bindable properties.
+
+</TabItem>
+</Tabs>
 
 ### Why it suits a kiosk
 
@@ -322,7 +526,9 @@ doesn't have to build its own network forms.
 
 ### What it offers
 
-Set `options` before `attach`. Everything is on by default.
+The options are read when the screen opens: set them before the view is laid out (Kotlin, Java,
+.NET for Android) or pass them when you create the widget or component. Everything is on by
+default.
 
 | Option | Off hides |
 |---|---|
@@ -341,16 +547,19 @@ certificate or a provider profile (EAP-TLS, Passpoint) are for the fleet's setti
 
 ### The look
 
-Unset values follow the device's Material You colours, as Settings does. `theme` can change while
-the screen is open, when your app switches to dark for example.
+Unset values follow the device's Material You colours, as Settings does. The theme can change while
+the screen is open, when your app switches to dark for example: the change applies at once.
 
-| `Theme` field | |
+| Theme field | |
 |---|---|
-| `dark` | Dark or light; the system's choice when `null` |
-| `accent` | Accent colour, ARGB |
-| `background` | Background colour, ARGB |
-| `text` | Text colour, ARGB |
-| `cornerRadiusDp` | Corner radius of dialogs, the switch bar and buttons, 0 to 32 dp (Settings' own when `null`) |
+| `dark` | Dark or light; the system's choice when unset |
+| `accent` | Accent colour |
+| `background` | Background colour |
+| `text` | Text colour |
+| `cornerRadiusDp` | Corner radius of dialogs, the switch bar and buttons, 0 to 32 dp (Settings' own when unset). In Dart and TypeScript, `cornerRadius` |
+
+The colours are ARGB `Int`s in Kotlin and Java, `Color`s in Dart, any React Native colour in
+TypeScript and `Android.Graphics.Color` in C#.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
@@ -371,13 +580,44 @@ wifiView.setTheme(new OhrWifiView.Theme(true, 0xFF1E88E5, null, null, 12f));
 ```
 
 </TabItem>
+<TabItem label="Dart">
+
+```dart
+final view = OhrWifiView(
+  options: const OhrWifiOptions(addNetwork: false, forget: false),
+  theme: const OhrWifiTheme(dark: true, accent: Color(0xFF1E88E5), cornerRadius: 12),
+);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```tsx
+const view = (
+  <OhrWifiView
+    style={{ flex: 1 }}
+    options={{ addNetwork: false, forget: false }}
+    theme={{ dark: true, accent: '#1E88E5', cornerRadius: 12 }}
+  />
+);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+wifiView.Options = new OhrWifiOptions(AddNetwork: false, Forget: false);
+wifiView.Theme = new OhrWifiTheme(Dark: true, Accent: Android.Graphics.Color.ParseColor("#1E88E5"), CornerRadiusDp: 12);
+```
+
+</TabItem>
 </Tabs>
 
 An app can have up to 4 screens open at once; opening another closes its oldest.
 
 ## Mobile data, airplane mode and roaming
 
-`network.state()` returns:
+`OhrNetwork.state()` (`GetStateAsync()` in C#) returns:
 
 | Field | |
 |---|---|
@@ -392,16 +632,17 @@ An app can have up to 4 screens open at once; opening another closes its oldest.
 | `dataRoaming` | Data roaming is on |
 | `ethernetConnected` | An Ethernet network is connected |
 
-With the `network` grant: `setMobileData(on)`, `setAirplaneMode(on)` and `setDataRoaming(on)`.
-`setDataRoaming` throws `FleetLocked("network.data_roaming")` when the fleet locks the setting.
+With the `network` grant: `setMobileData(on)`, `setAirplaneMode(on)` and `setDataRoaming(on)`
+(`SetMobileDataAsync`, `SetAirplaneModeAsync` and `SetDataRoamingAsync` in C#). `setDataRoaming`
+throws `FleetLocked("network.data_roaming")` when the fleet locks the setting.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
 withContext(Dispatchers.IO) {
-    val s = sdk.network.state()
-    if (s.active == null && !s.mobileData) sdk.network.setMobileData(true)
+    val s = OhrNetwork.state()
+    if (s.active == null && !s.mobileData) OhrNetwork.setMobileData(true)
 }
 ```
 
@@ -409,8 +650,32 @@ withContext(Dispatchers.IO) {
 <TabItem label="Java">
 
 ```java
-OhrNetwork.State s = sdk.getNetwork().state();
-if (s.getActive() == null && !s.getMobileData()) sdk.getNetwork().setMobileData(true);
+OhrNetwork.State s = OhrNetwork.state();   // on a background thread
+if (s.getActive() == null && !s.getMobileData()) OhrNetwork.setMobileData(true);
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final s = await OhrNetwork.state();
+if (s.active == null && !s.mobileData) await OhrNetwork.setMobileData(true);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const s = await OhrNetwork.state();
+if (s.active === null && !s.mobileData) await OhrNetwork.setMobileData(true);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var s = await OhrNetwork.GetStateAsync();
+if (s.Active is null && !s.MobileData) await OhrNetwork.SetMobileDataAsync(true);
 ```
 
 </TabItem>
@@ -423,23 +688,38 @@ only over Wi-Fi.
 
 ## Follow changes
 
-| Kotlin `Flow` | Java listener | Gives |
-|---|---|---|
-| `wifi.stateChanges` | `wifi.listenState(executor, listener)` | `OhrWifi.State` |
-| `wifi.networkChanges` | `wifi.listenNetworks(executor, listener)` | `List<Network>` |
-| `network.changes` | `network.listen(executor, listener)` | `OhrNetwork.State` |
+| Changes of | Kotlin `Flow`; Java listener | Dart stream | TypeScript listener | C# event; stream |
+|---|---|---|---|---|
+| The Wi-Fi state | `OhrWifi.stateChanges`; `listenState(executor, listener)` | `OhrWifi.stateChanges` | `OhrWifi.addStateListener(listener)` | `OhrWifi.StateChanged`; `StateChanges(ct)` |
+| The networks in range | `OhrWifi.networkChanges`; `listenNetworks(executor, listener)` | `OhrWifi.networkChanges` | `OhrWifi.addNetworksListener(listener)` | `OhrWifi.NetworksChanged`; `NetworkChanges(ct)` |
+| The network state | `OhrNetwork.changes`; `listen(executor, listener)` | `OhrNetwork.changes` | `OhrNetwork.addChangeListener(listener)` | `OhrNetwork.Changed`; `Changes(ct)` |
 
-A change is sent when something differs from the last one sent. Following `networkChanges` keeps the
-network list running, which scans now and then; stop when you no longer show it.
+A change is sent when something differs from the last one sent. They go on when the Agent
+restarts, and the state ones then give the current state, for what changed meanwhile. Following
+the network changes keeps the network list running, which scans now and then: stop when you no
+longer show it. See [following changes](/device-sdk/access/#following-changes).
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-lifecycleScope.launch {
-    repeatOnLifecycle(Lifecycle.State.STARTED) {
-        sdk.wifi.networkChanges.collect { networks -> adapter.submitList(networks) }
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+
+class NetworksActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                OhrWifi.networkChanges.collect { networks -> showNetworks(networks) }
+            }
+        }
     }
+
+    private fun showNetworks(networks: List<OhrWifi.Network>) { /* your list */ }
 }
 ```
 
@@ -447,9 +727,44 @@ lifecycleScope.launch {
 <TabItem label="Java">
 
 ```java
-Closeable watch = sdk.getWifi().listenNetworks(getMainExecutor(), networks -> adapter.submitList(networks));
+Closeable watch = OhrWifi.listenNetworks(activity.getMainExecutor(), networks -> show(networks));
 // later, in onStop():
 watch.close();
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final sub = OhrWifi.networkChanges.listen((networks) => show(networks));
+// later, in dispose():
+await sub.cancel();
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+let count = 0;
+const sub = OhrWifi.addNetworksListener((networks) => {
+  count = networks.length;
+});
+// later, when the list leaves the screen:
+sub.remove();
+```
+
+</TabItem>
+<TabItem label="C#">
+
+The event is raised on the thread that subscribed when it has a `SynchronizationContext` (the UI
+thread), else on the thread pool:
+
+```csharp
+OhrWifi.NetworksChanged += OnNetworks;
+// later, when the list goes away:
+OhrWifi.NetworksChanged -= OnNetworks;
+
+void OnNetworks(object? sender, OhrWifiNetworksChangedEventArgs e) => label.Text = $"{e.Networks.Count} networks";
 ```
 
 </TabItem>
@@ -464,3 +779,7 @@ watch.close();
 | `InvalidConfig(field, reason)` | A config, identity, key or QR code that isn't valid |
 | `Unsupported` | Easy Connect QR codes; a device whose Wi-Fi list can't run |
 | `Failed(reason)` | Android refused, such as a WEP network the fleet doesn't allow |
+
+These are the Kotlin and Java names (`OhrException.NotAllowed`, ...). Dart and TypeScript name them
+`OhrNotAllowed`, `OhrFleetLocked`, ...; C# `OhrNotAllowedException`, `OhrFleetLockedException`, ...
+See [errors](/device-sdk/access/#errors).

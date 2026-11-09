@@ -12,7 +12,7 @@ asks and the fleet allows it, when the hub lifts it, or when staff type the exit
 
 There are two ways in:
 
-- **From your app**, with `sdk.kiosk.start(activity)`. Needs the fleet's `kiosk` grant.
+- **From your app**, with `OhrKiosk.start`. Needs the fleet's `kiosk` grant.
 - **From the fleet**, with the **Kiosk app** setting. The device starts and pins the app at every
   boot. Your app needs no SDK call and no grant.
 
@@ -20,8 +20,13 @@ Either way, the [watchdog](#the-watchdog) brings the app back when it crashes, h
 the [exit PIN](#the-exit-pin) lets staff leave kiosk mode for a while.
 
 `start`, `stop` and `state` need OhrTech Agent 1059 or later. The watchdog, the exit PIN, the Kiosk
-app setting, `requestExit` and `heartbeat` need Agent 1061 or later. On an older Agent, `requestExit` and `heartbeat` throw `OhrException.Unsupported`
-with `needsAgent = 1061`.
+app setting, `requestExit` and `heartbeat` need Agent 1061 or later. On an older Agent, `requestExit`
+and `heartbeat` throw `Unsupported` with `needsAgent` 1061 (in TypeScript, `heartbeat` has no
+effect instead). [Response timeouts](#response-timeouts)
+and the watchdog's pause while the screen is off need Agent 1062 or later.
+
+In Kotlin and Java, `start`, `stop`, `state` and `requestExit` are blocking calls into the Agent:
+make them off the main thread. In Dart, TypeScript and C# they are asynchronous.
 
 ## Start kiosk mode from your app
 
@@ -29,13 +34,16 @@ with `needsAgent = 1061`.
 <TabItem label="Kotlin">
 
 ```kotlin
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+
 class KioskActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lifecycleScope.launch {
-            val sdk = OhrDeviceSdk.connect(this@KioskActivity)
-            if (sdk.session.mayUse("kiosk")) {
-                withContext(Dispatchers.IO) { sdk.kiosk.start(this@KioskActivity) }
+            if (OhrAccess.mayUseAsync("kiosk")) {
+                withContext(Dispatchers.IO) { OhrKiosk.start(this@KioskActivity) }
             }
         }
     }
@@ -47,9 +55,43 @@ class KioskActivity : AppCompatActivity() {
 
 ```java
 // On a background thread:
-OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(activity);
-if (sdk.getSession().mayUse("kiosk")) {
-    sdk.getKiosk().start(activity);
+if (OhrAccess.mayUse("kiosk")) {
+    OhrKiosk.start(activity);
+}
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+The plugin pins the task of the activity Flutter runs in; with no activity (a background engine) it
+throws `OhrFailed`.
+
+```dart
+if (await OhrAccess.mayUse('kiosk')) {
+  await OhrKiosk.start();
+}
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+The module pins the task of the app's current activity; with none it throws `OhrFailed`.
+
+```ts
+if (await OhrAccess.mayUse('kiosk')) {
+  await OhrKiosk.start();
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+Pass the activity whose task to pin; in MAUI, `Platform.CurrentActivity`.
+
+```csharp
+if (await OhrAccess.MayUseAsync("kiosk"))
+{
+    await OhrKiosk.StartAsync(activity);
 }
 ```
 
@@ -66,19 +108,19 @@ setting instead.
 
 ### What stays available
 
-The second parameter of `start` says what the person at the device may still use. Combine
-`OhrKiosk.Feature` values with `or` (Kotlin) or `|` (Java). The default is `GLOBAL_ACTIONS or
-SYSTEM_INFO`: the power menu and the status bar's information.
+The second parameter of `start` (in Dart the named parameter `features`) says what the person at
+the device may still use. Combine the values with `or` in Kotlin and `|` elsewhere. The default is
+the power menu and the status bar's information (`GLOBAL_ACTIONS` and `SYSTEM_INFO`).
 
-| `OhrKiosk.Feature` | Allows |
-|---|---|
-| `SYSTEM_INFO` | The status bar's information: clock, battery, signal |
-| `NOTIFICATIONS` | Notifications and the notification shade |
-| `HOME` | The Home button |
-| `OVERVIEW` | The Overview (recent apps) button |
-| `GLOBAL_ACTIONS` | The power menu (a long press of the power button) |
-| `KEYGUARD` | The lock screen |
-| `BLOCK_ACTIVITY_START_IN_TASK` | Blocks activities of apps other than yours from starting in the pinned task |
+| Kotlin, Java: `OhrKiosk.Feature`; TypeScript: `OhrKioskFeature` | Dart: `OhrKioskFeature` | C#: `OhrKioskFeatures` | Allows |
+|---|---|---|---|
+| `SYSTEM_INFO` | `systemInfo` | `SystemInfo` | The status bar's information: clock, battery, signal |
+| `NOTIFICATIONS` | `notifications` | `Notifications` | Notifications and the notification shade |
+| `HOME` | `home` | `Home` | The Home button |
+| `OVERVIEW` | `overview` | `Overview` | The Overview (recent apps) button |
+| `GLOBAL_ACTIONS` | `globalActions` | `GlobalActions` | The power menu (a long press of the power button) |
+| `KEYGUARD` | `keyguard` | `Keyguard` | The lock screen |
+| `BLOCK_ACTIVITY_START_IN_TASK` | `blockActivityStartInTask` | `BlockActivityStartInTask` | Blocks activities of apps other than yours from starting in the pinned task |
 
 These are Android's lock task features (`DevicePolicyManager.LOCK_TASK_FEATURE_*`), with the same
 values. When the exit PIN's power menu item is on, the device keeps the power menu available
@@ -88,14 +130,37 @@ whatever you pass, since the item is in it.
 <TabItem label="Kotlin">
 
 ```kotlin
-sdk.kiosk.start(activity, OhrKiosk.Feature.SYSTEM_INFO or OhrKiosk.Feature.NOTIFICATIONS or OhrKiosk.Feature.HOME)
+withContext(Dispatchers.IO) {
+    OhrKiosk.start(activity, OhrKiosk.Feature.SYSTEM_INFO or OhrKiosk.Feature.NOTIFICATIONS or OhrKiosk.Feature.HOME)
+}
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-sdk.getKiosk().start(activity, OhrKiosk.Feature.SYSTEM_INFO | OhrKiosk.Feature.NOTIFICATIONS | OhrKiosk.Feature.HOME);
+OhrKiosk.start(activity, OhrKiosk.Feature.SYSTEM_INFO | OhrKiosk.Feature.NOTIFICATIONS | OhrKiosk.Feature.HOME);
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrKiosk.start(features: OhrKioskFeature.systemInfo | OhrKioskFeature.notifications | OhrKioskFeature.home);
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+await OhrKiosk.start(OhrKioskFeature.SYSTEM_INFO | OhrKioskFeature.NOTIFICATIONS | OhrKioskFeature.HOME);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await OhrKiosk.StartAsync(activity, OhrKioskFeatures.SystemInfo | OhrKioskFeatures.Notifications | OhrKioskFeatures.Home);
 ```
 
 </TabItem>
@@ -103,7 +168,7 @@ sdk.getKiosk().start(activity, OhrKiosk.Feature.SYSTEM_INFO | OhrKiosk.Feature.N
 
 ### State and stop
 
-`state()` returns:
+`state()` (`GetStateAsync()` in C#) returns:
 
 | Field | |
 |---|---|
@@ -117,19 +182,66 @@ kiosk mode** setting (`kiosk.app_exit`) is on, which it is by default. When the 
 `stop()` throws `NotAllowed("kiosk")`: only the hub or the exit PIN end kiosk mode then. When
 another app, or no app, is pinned, `stop()` does nothing.
 
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
+
+```kotlin
+withContext(Dispatchers.IO) {
+    val state = OhrKiosk.state()
+    if (state.pinned && state.appMayExit) OhrKiosk.stop()
+}
+```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+OhrKiosk.State state = OhrKiosk.state();   // on a background thread
+if (state.getPinned() && state.getAppMayExit()) OhrKiosk.stop();
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final state = await OhrKiosk.state();
+if (state.pinned && state.appMayExit) await OhrKiosk.stop();
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const state = await OhrKiosk.state();
+if (state.pinned && state.appMayExit) await OhrKiosk.stop();
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var state = await OhrKiosk.GetStateAsync();
+if (state.Pinned && state.AppMayExit) await OhrKiosk.StopAsync();
+```
+
+</TabItem>
+</Tabs>
+
 When the fleet made your app its kiosk app, `stop()` is an exit for a while, as with the exit PIN,
 except that your app stays in front: the device pins it again after the fleet's exit time
 (`kiosk.exit_minutes`, 10 minutes by default), when the screen turns off, or when your app's process
 starts again, whichever comes first. A notification counts down, with **Back to kiosk** to end it
 early. When your app pinned itself with `start`, `stop()` simply ends kiosk mode.
 
-`modeChanges` (Kotlin `Flow`) or `listenMode(executor, listener)` (Java) give the device's `mode`
-each time kiosk mode starts or ends. Call `state()` to learn whether it is your app's.
+The device's `mode` each time kiosk mode starts or ends comes from `OhrKiosk.modeChanges` (a Kotlin
+`Flow`, a Dart stream), `listenMode(executor, listener)` in Java, `addModeListener(listener)` in
+TypeScript, and the `ModeChanged` event or `ModeChanges(ct)` in C#. Call `state()` to learn whether
+it is your app's.
 
 ## Kiosk mode from the fleet
 
-Set these in the fleet's settings in the portal (category **Kiosk**), or per device with the
-[Management API](/management-api/guides/settings/).
+Set these in the fleet's settings in the portal (category **Kiosk**; the response timeout is under
+**Apps**), or per device with the [Management API](/management-api/guides/settings/).
 
 | Key | Label | Value | Default |
 |---|---|---|---|
@@ -141,6 +253,7 @@ Set these in the fleet's settings in the portal (category **Kiosk**), or per dev
 | `kiosk.exit_keys` | Exit key sequence | `volume_down_5` or `volume_both_hold` | `volume_down_5` |
 | `kiosk.exit_corner` | Exit taps corner | `top_left`, `top_right`, `bottom_left`, `bottom_right` | `top_left` |
 | `kiosk.app_exit` | Kiosk apps may leave kiosk mode | `true` or `false` | `true` |
+| `apps.response_timeout` | Response timeouts | Per app, `{"app_…": seconds}`: 1 to 2147483 each. See [response timeouts](#response-timeouts) | not set |
 
 With **Kiosk app** set, the device starts that app and pins it at every boot, with the power menu
 and the status bar's information available. If the app isn't installed yet, the setting waits and
@@ -201,8 +314,15 @@ app that pinned itself with `start`. It is on unless the fleet turns **Kiosk app
   the Agent brings the app back: at once the first time, then after 5 seconds, then 30 seconds,
   then 2 minutes.
 - **Hangs.** When Android reports that the app isn't responding (an ANR), the Agent stops the app
-  and so starts it again, without waiting for anyone to answer Android's dialog.
-- **A hung main thread that Android doesn't notice.** Call `heartbeat()`: see below.
+  and so starts it again, without waiting for anyone to answer Android's dialog. How long the app
+  may stay busy before Android says so is 5 seconds, or the fleet's
+  [response timeout](#response-timeouts) for it.
+- **A hung UI thread that Android doesn't notice.** Call `heartbeat()`: see below.
+- **The screen off.** With Agent 1062 or later, hang detection, heartbeat and ANR alike, pauses
+  while the screen is off: an app may sleep with the screen, its timers and frames stopped. When
+  the screen comes back on, the app gets a full timeout again before a missing heartbeat counts.
+  An ANR Android declared while the screen was off counts only if it outlasts a full timeout after
+  the screen came on: the fleet's response timeout for the app, or Android's 5 seconds.
 - **Giving up.** When the app stops for the 5th time within 10 minutes, the Agent stops trying and
   shows that the app isn't working, with a **Try again** button.
 
@@ -217,36 +337,158 @@ fleet's kiosk settings change.
 
 ### Heartbeat
 
-A main thread stuck in a loop, or waiting on a lock, doesn't always cause an ANR: Android reports
-one only when input or a broadcast goes unanswered. `heartbeat(timeoutMs)` makes the library tell
-the Agent, from your main thread, that it is alive, 4 times per `timeoutMs`. If the beats stop for
-longer than `timeoutMs`, the Agent stops the app and starts it again.
+A UI thread stuck in a loop, or waiting on a lock, doesn't always cause an ANR: Android reports one
+only when input or a broadcast goes unanswered. `heartbeat(timeout)` makes the library tell the
+Agent, from your app's UI thread, that it is alive, 4 times per timeout. If the beats stop for
+longer than the timeout, the Agent stops the app and starts it again. Which thread beats depends on
+the framework: the one your UI runs on, so that a hung UI stops the beats.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
+The library beats from Android's main thread.
+
 ```kotlin
-withContext(Dispatchers.IO) { sdk.kiosk.start(activity) }
-sdk.kiosk.heartbeat(15_000)   // 15 s
+withContext(Dispatchers.IO) { OhrKiosk.start(activity) }
+OhrKiosk.heartbeat(15_000)   // 15 s
 ```
+
+For a UI that runs on a thread of its own, call `OhrKiosk.beat(timeoutMs)` from that thread a few
+times per `timeoutMs` instead: one beat, a one-way call to the Agent.
 
 </TabItem>
 <TabItem label="Java">
 
+The library beats from Android's main thread.
+
 ```java
-sdk.getKiosk().start(activity);      // on a background thread
-sdk.getKiosk().heartbeat(15_000);    // 15 s
+OhrKiosk.start(activity);      // on a background thread
+OhrKiosk.heartbeat(15_000);    // 15 s
+```
+
+For a UI that runs on a thread of its own, call `OhrKiosk.beat(timeoutMs)` from that thread a few
+times per `timeoutMs` instead: one beat, a one-way call to the Agent.
+
+</TabItem>
+<TabItem label="Dart">
+
+The plugin beats from the Dart UI isolate, with a timer in the isolate that called `heartbeat`, so
+a hung isolate stops the beats even while Android's main thread is fine.
+
+```dart
+await OhrKiosk.start();
+await OhrKiosk.heartbeat(timeout: const Duration(seconds: 15));
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+The module beats from the JavaScript thread. JavaScript timers stop while the app is in the
+background (with the screen off, for example), so the heartbeat pauses there: when the app leaves
+the `active` state, the module stops the Agent's watch, and it beats again when the app comes back.
+
+```ts
+await OhrKiosk.start();
+OhrKiosk.heartbeat(15_000);   // 15 s
+```
+
+`heartbeat` returns at once; `stopHeartbeat()` returns a Promise. On an Agent older than 1061 the
+beats have no effect, and `heartbeat` doesn't throw.
+
+</TabItem>
+<TabItem label="C#">
+
+The library beats from Android's main thread, where .NET for Android and MAUI run their UI.
+
+```csharp
+await OhrKiosk.StartAsync(activity);
+OhrKiosk.Heartbeat(TimeSpan.FromSeconds(15));
 ```
 
 </TabItem>
 </Tabs>
 
-- `timeoutMs` is 2,000 (2 seconds) to 600,000 (10 minutes), 10,000 by default. Outside that,
-  `heartbeat` throws `IllegalArgumentException`.
+- The timeout is 2 seconds to 10 minutes, 10 seconds by default: `timeoutMs` in Kotlin, Java and
+  TypeScript, a `Duration` or `TimeSpan` in Dart and C#. Outside that, `heartbeat` throws
+  `InvalidConfig` (`field` `timeoutMs`; `timeout` in Dart).
+- With Agent 1062 or later, the fleet's [response timeout](#response-timeouts) for the app, when it
+  sets one, replaces the timeout the app passes. The library still beats 4 times per the app's own
+  timeout, so keep the fleet's at least a quarter of it: a shorter one takes a healthy app for a
+  hung one.
 - It counts only while your app is pinned. Call it after `start`, and again each time your app
   starts: after a restart it is a new process.
-- `stopHeartbeat()` ends it, before long work on the main thread that you expect, for example.
-- It doesn't wait for the Agent, so it may be called from the main thread.
+- One heartbeat per app: calling it again replaces the last one. `stopHeartbeat()` ends it, before
+  long work on the UI thread that you expect, for example.
+- It may be called from the main thread: each beat is a one-way call, which doesn't wait for the
+  Agent's answer. It goes on when the Agent restarts.
+
+## Response timeouts
+
+The fleet's **Response timeout** for an app (the setting `apps.response_timeout`) is how long the
+app's main thread may stay busy before it counts as not responding, for apps slower than
+Android's 5 seconds. It is a whole number of seconds, 1 to 2147483 (Android's limit), set per app:
+
+- It is the app's "isn't responding" (ANR) time, on OhrTech OS 2026110901 and later. Earlier
+  releases keep Android's 5 seconds. This applies to any app the hub installed, in kiosk mode or
+  not.
+- For the kiosk app, it is the watchdog's [heartbeat](#heartbeat) timeout, in place of the one the
+  app passes. The app still has to call `heartbeat()` to be watched: the fleet sets only the time.
+- It is the full timeout an app gets after the screen comes back on (see [the watchdog](#the-watchdog)).
+
+A change applies at once to apps on screen; an app still starting picks it up at its next start.
+It needs OhrTech Agent 1062 or later.
+
+The value merges per app down the fleet tree: a fleet's own timeout for an app wins over its parent
+fleets', a fleet that sets none takes the nearest parent fleet's, and with none at all Android's
+5 seconds apply. A device's own value for an app, in its settings, wins over its fleets'.
+
+### In the portal
+
+Open the fleet, go to its **Applications** tab and choose **Change** next to the app. Under
+**Response timeout**, type the seconds and choose **Save timeout**. **Stop setting it here** goes
+back to the parent fleet's timeout, or Android's.
+
+### With the Management API
+
+`PUT /v1/fleets/{fleetId}/apps/{appId}/response-timeout` (needs `EditSettings`) sets this fleet's
+timeout for the app, and the hub sends it to the fleet's devices straight away. In the Management
+SDK (OhrTech.Management 2.3.0 or later) it is `SetResponseTimeoutAsync`, with
+`GetResponseTimeoutAsync` and `ClearResponseTimeoutAsync` beside it.
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/response-timeout \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"seconds": 30}'
+```
+
+```csharp server
+var timeout = await api.SetResponseTimeoutAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    new SetResponseTimeoutRequest { Seconds = 30 });
+```
+
+The response, like `GET` on the same path (needs `ViewSettings`), shows what applies on the fleet:
+
+```json
+{
+  "appId": "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+  "fleetId": "flt_2dn47a2xa58j1txv8m28spkmyb",
+  "seconds": 30,
+  "own": 30,
+  "inheritedFrom": null
+}
+```
+
+- `seconds`: what applies on the fleet, its own or the nearest parent fleet's; `null` for Android's
+  5 seconds.
+- `own`: this fleet's own timeout; `null` when it sets none. `inheritedFrom` then names the parent
+  fleet `seconds` comes from.
+- `DELETE` on the same path (needs `EditSettings`) removes this fleet's timeout, so the parent
+  fleet's, or Android's, applies again.
+
+The setting behind it, `apps.response_timeout`, holds every app's timeout as one object of app ids
+and seconds, such as `{"app_7h2m9q4x1c8v3k5n6p0r2s4t6w": 30}`. It shows in the
+[settings](/management-api/guides/settings/) like any other setting, and can be set per device
+there; each app's value merges as above.
 
 ## The exit PIN
 
@@ -289,16 +531,13 @@ watches the taps without taking them: your app gets every touch as before.
 <TabItem label="Kotlin">
 
 ```kotlin
-staffMenu.setOnClickListener {
-    lifecycleScope.launch {
-        try {
-            withContext(Dispatchers.IO) { sdk.kiosk.requestExit() }
-        } catch (e: OhrException.Unsupported) {
-            showMessage("No exit PIN is set for this device")
-        } catch (e: OhrException.NotAllowed) {
-            showMessage("The fleet doesn't let the app open the exit PIN")
-        }
-    }
+// From your staff menu:
+try {
+    withContext(Dispatchers.IO) { OhrKiosk.requestExit() }
+} catch (e: OhrException.Unsupported) {
+    show("No exit PIN is set for this device")
+} catch (e: OhrException.NotAllowed) {
+    show("The fleet doesn't let the app open the exit PIN")
 }
 ```
 
@@ -308,7 +547,7 @@ staffMenu.setOnClickListener {
 ```java
 // On a background thread:
 try {
-    sdk.getKiosk().requestExit();
+    OhrKiosk.requestExit();
 } catch (OhrException.Unsupported e) {
     // no exit PIN is set (or the Agent is older than 1061: e.getNeedsAgent())
 } catch (OhrException.NotAllowed e) {
@@ -317,11 +556,58 @@ try {
 ```
 
 </TabItem>
+<TabItem label="Dart">
+
+```dart
+try {
+  await OhrKiosk.requestExit();
+} on OhrUnsupported {
+  show('No exit PIN is set for this device');
+} on OhrNotAllowed {
+  show("The fleet doesn't let the app open the exit PIN");
+}
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+import { Alert } from 'react-native';
+
+try {
+  await OhrKiosk.requestExit();
+} catch (e) {
+  if (e instanceof OhrUnsupported) Alert.alert('No exit PIN is set for this device');
+  else if (e instanceof OhrNotAllowed) Alert.alert("The fleet doesn't let the app open the exit PIN");
+  else throw e;
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+try
+{
+    await OhrKiosk.RequestExitAsync();
+}
+catch (OhrUnsupportedException)
+{
+    label.Text = "No exit PIN is set for this device";
+}
+catch (OhrNotAllowedException)
+{
+    label.Text = "The fleet doesn't let the app open the exit PIN";
+}
+```
+
+</TabItem>
 </Tabs>
 
-`requestExit()` opens the keypad and returns; it needs no grant. Your app must be the one pinned
-(`InvalidConfig` with `field` `kiosk` otherwise). It throws `NotAllowed("kiosk")` when `app` isn't
-one of the fleet's ways, and `Unsupported` when no exit PIN is set.
+`requestExit()` (`RequestExitAsync()` in C#) opens the keypad and returns; it needs no grant. Your
+app must be the one pinned (`InvalidConfig` with `field` `kiosk` otherwise). It throws
+`NotAllowed("kiosk")` when `app` isn't one of the fleet's ways, and `Unsupported` when no exit PIN
+is set.
 
 ### From the hub
 
@@ -357,11 +643,15 @@ on, the covers also have an **Exit kiosk** button that opens the keypad.
 ## Grants and errors
 
 `start` and `stop` need the fleet's `kiosk` grant (`NotAllowed("kiosk")` without it). `state`,
-`modeChanges`, `requestExit` and `heartbeat` don't.
+the mode changes, `requestExit` and `heartbeat` don't.
 
 | Exception | When |
 |---|---|
 | `NotAllowed("kiosk")` | No `kiosk` grant; `stop()` when the fleet keeps kiosk apps in; `requestExit()` when `app` isn't one of the ways |
-| `InvalidConfig` | `start` with a task that isn't your app's; `requestExit()` when your app isn't pinned |
-| `Unsupported` | `requestExit()` with no exit PIN; `requestExit` or `heartbeat` on an Agent older than 1061 |
-| `Failed` | Android didn't lock the task |
+| `InvalidConfig` | `start` with a task that isn't your app's; `requestExit()` when your app isn't pinned; a heartbeat timeout outside 2 seconds to 10 minutes |
+| `Unsupported` | `requestExit()` with no exit PIN; `requestExit` or `heartbeat` on an Agent older than 1061 (`heartbeat` not in TypeScript) |
+| `Failed` | Android didn't lock the task; in Dart and TypeScript, `start` with no activity |
+
+These are the Kotlin and Java names (`OhrException.NotAllowed`, ...). Dart and TypeScript name them
+`OhrNotAllowed`, `OhrInvalidConfig`, ...; C# `OhrNotAllowedException`, `OhrInvalidConfigException`,
+... See [errors](/device-sdk/access/#errors).

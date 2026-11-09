@@ -18,52 +18,127 @@ key in the APK or a file to copy onto each device:
 The fleet decides which of these the app gets, per app. Setting it up (the issuing CA, your client
 root, the fleet) is on [client certificates on your server](/device-sdk/server/client-certificates/).
 Certificates need OhrTech Agent 1061 or later; on an older Agent every call here throws
-`OhrException.Unsupported` with `needsAgent = 1061`. They need no grant from the fleet.
+`OhrException.Unsupported` (`OhrUnsupported` in Dart and TypeScript, `OhrUnsupportedException` in
+C#) with `needsAgent = 1061`. They need no grant from the fleet.
 
 ## Get a certificate and use it
+
+The keys are in the Android Keystore. Kotlin and Java use them through `javax.net.ssl`; Dart's,
+JavaScript's and .NET's own TLS can't reach the Keystore, so each of those SDKs has an HTTP client
+that goes through Android's TLS.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
+
 withContext(Dispatchers.IO) {
-    val certs = sdk.certificates
-    if (certs.list().none { it.alias == "orders" && !it.imported }) certs.request("orders")
-    else certs.renewIfDue("orders")
+    if (OhrCertificates.list().none { it.alias == "orders" && !it.imported }) OhrCertificates.request("orders")
+    else OhrCertificates.renewIfDue("orders")
 
     val c = URL("https://orders.example.com/").openConnection() as HttpsURLConnection
-    c.sslSocketFactory = certs.sslContext("orders").socketFactory
+    c.sslSocketFactory = OhrCertificates.sslContext("orders").socketFactory
     c.inputStream.use { /* ... */ }
 }
 ```
+
+Every call here is a binder call, and `request` waits for OhrTech: make them off the main thread.
+`sslContext(alias)` presents `alias`'s certificate and trusts the fleet's CAs; it works with
+anything that takes an `SSLContext` or a socket factory.
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
+import java.io.InputStream;
+import java.net.URL;
+import javax.net.ssl.HttpsURLConnection;
+
 // Off the main thread.
-OhrCertificates certs = sdk.getCertificates();
 boolean have = false;
-for (OhrCertificates.Certificate c : certs.list())
-    if (c.getAlias().equals("orders") && !c.getImported()) have = true;
-if (!have) certs.request("orders");
-else certs.renewIfDue("orders");
+for (OhrCertificates.Certificate cert : OhrCertificates.list())
+    if (cert.getAlias().equals("orders") && !cert.getImported()) have = true;
+if (!have) OhrCertificates.request("orders");
+else OhrCertificates.renewIfDue("orders");
 
 HttpsURLConnection c = (HttpsURLConnection) new URL("https://orders.example.com/").openConnection();
-c.setSSLSocketFactory(certs.sslContext("orders").getSocketFactory());
+c.setSSLSocketFactory(OhrCertificates.sslContext("orders").getSocketFactory());
+try (InputStream in = c.getInputStream()) { /* ... */ }
 ```
+
+Every call here is a binder call, and `request` waits for OhrTech: make them off the main thread.
+`sslContext(alias)` presents `alias`'s certificate and trusts the fleet's CAs; it works with
+anything that takes an `SSLContext` or a socket factory.
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final certs = await OhrCertificates.list();
+if (!certs.any((c) => c.alias == 'orders' && !c.imported)) {
+  await OhrCertificates.request('orders');
+} else {
+  await OhrCertificates.renewIfDue('orders');
+}
+
+final client = OhrCertificates.client(alias: 'orders');
+final response = await client.get(Uri.parse('https://orders.example.com/'));
+```
+
+`OhrCertificates.client(alias:)` is a `package:http` `Client` that sends each request through
+Android's TLS, presenting `alias`'s certificate (or, without an alias, any of the app's) and
+trusting the fleet's CAs. Dart's own TLS (`dart:io`) can't use a key in the Android Keystore, so a
+plain `http.Client` or `HttpClient` can't present the certificate. Bodies are sent and read whole,
+not streamed. `timeout` (30 seconds by default) is for connecting and for reading. A request that
+fails to connect, including a TLS handshake the server refuses, throws `OhrFailed`.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const certs = await OhrCertificates.list();
+if (!certs.some((c) => c.alias === 'orders' && !c.imported)) await OhrCertificates.request('orders');
+else await OhrCertificates.renewIfDue('orders');
+
+const res = await OhrCertificates.fetch('https://orders.example.com/', { alias: 'orders' });
+const orders = res.json();
+```
+
+`OhrCertificates.fetch(url, init)` sends the request through Android's TLS, presenting
+`init.alias`'s certificate (or, without one, any of the app's) and trusting the fleet's CAs.
+JavaScript's `fetch` can't use a key in the Android Keystore. `init` takes `method`, `headers`,
+`body` (a string, sent as UTF-8, or a `Uint8Array`), `alias`, `timeoutMs` (30,000 by default) and
+`redirect` (`'follow'` or `'manual'`). Bodies are sent and read whole, not streamed, so the
+response's `bytes()`, `text()` and `json()` return at once, without a Promise.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var certs = await OhrCertificates.ListAsync();
+if (!certs.Any(c => c.Alias == "orders" && !c.Imported)) await OhrCertificates.RequestAsync("orders");
+else await OhrCertificates.RenewIfDueAsync("orders");
+
+using var http = new HttpClient(OhrCertificates.CreateHttpHandler("orders"));
+var orders = await http.GetStringAsync("https://orders.example.com/");
+```
+
+`OhrCertificates.CreateHttpHandler(alias)` is an `HttpMessageHandler` over Android's TLS (an
+`AndroidMessageHandler`), presenting `alias`'s certificate (or, with null, any of the app's) and
+trusting the fleet's CAs. .NET's own TLS can't use a key in the Android Keystore.
 
 </TabItem>
 </Tabs>
 
-Every call here is a binder call, and `request` waits for OhrTech: make them off the main thread.
-
 ## Device-made certificates
 
-`request(alias, timeoutMs = 60_000)` makes a new EC P-256 key in the app's Keystore, has it attested,
-and asks OhrTech to certify it. It takes a few seconds and needs the device online. The alias is
-your name for it: 1 to 64 of `A-Z a-z 0-9 . _ -`. A new request under the same alias replaces the
-key and certificate before it.
+`request(alias, timeout)` makes a new EC P-256 key in the app's Keystore, has it attested, and asks
+OhrTech to certify it. The timeout is how long it waits for OhrTech, 60 seconds by default
+(`timeoutMs` in Kotlin, Java and TypeScript, a `Duration` or `TimeSpan` in Dart and C#). It takes a
+few seconds and needs the device online. The alias is your name for it: 1 to 64 of
+`A-Z a-z 0-9 . _ -`. A new request under the same alias replaces the key and certificate before it.
 
 `canRequest()` says whether the fleet gives your app an issuing CA, so that `request` can work.
 
@@ -86,8 +161,12 @@ lifetime is left, and returns null when it isn't due (or there is no device-made
 that alias). Call it when your app starts and once a day. A renewal makes a new key: the old one is
 deleted once the new certificate is in.
 
-`keyManager` and `sslContext` take the certificates as they are when you call them. After a
-`request` or a renewal, make a new `SSLContext` (and a new OkHttp client).
+In Kotlin and Java, `keyManager` and `sslContext` take the certificates as they are when you call
+them. After a `request` or a renewal, make a new `SSLContext` (and a new OkHttp client).
+
+The Dart client, `OhrCertificates.fetch` and the .NET handler keep their TLS setup for up to five
+minutes. A `request` or a renewal starts it afresh, so the next request presents the new
+certificate; other changes from the fleet reach them within five minutes.
 
 ### Two paths to two roots
 
@@ -97,42 +176,50 @@ A device-made certificate validates two ways:
 - through the **OhrTech Device Identity Root**, which OhrTech signs every issuing CA with.
 
 Both copies of the issuing CA have the same subject and key, so the certificate verifies under
-either. `Certificate.paths` holds both, each leaf first, the organisation's first; `chain` is the
-first path. TLS sends one chain, and servers built on OpenSSL, such as nginx and Apache httpd, take
-the first issuer they find and don't try another: sent both copies, they fail when the
+either. A certificate's `paths` holds both, each leaf first, the organisation's first; `chain` is
+the first path. TLS sends one chain, and servers built on OpenSSL, such as nginx and Apache httpd,
+take the first issuer they find and don't try another: sent both copies, they fail when the
 organisation's copy comes first and they trust only the OhrTech root.
 
-So the key manager sends one path, picked by the CA names the server lists in its certificate
-request: the path that contains a listed name. When the server lists none, it sends the first path,
-the organisation's (or the OhrTech one, before your organisation has uploaded its certificate). When
+So the app sends one path, picked by the CA names the server lists in its certificate request: the
+path that contains a listed name. When the server lists none, it sends the first path, the
+organisation's (or the OhrTech one, before your organisation has uploaded its certificate). When
 the server lists names and no path has any of them, it sends no certificate. Servers list the CAs
 they trust by default: nginx from `ssl_client_certificate`, Go from `ClientCAs`. See
-[server configuration](/device-sdk/server/client-certificates/#configure-your-server).
+[server configuration](/device-sdk/server/client-certificates/#configure-your-server). Every
+framework's client picks the path this way: it is the Kotlin library's key manager underneath.
 
 ## Imported certificates
 
 A fleet can give your app client certificates from your own PKI, as PKCS#12 with its password. The
-first call to `list()`, `keyManager()` or `sslContext()` installs each into your app's Keystore,
+first call to `list()`, or the first TLS connection with the app's certificates (`keyManager()`,
+`sslContext()`, or the Dart, TypeScript and C# clients), installs each into your app's Keystore,
 under the alias the fleet gave it, and removes the ones the fleet took away. They appear in `list()`
-with `imported = true`. EC and RSA keys work. The key came from your PKI, so copies of it can exist
+with `imported` true. EC and RSA keys work. The key came from your PKI, so copies of it can exist
 outside the device; it is in the Keystore from then on.
 
 ## Trusted CAs
 
 `trustManager()` trusts the system's CAs and the private CAs the fleet gives your app. A server
-certificate is checked against the system's CAs first, then the fleet's. `sslContext()` uses it.
-Without private CAs from the fleet, it is the system's trust manager.
+certificate is checked against the system's CAs first, then the fleet's. `sslContext()` uses it,
+and so do the Dart client, `OhrCertificates.fetch` and the .NET handler. Without private CAs from
+the fleet, it is the system's trust manager.
 
 ## With OkHttp
 
-OkHttp needs the trust manager as well as the socket factory:
+OkHttp needs the trust manager as well as the socket factory. The Dart, TypeScript and C# clients
+have both already; their tabs here send a body.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val km = sdk.certificates.keyManager("orders")
-val tm = sdk.certificates.trustManager()
+import javax.net.ssl.SSLContext
+import okhttp3.OkHttpClient
+
+// Off the main thread.
+val km = OhrCertificates.keyManager("orders")
+val tm = OhrCertificates.trustManager()
 val tls = SSLContext.getInstance("TLS").apply { init(arrayOf(km), arrayOf(tm), null) }
 val client = OkHttpClient.Builder().sslSocketFactory(tls.socketFactory, tm).build()
 ```
@@ -141,11 +228,53 @@ val client = OkHttpClient.Builder().sslSocketFactory(tls.socketFactory, tm).buil
 <TabItem label="Java">
 
 ```java
-X509ExtendedKeyManager km = sdk.getCertificates().keyManager("orders");
-X509TrustManager tm = sdk.getCertificates().trustManager();
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509ExtendedKeyManager;
+import javax.net.ssl.X509TrustManager;
+import okhttp3.OkHttpClient;
+
+// Off the main thread.
+X509ExtendedKeyManager km = OhrCertificates.keyManager("orders");
+X509TrustManager tm = OhrCertificates.trustManager();
 SSLContext tls = SSLContext.getInstance("TLS");
 tls.init(new KeyManager[] {km}, new TrustManager[] {tm}, null);
 OkHttpClient client = new OkHttpClient.Builder().sslSocketFactory(tls.getSocketFactory(), tm).build();
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final client = OhrCertificates.client(alias: 'orders');
+final response = await client.post(Uri.parse('https://orders.example.com/orders'),
+    headers: {'Content-Type': 'application/json'}, body: jsonEncode({'item': 'A-100', 'quantity': 2}));
+if (response.statusCode != 201) throw StateError('Order not taken: ${response.statusCode}');
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const res = await OhrCertificates.fetch('https://orders.example.com/orders', {
+  method: 'POST',
+  alias: 'orders',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ item: 'A-100', quantity: 2 }),
+});
+if (res.status !== 201) throw new Error(`Order not taken: ${res.status}`);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using System.Net.Http.Json;
+
+using var http = new HttpClient(OhrCertificates.CreateHttpHandler("orders"));
+using var response = await http.PostAsJsonAsync("https://orders.example.com/orders", new { item = "A-100", quantity = 2 });
+response.EnsureSuccessStatusCode();
 ```
 
 </TabItem>
@@ -153,22 +282,37 @@ OkHttpClient client = new OkHttpClient.Builder().sslSocketFactory(tls.getSocketF
 
 ## The API
 
-| | |
-|---|---|
-| `canRequest()` | Whether the fleet gives the app an issuing CA |
-| `request(alias, timeoutMs)` | A new key and certificate under `alias` |
-| `renewIfDue(alias)` | A new key and certificate when a third of the lifetime is left, else null |
-| `list()` | The app's certificates, device-made and imported, as `Certificate`: `alias`, `paths`, `chain`, `certificate` (the leaf), `imported` |
-| `keyManager(alias)` | An `X509ExtendedKeyManager` presenting `alias`'s certificate, or, with null, any of the app's |
-| `trustManager()` | An `X509TrustManager`: the system's CAs and the fleet's private CAs |
-| `sslContext(alias)` | A TLS `SSLContext` with both |
-| `changes` / `listen(executor, listener)` | The fleet changed the app's certificates: its issuing CA, trusted CAs or imported bundles. Kotlin `Flow<Unit>`; Java listener, close the returned `Closeable` to stop. |
+| Kotlin, Java | Dart | TypeScript | C# | |
+|---|---|---|---|---|
+| `canRequest()` | `canRequest()` | `canRequest()` | `CanRequestAsync()` | Whether the fleet gives the app an issuing CA |
+| `request(alias, timeoutMs)` | `request(alias, timeout:)` | `request(alias, timeoutMs)` | `RequestAsync(alias, timeout)` | A new key and certificate under `alias` |
+| `renewIfDue(alias)` | `renewIfDue(alias)` | `renewIfDue(alias)` | `RenewIfDueAsync(alias)` | A new key and certificate when a third of the lifetime is left, else null |
+| `list()` | `list()` | `list()` | `ListAsync()` | The app's certificates, device-made and imported |
+| `keyManager(alias)` | | | | An `X509ExtendedKeyManager` presenting `alias`'s certificate, or, with null, any of the app's |
+| `trustManager()` | | | | An `X509TrustManager`: the system's CAs and the fleet's private CAs |
+| `sslContext(alias)` | | | | A TLS `SSLContext` with both |
+| | `client(alias:, timeout:)` | `fetch(url, init)` | `CreateHttpHandler(alias)` | HTTP with both, through Android's TLS |
+| `changes` / `listen(executor, listener)` | `changes` | `addChangeListener(listener, onError?)` | `Changed` | The fleet changed the app's certificates: its issuing CA, trusted CAs or imported bundles |
 
-When `changes` fires, build a new `SSLContext`, and call `request` if `canRequest()` became true.
+A certificate (`OhrCertificates.Certificate` in Kotlin and Java, `OhrCertificate` elsewhere) has
+`alias`, `paths`, `imported`, and in all but TypeScript `chain` (the first path) and `certificate`
+(the leaf). Kotlin and Java give `X509Certificate`s, Dart `Uint8List` DER, TypeScript base64 DER
+strings, and C# `byte[]` DER.
+
+Kotlin's `changes` is a `Flow<Unit>`; Java's listener runs on your executor, and closing the
+returned `Closeable` stops it. Dart's `changes` is a broadcast `Stream<void>`. In TypeScript,
+`remove()` the returned subscription to stop. The C# `Changed` event is raised on the
+`SynchronizationContext` you subscribed from (the UI thread, when you subscribe there). They also
+fire when the Agent is back after a restart, since the fleet may have changed the certificates
+meanwhile.
+
+When the fleet changes them, build a new `SSLContext` (Kotlin and Java), and call `request` if
+`canRequest()` became true.
 
 ## Errors
 
-`request` throws `OhrException.Refused` when OhrTech declines to certify the key; `reason` says why:
+`request` throws `OhrException.Refused` (`OhrRefused` in Dart and TypeScript,
+`OhrRefusedException` in C#) when OhrTech declines to certify the key; `reason` (`Reason`) says why:
 
 | `reason` | |
 |---|---|
@@ -181,20 +325,24 @@ When `changes` fires, build a new `SSLContext`, and call `request` if `canReques
 | `the key is not …'s` | The key was attested for another package. |
 | `unknown app`, `malformed request` | The request could not be matched to your app, or could not be read. |
 
-| Other errors | |
-|---|---|
-| `OhrException.Failed` | The device can't reach OhrTech now (`the hub isn't reachable now`), or OhrTech did not answer within `timeoutMs`. Try again later. |
-| `OhrException.Unsupported` | The Agent is older than 1061. |
-| `IllegalArgumentException` | The alias is not 1 to 64 of `A-Z a-z 0-9 . _ -`. |
+| Kotlin, Java | Dart, TypeScript | C# | |
+|---|---|---|---|
+| `OhrException.Failed` | `OhrFailed` | `OhrFailedException` | The device can't reach OhrTech now (`the hub isn't reachable now`), or OhrTech did not answer within the timeout. Try again later. |
+| `OhrException.Unsupported` | `OhrUnsupported` | `OhrUnsupportedException` | The Agent is older than 1061. |
+| `OhrException.InvalidConfig` | `OhrInvalidConfig` | `OhrInvalidConfigException` | The alias is not 1 to 64 of `A-Z a-z 0-9 . _ -` (`field` is `alias`). |
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-try {
-    sdk.certificates.request("orders")
-} catch (e: OhrException.Refused) {
-    Log.w("Orders", "No certificate: ${e.reason}")
+import android.util.Log
+
+withContext(Dispatchers.IO) {
+    try {
+        OhrCertificates.request("orders")
+    } catch (e: OhrException.Refused) {
+        Log.w("Orders", "No certificate: ${e.reason}")
+    }
 }
 ```
 
@@ -202,10 +350,50 @@ try {
 <TabItem label="Java">
 
 ```java
+import android.util.Log;
+
+// Off the main thread.
 try {
-    sdk.getCertificates().request("orders");
+    OhrCertificates.request("orders");
 } catch (OhrException.Refused e) {
     Log.w("Orders", "No certificate: " + e.getReason());
+}
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+try {
+  await OhrCertificates.request('orders');
+} on OhrRefused catch (e) {
+  debugPrint('No certificate: ${e.reason}');
+}
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+try {
+  await OhrCertificates.request('orders');
+} catch (e) {
+  if (!(e instanceof OhrRefused)) throw e;
+  console.warn(`No certificate: ${e.reason}`);
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+try
+{
+    await OhrCertificates.RequestAsync("orders");
+}
+catch (OhrRefusedException e)
+{
+    Android.Util.Log.Warn("Orders", $"No certificate: {e.Reason}");
 }
 ```
 

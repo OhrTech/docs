@@ -1,17 +1,173 @@
 ---
 title: Changelog
-description: Changes to the Device SDK for Android (net.ohrtech:device-sdk), and the OhrTech Agent version each one needs.
+description: Changes to the Device SDKs (net.ohrtech:device-sdk, ohrtech_device, @ohrtech/device-sdk-react-native, OhrTech.Device) and to the OhrTech Agent, and the Agent version each one needs.
 ---
 
-**Our promise:** every version of the library works with every version of the OhrTech Agent. The
+**Our promise:** every version of each SDK works with every version of the OhrTech Agent. The
 interface between them only adds. If a device's Agent is too old for a call to it, the call throws
 `OhrException.Unsupported` with `needsAgent`, the Agent version that has it, and the rest of the
-library keeps working. `sdk.session.agentVersion` tells you which Agent a device runs. See
+library keeps working. `OhrAccess.info().agentVersion` tells you which Agent a device runs. See
 [access](/device-sdk/access/).
+
+The Flutter, React Native and .NET SDKs wrap the Kotlin library, `net.ohrtech:device-sdk`; entries
+named by a version alone are that library's.
+
+## 0.3.1 (2026-11-09): the kiosk heartbeat never stalls the main thread
+
+```kts
+implementation("net.ohrtech:device-sdk:0.3.1")
+```
+
+- Each kiosk heartbeat is sent from the library's own thread. In 0.3.0 the main thread waited for
+  the Agent while the Agent was being updated: about 4 seconds on a test device, close to Android's
+  5-second limit for an app that isn't responding. `OhrKiosk.beat()` and `stopHeartbeat()` don't
+  wait for the Agent either. Update from 0.3.0 if your app runs in kiosk mode.
+- A key generation that fails in the Android Keystore (`ProviderException`) is now
+  `OhrException.Failed` in `OhrAttestation` and `OhrCertificates`, like the Keystore's other errors.
+
+The Flutter, React Native and .NET SDKs build on 0.3.1.
+
+## 0.3.0 (2026-11-09): nothing to connect
+
+```kts
+implementation("net.ohrtech:device-sdk:0.3.0")
+```
+
+Works with the OhrTech Agent 1059 or later, like 0.2.0. The areas are objects you call directly, over
+one connection to the Agent that the library keeps for the life of the process. Code written for
+0.2.0 needs these changes:
+
+| 0.2.0 | 0.3.0 |
+|---|---|
+| `val sdk = OhrDeviceSdk.connect(context)` | Nothing; `OhrDeviceSdk.connect()` to connect up front |
+| `OhrDeviceSdk.connectBlocking(context)`, `isAvailable(context)` | `OhrDeviceSdk.connectBlocking()`, `isAvailable()` |
+| `sdk.wifi.state()`, `sdk.kiosk.start(activity)`, ... | `OhrWifi.state()`, `OhrKiosk.start(activity)`, ... |
+| `sdk.session`, `sdk.session.mayUse(area)` | `OhrAccess.info()`, `OhrAccess.mayUse(area)` |
+| `sdk.isConnected` | `OhrDeviceSdk.connection` |
+| `sdk.close()` | Nothing |
+| `wifiView.attach(sdk)` | Nothing |
+| `OhrTechProvider.install(sdk)` | `OhrTechProvider.install()` |
+| `OhrConfig(context)`, `sdk.config` | `OhrConfig` |
+| `IllegalArgumentException` for a value the library refuses | `OhrException.InvalidConfig` |
+
+- **No `connect()` and nothing to close.** Each area is an object: `OhrDevice`, `OhrUpdates`,
+  `OhrWifi`, `OhrNetwork`, `OhrKiosk`, `OhrPower`, `OhrSettings`, `OhrConfig`, `OhrAttestation`,
+  `OhrCertificates`, `OhrUsb`, `OhrDiagnostics`, `OhrKeys` and `OhrPush`. From Java they are
+  static methods (`OhrWifi.state()`). The application context comes from AndroidX App Startup;
+  an app that removes the library's initializer calls `OhrDeviceSdk.init(context)`.
+- **The connection looks after itself.** It binds on the first call, from any thread: the binding is
+  answered on the library's own thread, so a first call on the main thread doesn't deadlock. When
+  the Agent stops (a crash, its own update), it binds again and every flow and listener goes on;
+  flows of a state (Wi-Fi, network, battery, kiosk mode, updates) get the current state when the
+  Agent is back, for what changed meanwhile. Calls made while the Agent is away wait for it (10 s).
+  `OhrDeviceSdk.connection` (`listenConnection` from Java) says how it stands
+  ([the connection](/device-sdk/access/#the-connection)).
+- **`OhrAccess`** replaces `session`: `OhrAccess.info()` and `OhrAccess.mayUse(area)` ask the
+  Agent each time, so a change of the fleet's grants shows at once.
+- [`OhrWifiView`](/device-sdk/guides/wifi-and-networks/) opens by itself once it is laid out (set
+  its `listener` and `options` in `onCreate`), and again when it is attached again or the Agent
+  was restarted.
+- [Kiosk](/device-sdk/guides/kiosk/): `OhrKiosk.beat(timeoutMs)` is one heartbeat, for apps whose
+  UI thread isn't Android's main thread. The automatic `heartbeat()` goes on when the Agent
+  restarts.
+- `OhrTechProvider.install()` takes no argument. `OhrPushService` uses the app's connection.
+- A value the library refuses throws `OhrException.InvalidConfig(field, reason)`, not
+  `IllegalArgumentException`; an unexpected error from the Agent is `OhrException.Failed`.
+- `OhrKeys.Attestation.owner` is documented as it is: the Agent's UUID for the app, not its
+  `app_…` id.
+
+## ohrtech_device 0.1.0 (unreleased): the first release, for Flutter
+
+```yaml
+dependencies:
+  ohrtech_device: ^0.1.0
+```
+
+Android 13 (API 33) and later, with `minSdk = 33` in `android/app/build.gradle.kts`. Every area of
+`net.ohrtech:device-sdk` 0.3.1, which it wraps, for Flutter on Android. Needs Agent 1059 or later
+(1061 for diagnostics, USB devices, certificates and the kiosk exit PIN and watchdog).
+
+- Static classes per area: `OhrDevice`, `OhrUpdates`, `OhrWifi`, `OhrNetwork`, `OhrKiosk`,
+  `OhrPower`, `OhrSettings`, `OhrConfig`, `OhrAttestation`, `OhrCertificates`, `OhrUsb`,
+  `OhrDiagnostics`, `OhrKeys`, `OhrPush`; `OhrAccess`, and `OhrDeviceSdk` for the connection.
+  Calls return a `Future`; changes come as broadcast streams (`OhrWifi.stateChanges`).
+- `OhrException`, a sealed class: `OhrNotManaged`, `OhrNotAllowed`, `OhrFleetLocked`,
+  `OhrUnsupported`, `OhrInvalidConfig`, `OhrRefused` and `OhrFailed`.
+- `OhrWifiView`: the Agent's Wi-Fi screen as a widget (hybrid composition).
+- [Push](/device-sdk/guides/push/) handled by top-level functions in a background isolate, whether
+  the app is open or not (`OhrPush.setHandlers` in `main()`).
+- `OhrCertificates.client()`: a package:http client with the app's client certificate and trusted
+  CAs, over Android's TLS (the keys live in the Android Keystore).
+- `OhrKiosk.heartbeat()` beats from the Dart UI isolate, so the Agent's watchdog sees it hang.
+
+## @ohrtech/device-sdk-react-native 0.1.0 (unreleased): the first release, for React Native
+
+```sh
+npm install @ohrtech/device-sdk-react-native
+```
+
+Android 13 (API 33) and later, React Native's New Architecture. Every area of
+`net.ohrtech:device-sdk` 0.3.1, which it wraps. Needs Agent 1059 or later (1061 for diagnostics,
+USB devices, certificates and the kiosk exit PIN and watchdog).
+
+- An object per area: `OhrDevice`, `OhrUpdates`, `OhrWifi`, `OhrNetwork`, `OhrKiosk`, `OhrPower`,
+  `OhrSettings`, `OhrConfig`, `OhrAttestation`, `OhrCertificates`, `OhrUsb`, `OhrDiagnostics`,
+  `OhrKeys`, `OhrPush`; `OhrAccess`, and `OhrDeviceSdk` for the connection. Calls return a
+  `Promise`; changes come through `add…Listener`, which watch the Agent from the first listener to
+  the last `remove()`.
+- Error classes `OhrNotManaged`, `OhrNotAllowed`, `OhrFleetLocked`, `OhrUnsupported`,
+  `OhrInvalidConfig`, `OhrRefused` and `OhrFailed`, each with a `code`.
+- `<OhrWifiView>`: the Agent's Wi-Fi screen as a Fabric component.
+- [Push](/device-sdk/guides/push/) handled by a headless task, whether the app is open or not
+  (`OhrPush.setHandlers` in `index.js`).
+- `OhrCertificates.fetch()`: HTTPS with the app's client certificate and trusted CAs, over
+  Android's TLS.
+- `OhrKiosk.heartbeat()` beats from the JavaScript thread, paused while the app is in the
+  background.
+- An Expo config plugin that sets `minSdkVersion` 33.
+
+## OhrTech.Device and OhrTech.Device.Maui 0.1.0 (unreleased): the first release, for .NET
+
+```sh
+dotnet add package OhrTech.Device
+dotnet add package OhrTech.Device.Maui   # MAUI apps
+```
+
+`net10.0-android`, Android 13 (API 33) and later (`SupportedOSPlatformVersion` 33). Every area of
+`net.ohrtech:device-sdk` 0.3.1, which it binds internally, for .NET for Android and MAUI. Needs
+Agent 1059 or later (1061 for diagnostics, USB devices, certificates and the kiosk exit PIN and
+watchdog).
+
+- `OhrTech.Device`: a static class per area with Task-returning calls (`OhrDevice.GetInfoAsync()`),
+  static events raised on the subscriber's synchronization context, `IAsyncEnumerable` streams,
+  `Current` interfaces for dependency injection (`IOhrWifi`, ...), and `OhrException` subclasses
+  (`OhrNotManagedException`, ...). Trim- and NativeAOT-safe.
+- `OhrWifiView`: the Agent's Wi-Fi screen as an Android view; `OhrTech.Device.Maui` has it as a
+  MAUI control, and `UseOhrTechDevice()` for `MauiProgram`.
+- [Push](/device-sdk/guides/push/) handled by the app's handlers, whether the app is open or not
+  (`OhrPush.SetHandlers` when the process starts).
+- `OhrCertificates.CreateHttpHandler()`: an `HttpClient` handler with the app's client certificate
+  and trusted CAs.
+
+## OhrTech Agent 1062: per-app response timeouts, kiosk hangs not counted while the screen is off
+
+Nothing to change in your app: these work with every SDK version.
+
+- **Response timeouts per app.** How long an app's main thread may stay busy before it counts as
+  not responding, 1 to 2147483 seconds, set per fleet and per app and inherited down the fleet
+  tree. Set it on the fleet's **Applications** tab in the portal, or with `GET`, `PUT` and
+  `DELETE /v1/fleets/{fleetId}/apps/{appId}/response-timeout`; the fleet setting is
+  `apps.response_timeout`, `{"app_…": seconds}`. It is the app's "isn't responding" (ANR) time on
+  OhrTech OS 2026110901 and later, and, for the kiosk app, the
+  [kiosk watchdog](/device-sdk/guides/kiosk/)'s timeout in place of the one the app passes to
+  `OhrKiosk.heartbeat`. Where no fleet sets one, Android's 5 seconds and the app's own heartbeat
+  timeout apply.
+- **Kiosk hang detection pauses while the screen is off.** The watchdog doesn't count a kiosk app as
+  hung while the screen is off, and gives it a full timeout again when the screen comes back on.
 
 ## 0.2.0 (2026-11-09): configuration, attestation, diagnostics, USB devices, certificates
 
-```kotlin
+```kts
 implementation("net.ohrtech:device-sdk:0.2.0")
 ```
 
@@ -66,7 +222,7 @@ implementation("net.ohrtech:device-sdk:0.2.0")
 
 ## 0.1.0 (2026-11-08): the first release
 
-```kotlin
+```kts
 implementation("net.ohrtech:device-sdk:0.1.0")
 ```
 

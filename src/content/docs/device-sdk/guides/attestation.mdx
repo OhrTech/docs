@@ -25,30 +25,77 @@ token signed with that key.
 <TabItem label="Kotlin">
 
 ```kotlin
-val sdk = OhrDeviceSdk.connect(context)
+import java.util.Base64
+
 withContext(Dispatchers.IO) {
     val challenge = Base64.getDecoder().decode(myServer.newChallenge())  // your own endpoint
-    val attestation = sdk.attestation.attest(challenge)                  // or Suite.EC_MLDSA65
-    myServer.register(attestation.toJson().toString())                    // your server checks it
+    val attestation = OhrAttestation.attest(challenge)                   // or OhrAttestation.Suite.EC_MLDSA65
+    myServer.register(attestation.toJson().toString())                   // your server checks it
 }
 ```
+
+`attest` takes a moment, as the TEE makes and certifies the key: call it off the main thread.
+`challenge` is a `ByteArray`.
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
 // Off the main thread.
-OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(context);
 byte[] challenge = Base64.getDecoder().decode(myServer.newChallenge());   // your own endpoint
-OhrAttestation.Attestation attestation = sdk.getAttestation().attest(challenge);
+OhrAttestation.Attestation attestation = OhrAttestation.attest(challenge); // or OhrAttestation.Suite.EC_MLDSA65
 myServer.register(attestation.toJson().toString());                       // your server checks it
 ```
+
+`attest` takes a moment, as the TEE makes and certifies the key: call it off the main thread.
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final challenge = base64Decode(await myServer.newChallenge());   // your own endpoint
+final attestation = await OhrAttestation.attest(challenge);      // or suite: OhrAttestationSuite.ecMlDsa65
+await myServer.register(jsonEncode(attestation.json));           // your server checks it
+```
+
+`challenge` is a `Uint8List`. `attestation.json` is the JSON below as a `Map`; `ec` and `mlDsa65`
+hold the same chains as DER bytes.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+// Your own endpoints:
+const res = await fetch('https://api.example.com/attest/challenge');
+const challenge = fromBase64(await res.text());
+const attestation = await OhrAttestation.attest(challenge);   // or 'ec-mldsa65'
+await fetch('https://api.example.com/attest/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(attestation),                          // your server checks it
+});
+```
+
+`challenge` is a `Uint8Array`. The result is the JSON below as it is: chains of base64 DER.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var challenge = Convert.FromBase64String(await myServer.NewChallengeAsync());   // your own endpoint
+var attestation = await OhrAttestation.AttestAsync(challenge);                  // or OhrAttestationSuite.EcMlDsa65
+await myServer.RegisterAsync(attestation.Json.ToJsonString());                  // your server checks it
+```
+
+`challenge` is a `byte[]`. `attestation.Json` is the JSON below as a `JsonObject`; `Ec` and
+`MlDsa65` hold the same chains as DER bytes.
 
 </TabItem>
 </Tabs>
 
-`attest` takes a moment, as the TEE makes and certifies the key: call it off the main thread.
-`toJson()` gives what your server needs, each chain as base64 DER, the key's certificate first:
+What your server needs is the same in every language: each chain as base64 DER, the key's
+certificate first. The post-quantum suite adds an `mlDsa65` chain, and its `suite` is
+`"ec-mldsa65"`.
 
 ```json
 { "suite": "ec", "ec": ["MIICwzCC…", "MIICFzCC…", "MIIB9TCC…", "MIIB6TCC…"] }
@@ -62,29 +109,77 @@ Once your server has registered the key, sign each request with a token:
 <TabItem label="Kotlin">
 
 ```kotlin
-val token = sdk.attestation.token("https://api.example.com")   // valid for 5 minutes
-val c = URL("https://api.example.com/orders").openConnection() as HttpsURLConnection
-c.setRequestProperty("Authorization", "OhrAttest $token")      // any header your server reads
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
+
+withContext(Dispatchers.IO) {
+    val token = OhrAttestation.token("https://api.example.com")   // valid for 5 minutes
+    val c = URL("https://api.example.com/orders").openConnection() as HttpsURLConnection
+    c.setRequestProperty("Authorization", "OhrAttest $token")     // any header your server reads
+}
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-String token = sdk.getAttestation().token("https://api.example.com");   // valid for 5 minutes
+import java.net.URL;
+import javax.net.ssl.HttpsURLConnection;
+
+// Off the main thread.
+String token = OhrAttestation.token("https://api.example.com");   // valid for 5 minutes
 HttpsURLConnection c = (HttpsURLConnection) new URL("https://api.example.com/orders").openConnection();
-c.setRequestProperty("Authorization", "OhrAttest " + token);           // any header your server reads
+c.setRequestProperty("Authorization", "OhrAttest " + token);      // any header your server reads
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+import 'package:http/http.dart' as http;
+
+final token = await OhrAttestation.token('https://api.example.com');   // valid for 5 minutes
+final response = await http.get(Uri.parse('https://api.example.com/orders'),
+    headers: {'Authorization': 'OhrAttest $token'});                    // any header your server reads
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const token = await OhrAttestation.token('https://api.example.com');   // valid for 5 minutes
+const res = await fetch('https://api.example.com/orders', {
+  headers: { Authorization: `OhrAttest ${token}` },                      // any header your server reads
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using System.Net.Http.Headers;
+
+var token = await OhrAttestation.GetTokenAsync("https://api.example.com");   // valid for 5 minutes
+using var http = new HttpClient();
+using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.example.com/orders");
+request.Headers.Authorization = new AuthenticationHeaderValue("OhrAttest", token);   // any header your server reads
+using var response = await http.SendAsync(request);
 ```
 
 </TabItem>
 </Tabs>
 
-`token(audience, ttlSeconds, nonce)`:
+The token call takes an audience, a lifetime and an optional nonce:
+
+| | Kotlin, Java | Dart | TypeScript | C# |
+|---|---|---|---|---|
+| The call | `token(audience, ttlSeconds, nonce)` | `token(audience, ttl:, nonce:)` | `token(audience, { ttlSeconds, nonce })` | `GetTokenAsync(audience, ttl, nonce)` |
+| Lifetime | `ttlSeconds`, a `Long` | `ttl`, a `Duration` | `ttlSeconds`, a number | `ttl`, a `TimeSpan?` |
 
 | Parameter | |
 |---|---|
 | `audience` | Who the token is for, usually your server's URL. Your server refuses a token made for another audience. |
-| `ttlSeconds` | How long it is valid. Default 300. OhrTech's verifiers refuse a token that lives longer than 10 minutes. |
+| Lifetime | How long it is valid. Default 5 minutes. OhrTech's verifiers refuse a token that lives longer than 10 minutes. |
 | `nonce` | Optional. A value from your server, to stop a token being replayed within its lifetime. |
 
 A token is `header.payload.signature`, base64url, with the header
@@ -96,8 +191,15 @@ part carries the ML-DSA-65 signature of the same `header.payload`.
 
 | Suite | Keys | Use it |
 |---|---|---|
-| `Suite.EC` (default) | One EC P-256 key | Everywhere. Tokens of about 220 characters. |
-| `Suite.EC_MLDSA65` | An EC P-256 key and an ML-DSA-65 key, both attested; every token signed with both | When the proof must hold up against a future quantum computer. Tokens of about 4,700 characters. |
+| EC (default) | One EC P-256 key | Everywhere. Tokens of about 220 characters. |
+| EC + ML-DSA-65 | An EC P-256 key and an ML-DSA-65 key, both attested; every token signed with both | When the proof must hold up against a future quantum computer. Tokens of about 4,700 characters. |
+
+| | EC | EC + ML-DSA-65 |
+|---|---|---|
+| Kotlin, Java | `OhrAttestation.Suite.EC` | `OhrAttestation.Suite.EC_MLDSA65` |
+| Dart | `OhrAttestationSuite.ec` | `OhrAttestationSuite.ecMlDsa65` |
+| TypeScript | `'ec'` | `'ec-mldsa65'` |
+| C# | `OhrAttestationSuite.Ec` | `OhrAttestationSuite.EcMlDsa65` |
 
 ML-DSA on its own is not offered: the EC signature keeps the proof sound if a flaw is ever found
 in the newer algorithm. Your server checks both chains and both signatures.
@@ -121,21 +223,27 @@ signing valid tokens after it.
 ## Things to know
 
 - **One attested key per app.** `attest` replaces the key before it, and the old key can no longer
-  sign tokens. Attest again when your server asks, and register the new key. `suite` says which
-  suite the current key has, or null before the first `attest`.
+  sign tokens. Attest again when your server asks, and register the new key. The suite of the
+  current key is `OhrAttestation.suite` in Kotlin (`getSuite()` in Java), `suite()` in Dart and
+  TypeScript, and `OhrAttestation.Suite` in C#; it is null before the first `attest`.
 - **No Agent needed.** `OhrAttestation` uses your app's own Android Keystore, not the OhrTech Agent,
-  so it works without a connection: `OhrAttestation()` in Kotlin, `new OhrAttestation()` in Java.
-  What it needs is an OhrTech OS, whose KeyMint certifies keys up to the OhrTech Attestation Root. On
-  any other device `attest` still returns a chain, and your server's check fails.
-- **Clearing the app's data** deletes the key. `token` then throws, and the app attests again.
-- **This is not `keys.attest`.** [Keys](/device-sdk/guides/keys/) attests the encryption keys your
-  app keeps in the TEE, checked per device with the Management API. Device attestation is for
+  so it works when the Agent can't be reached, and it needs no grant from the fleet. What it needs
+  is an OhrTech OS, whose KeyMint certifies keys up to the OhrTech Attestation Root. On any other
+  device `attest` still returns a chain, and your server's check fails.
+- **Clearing the app's data** deletes the key. The token call then throws, and the app attests
+  again.
+- **This is not `OhrKeys.attest`.** [Keys](/device-sdk/guides/keys/) attests the encryption keys
+  your app keeps in the TEE, checked per device with the Management API. Device attestation is for
   proving the app and the device to your own server.
 
 ## Errors
 
-| | When |
-|---|---|
-| `IllegalArgumentException` | The challenge is empty or longer than 128 bytes. |
-| `OhrException.Failed` | `token` with no attested key: call `attest` first. |
-| The Keystore's own exceptions (`ProviderException`, `KeyStoreException`, …) | The TEE could not make, certify or use the key. `OhrAttestation` does not go through the Agent, so these are not `OhrException`. They are not declared: in Java, catch them as `Exception`. |
+| Kotlin, Java | Dart, TypeScript | C# | When |
+|---|---|---|---|
+| `OhrException.InvalidConfig` | `OhrInvalidConfig` | `OhrInvalidConfigException` | The challenge is empty or longer than 128 bytes (`field` is `challenge`). |
+| `OhrException.Failed` | `OhrFailed` | `OhrFailedException` | A token with no attested key: attest first. Or the Keystore could not make, certify or use the key (`the device's keystore: …`). |
+
+`OhrAttestation` does not go through the Agent, so these come from the Keystore, not from the
+Agent. In Kotlin and Java, a `ProviderException` the Keystore throws while it makes the key reaches
+your app as it is; it is unchecked, so catch it next to `OhrException` if you need to. In Dart,
+TypeScript and C# it arrives as `OhrFailed` (`OhrFailedException`).

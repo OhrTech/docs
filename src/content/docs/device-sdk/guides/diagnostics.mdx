@@ -10,11 +10,12 @@ You get three kinds of diagnostics from your apps in the field:
 | | What you do in the app | Where you see it |
 |---|---|---|
 | [Crash reports](#crash-reports) | Nothing | The app's Crashes section, `GET /v1/apps/{appId}/crashes` |
-| [Events](#events) | `sdk.diagnostics.event(name, data)` | The device's events, `GET /v1/devices/{deviceId}/events` |
-| [Log lines](#log-lines-and-log-bundles) | `sdk.diagnostics.i(tag, message)`, … | Log bundles, collected on request |
+| [Events](#events) | `OhrDiagnostics.event(name, data)` | The device's events, `GET /v1/devices/{deviceId}/events` |
+| [Log lines](#log-lines-and-log-bundles) | `OhrDiagnostics.i(tag, message)`, … | Log bundles, collected on request |
 
-All three need Agent 1061 or later. On an older Agent, `sdk.diagnostics` calls throw
-`OhrException.Unsupported` with `needsAgent = 1061`.
+All three need Agent 1061 or later. On an older Agent, `OhrDiagnostics` calls throw
+`OhrException.Unsupported` with `needsAgent = 1061` (`OhrUnsupported` in Dart and TypeScript,
+`OhrUnsupportedException` with `NeedsAgent` in C#).
 
 ## Crash reports
 
@@ -120,16 +121,40 @@ went offline. It shows with the device's events in the portal and the Management
 <TabItem label="Kotlin">
 
 ```kotlin
-sdk.diagnostics.event("printer_offline", mapOf("port" to 9100, "retries" to 3))
-sdk.diagnostics.event("shift_started")
+OhrDiagnostics.event("printer_offline", mapOf("port" to 9100, "retries" to 3))
+OhrDiagnostics.event("shift_started")
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-sdk.getDiagnostics().event("printer_offline", Map.of("port", 9100, "retries", 3));
-sdk.getDiagnostics().event("shift_started");
+OhrDiagnostics.event("printer_offline", Map.of("port", 9100, "retries", 3));
+OhrDiagnostics.event("shift_started");
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrDiagnostics.event('printer_offline', {'port': 9100, 'retries': 3});
+await OhrDiagnostics.event('shift_started');
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+await OhrDiagnostics.event('printer_offline', { port: 9100, retries: 3 });
+await OhrDiagnostics.event('shift_started');
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+await OhrDiagnostics.EventAsync("printer_offline", new JsonObject { ["port"] = 9100, ["retries"] = 3 });
+await OhrDiagnostics.EventAsync("shift_started");
 ```
 
 </TabItem>
@@ -137,13 +162,19 @@ sdk.getDiagnostics().event("shift_started");
 
 - `name` starts with a lowercase letter, then letters, digits, `_` and `.`, up to 64 characters in
   all: `printer_offline`, `orderFailed`, `sync.retry`.
-- `data` is a map or a `JSONObject`, at most 2 KB as JSON.
-- A name or data that breaks these rules throws `IllegalArgumentException`, before anything is
-  sent.
+- `data` is a map or a `JSONObject` (Kotlin, Java), a map (Dart), an object (TypeScript) or a
+  `JsonObject` (C#), at most 2 KB as JSON.
+- A name or data that breaks these rules throws `OhrException.InvalidConfig` with `field` `name`
+  or `data`, before anything is sent (`OhrInvalidConfig` in Dart and TypeScript,
+  `OhrInvalidConfigException` in C#).
 - Each app can send 60 events a minute. The Agent drops the ones over that.
 
-`event` is a one-way call: it doesn't wait for the Agent, so you can call it from any thread,
-including the main thread.
+`event` is a one-way call: it doesn't wait for the Agent to handle the event, so in Kotlin and Java
+you can call it from any thread, including the main thread. It waits only when the library has to
+bind the Agent first: on the first call to the Agent in your app's process, or while the Agent
+restarts (up to 10 seconds). In Dart,
+TypeScript and C#, `event` runs off the UI thread and its `Future`, `Promise` or `Task` completes
+once the event is sent.
 
 ### Read them
 
@@ -178,30 +209,66 @@ app, and they go to the hub only in a log bundle, which support asks for when th
 <TabItem label="Kotlin">
 
 ```kotlin
-val diag = sdk.diagnostics
-diag.i("Checkout", "paid, printing receipt 1187")
-diag.w("Printer", "paper low")
-diag.e("Printer", "no answer on port 9100")
-diag.log(Log.DEBUG, "Sync", "42 orders queued")
+import android.util.Log
+
+OhrDiagnostics.i("Checkout", "paid, printing receipt 1187")
+OhrDiagnostics.w("Printer", "paper low")
+OhrDiagnostics.e("Printer", "no answer on port 9100")
+OhrDiagnostics.log(Log.DEBUG, "Sync", "42 orders queued")
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-OhrDiagnostics diag = sdk.getDiagnostics();
-diag.i("Checkout", "paid, printing receipt 1187");
-diag.w("Printer", "paper low");
-diag.e("Printer", "no answer on port 9100");
-diag.log(Log.DEBUG, "Sync", "42 orders queued");
+import android.util.Log;
+
+OhrDiagnostics.i("Checkout", "paid, printing receipt 1187");
+OhrDiagnostics.w("Printer", "paper low");
+OhrDiagnostics.e("Printer", "no answer on port 9100");
+OhrDiagnostics.log(Log.DEBUG, "Sync", "42 orders queued");
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+await OhrDiagnostics.i('Checkout', 'paid, printing receipt 1187');
+await OhrDiagnostics.w('Printer', 'paper low');
+await OhrDiagnostics.e('Printer', 'no answer on port 9100');
+await OhrDiagnostics.log(3, 'Sync', '42 orders queued'); // 3: Android's DEBUG
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+await OhrDiagnostics.i('Checkout', 'paid, printing receipt 1187');
+await OhrDiagnostics.w('Printer', 'paper low');
+await OhrDiagnostics.e('Printer', 'no answer on port 9100');
+await OhrDiagnostics.log(3, 'Sync', '42 orders queued'); // 3: Android's DEBUG
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using Android.Util;
+
+await OhrDiagnostics.LogAsync(LogPriority.Info, "Checkout", "paid, printing receipt 1187");
+await OhrDiagnostics.LogAsync(LogPriority.Warn, "Printer", "paper low");
+await OhrDiagnostics.LogAsync(LogPriority.Error, "Printer", "no answer on port 9100");
+await OhrDiagnostics.LogAsync(LogPriority.Debug, "Sync", "42 orders queued");
 ```
 
 </TabItem>
 </Tabs>
 
-`priority` is one of `android.util.Log`'s levels. Tags are cut to 64 characters and messages to
-2,000. Like `event`, these are one-way calls you can make from any thread. The Agent keeps the
-lines in memory, so a restart of the Agent clears them.
+`priority` is one of `android.util.Log`'s levels: in Dart and TypeScript its number (2 verbose,
+3 debug, 4 info, 5 warn, 6 error, 7 assert), in C# `Android.Util.LogPriority`. `i`, `w` and `e` are
+`log` at 4, 5 and 6; C# has only `LogAsync`. Tags are cut to 64 characters and messages to 2,000.
+Like `event`, these are one-way calls you can make from any thread. The Agent keeps the lines in
+memory, so a restart of the Agent clears them.
 
 ### Collect a log bundle
 
@@ -248,7 +315,7 @@ The zip holds:
 |---|---|
 | `info.json` | The package, `versionCode`, `versionName`, the app's uid, the OS build and when it was collected |
 | `logcat.txt` | The app's lines from every Android log buffer, the newest 4 MB |
-| `sdk-log.txt` | What the app logged through `sdk.diagnostics`, oldest first |
+| `sdk-log.txt` | What the app logged through `OhrDiagnostics`, oldest first |
 | `events.json` | The app's recent events, up to 200 |
 
 ### In the portal

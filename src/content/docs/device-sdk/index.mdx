@@ -1,27 +1,76 @@
 ---
 title: Device SDK
-description: An Android library for the app you ship on OhrTech devices, to work with the OhrTech Agent on the device it runs on.
+description: Libraries for the app you ship on OhrTech devices, in Kotlin and Java, Flutter, React Native and .NET, to work with the OhrTech Agent on the device it runs on.
 ---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <p><span class="ohr-badge live">Available</span></p>
 
 The Device SDK is the other half of the OhrTech SDK. Where the [Management API](/management-api/)
-runs on your servers and manages many devices, the Device SDK is an Android library for **your app,
-on the device**: it lets your app work with the OhrTech Agent, the system app that manages the
-device it runs on.
+runs on your servers and manages many devices, the Device SDK is for **your app, on the device**: it
+lets your app work with the OhrTech Agent, the system app that manages the device it runs on.
 
-- **Package:** `net.ohrtech:device-sdk` on Maven Central, version `0.2.0`, for Kotlin and Java
-- **Runs on:** OhrTech devices, Android 13 (API 33) and later
+It comes as four SDKs over one Agent protocol. The Flutter, React Native and .NET ones wrap the
+Kotlin library, so every call, check and error is the same whichever you use:
+
+| For | Package | Version | Source and sample app (MIT) |
+|---|---|---|---|
+| Kotlin and Java | `net.ohrtech:device-sdk` on Maven Central | `0.3.1` | [OhrTech/device-sdk-android](https://github.com/OhrTech/device-sdk-android) |
+| Flutter (Dart) | `ohrtech_device` on pub.dev | `0.1.0` | [OhrTech/device-sdk-flutter](https://github.com/OhrTech/device-sdk-flutter) |
+| React Native (TypeScript, New Architecture) | `@ohrtech/device-sdk-react-native` on npm | `0.1.0` | [OhrTech/device-sdk-react-native](https://github.com/OhrTech/device-sdk-react-native) |
+| .NET for Android and .NET MAUI (C#) | `OhrTech.Device` and `OhrTech.Device.Maui` on NuGet | `0.1.0` | [OhrTech/device-sdk-dotnet](https://github.com/OhrTech/device-sdk-dotnet) |
+
+- **Runs on:** OhrTech devices, Android 13 (API 33) and later. Each SDK is for Android only.
 - **Who may use it:** apps your organisation installs through OhrTech. Reading is open to every such
   app; changing the device needs the fleet's grant ([access, errors and versions](/device-sdk/access/))
-- **Source and sample app:** [OhrTech/device-sdk-android](https://github.com/OhrTech/device-sdk-android) (MIT)
+
+Each area is an object you call directly. There is nothing to connect or close: the library binds
+the Agent on the first call and keeps the binding while your app runs.
+
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
 
 ```kotlin
-val sdk = OhrDeviceSdk.connect(context)
-val info = sdk.device.infoAsync()        // info.deviceId is "dev_…", as the Management API names it
-if (sdk.session.mayUse("kiosk")) sdk.kiosk.start(activity)
-sdk.close()
+val info = OhrDevice.infoAsync()        // info.deviceId is "dev_…", as the Management API names it
+if (OhrAccess.mayUseAsync("kiosk")) withContext(Dispatchers.IO) { OhrKiosk.start(activity) }
 ```
+
+</TabItem>
+<TabItem label="Java">
+
+```java
+// On a background thread
+OhrDevice.Info info = OhrDevice.info();   // info.getDeviceId() is "dev_…", as the Management API names it
+if (OhrAccess.mayUse("kiosk")) OhrKiosk.start(activity);
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final info = await OhrDevice.info();    // info.deviceId is "dev_…", as the Management API names it
+if (await OhrAccess.mayUse('kiosk')) await OhrKiosk.start();
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const info = await OhrDevice.info();    // info.deviceId is "dev_…", as the Management API names it
+if (await OhrAccess.mayUse('kiosk')) await OhrKiosk.start();
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var info = await OhrDevice.GetInfoAsync();    // info.DeviceId is "dev_…", as the Management API names it
+if (await OhrAccess.MayUseAsync("kiosk")) await OhrKiosk.StartAsync(activity);
+```
+
+</TabItem>
+</Tabs>
 
 The [quickstart](/device-sdk/quickstart/) takes you from the dependency to a kiosk app that reads its
 managed configuration.
@@ -54,17 +103,18 @@ managed configuration.
 ## How the two fit together
 
 Many products use both: the app on the device uses the Device SDK, and your back office uses the
-Management API. They meet in a few places:
+Management API. They meet in a few places (the calls are named as in Kotlin; the other SDKs have
+the same ones in their own style, such as `OhrDevice.GetInfoAsync()` in C#):
 
-- **The same ids.** `sdk.device.info().deviceId` is the device's `dev_…` id, and
-  `sdk.session.app` is your app's `app_…` id, as the Management API and the portal name them.
+- **The same ids.** `OhrDevice.info().deviceId` is the device's `dev_…` id, and
+  `OhrAccess.info().app` is your app's `app_…` id, as the Management API and the portal name them.
 - **Grants.** Your organisation decides, per fleet and per app, what the app may change on the
   device: in the portal on the fleet's Applications tab, or with
   `PUT /v1/fleets/{fleetId}/apps/{appId}/sdk-access`. See [access](/device-sdk/access/).
 - **Updates.** A version you upload and mark `available` with the
   [Management API](/management-api/guides/apps/) is downloaded ahead; your app installs it when it
-  is ready, with `sdk.updates.install()`.
-- **Managed configuration.** You set the values your app reads with `sdk.config` per fleet or per
+  is ready, with `OhrUpdates.install()`.
+- **Managed configuration.** You set the values your app reads with `OhrConfig` per fleet or per
   device, in the portal or with the Management API.
 - **Your server.** It sends [push messages](/device-sdk/server/send-push/), checks
   [attestations](/device-sdk/server/verify-attestation/) and accepts

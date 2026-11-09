@@ -81,7 +81,9 @@ for (const [i, { where, code }] of snippets.java.entries()) {
 	const file = declares ? body : `class Snippet extends JPrelude {\n    void run() throws Exception {\n${indent(body, 8)}\n    }\n}`;
 	const all = [...new Set([...javaImports.map((x) => `import ${x};`), ...imports.map((l) => l.trim())])];
 	await mkdir(join(javaDir, `s${i}`), { recursive: true });
-	await writeFile(join(javaDir, `s${i}`, 'Snippet.java'), `${header(where)}package snippets.generated.java.s${i};\n\n${all.join('\n')}\n\n${file}\n`);
+	// A public class (an Android component must be one) names its file.
+	const publicType = declares ? body.match(/^public (?:final |abstract )*(?:class|interface|enum|record) (\w+)/m)?.[1] : null;
+	await writeFile(join(javaDir, `s${i}`, `${publicType ?? 'Snippet'}.java`), `${header(where)}package snippets.generated.java.s${i};\n\n${all.join('\n')}\n\n${file}\n`);
 }
 
 // Dart: each snippet a library; fragments are the body of an async function with the prelude's names.
@@ -115,13 +117,17 @@ const exportsOf = async (dir) => {
 };
 const sdkNames = await exportsOf(rnTypes).catch(() => new Set());
 if (snippets.ts.length && sdkNames.size === 0) console.warn('check-device-snippets: no @ohrtech/device-sdk-react-native types found; set OHR_RN_PATH or npm ci in examples/device/rn');
+const basePrelude = ['activity', 'serverNonce', 'ciphertext', 'enc', 'ED25519_PUBLIC_KEY_BASE64'];
+const preludeNames = new Set([...(await readFile(join(out, 'rn/src/prelude.ts'), 'utf8')).matchAll(/^export (?:const|function|async function|class|let)\s+(\w+)/gm)].map((m) => m[1]));
 for (const [i, { where, code }] of snippets.ts.entries()) {
 	const { imports, body } = split(code, /^import .* from '[^']+';\s*$|^import '[^']+';\s*$/);
 	const imported = new Set(imports.flatMap((l) => (l.match(/\{([^}]*)\}/)?.[1] ?? '').split(',').map((x) => x.trim().split(/\s+as\s+/).pop()).filter(Boolean)));
 	const used = [...sdkNames].filter((n) => !imported.has(n) && new RegExp(`\\b${n}\\b`).test(body));
 	const all = [...imports.map((l) => l.trim())];
 	if (used.length) all.push(`import { ${used.join(', ')} } from '@ohrtech/device-sdk-react-native';`);
-	all.push("import { activity, serverNonce, ciphertext, enc, ED25519_PUBLIC_KEY_BASE64 } from '../prelude';");
+	// The prelude's other names, when the snippet uses them.
+	const more = [...preludeNames].filter((n) => !basePrelude.includes(n) && !imported.has(n) && new RegExp(`\\b${n}\\b`).test(body));
+	all.push(`import { ${[...basePrelude, ...more].join(', ')} } from '../prelude';`);
 	await writeFile(join(tsDir, `s${i}.tsx`), `${header(where)}/* eslint-disable */\n${all.join('\n')}\n\nexport async function snippet() {\n${indent(body, 2)}\n}\nvoid activity; void serverNonce; void ciphertext; void enc; void ED25519_PUBLIC_KEY_BASE64;\n`);
 }
 
@@ -136,7 +142,13 @@ const csPrelude = {
 	enc: 'var enc = new byte[32];',
 	cancellationToken: 'var cancellationToken = CancellationToken.None;',
 	ed25519PublicKey: 'var ed25519PublicKey = "";',
+	mlDsa65PublicKey: 'var mlDsa65PublicKey = "";',
+	theirPublicKey: 'var theirPublicKey = new byte[1184];',
+	SendToServer: 'static Task SendToServer(params object?[] values) => Task.CompletedTask;',
 	label: 'Android.Widget.TextView label = null!;',
+	wifiView: 'OhrTech.Device.OhrWifiView wifiView = null!;',
+	staffPassword: 'var staffPassword = "";',
+	myServer: 'var myServer = (NewChallengeAsync: (Func<Task<string>>)(() => Task.FromResult("")), RegisterAsync: (Func<string, Task>)(_ => Task.CompletedTask));',
 };
 for (const [i, { where, code }] of snippets.cs.entries()) {
 	const { imports, body } = split(code, /^using [\w.]+;\s*$/);
@@ -145,7 +157,9 @@ for (const [i, { where, code }] of snippets.cs.entries()) {
 		csTypes.push(`// ${where}\n${body}`);
 		continue;
 	}
-	const declared = (name) => new RegExp(`[\\w>\\]?]\\s+${name}\\s*[=;(]`).test(body);
+	// A type before the name declares it; a keyword before it (await SendToServer(…)) doesn't.
+	const declared = (name) => [...body.matchAll(new RegExp(`([\\w>\\]?]+)\\s+${name}\\s*[=;(]`, 'g'))]
+		.some((m) => !/^(await|return|throw|new|in|is|as|yield|else|case)$/.test(m[1]));
 	const needed = Object.entries(csPrelude).filter(([n]) => new RegExp(`\\b${n}\\b`).test(body) && !declared(n)).map(([, l]) => l);
 	csFns.push(`    // ${where}\n    static async Task Snippet${i}()\n    {\n${indent([...needed, body].join('\n'), 8)}\n    }`);
 }

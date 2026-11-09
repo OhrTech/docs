@@ -9,7 +9,7 @@ Managed configuration gives your app settings that you set from the hub instead 
 into the APK: the server address, the store number, a printer, an API key. You declare the settings
 in the app. The hub reads them from the APK you upload, and the OhrTech Portal shows a form for
 them. You set the values for a fleet or for a single device, and the app reads them with
-`sdk.config`.
+`OhrConfig`.
 
 This is Android's standard application restrictions mechanism. The OhrTech Agent sets the values as
 the app's application restrictions, so code that already reads them with `RestrictionsManager` works
@@ -17,7 +17,8 @@ unchanged.
 
 ## Declare the settings
 
-Put the settings in `res/xml/app_restrictions.xml`:
+Put the settings in `res/xml/app_restrictions.xml` of the app's Android project. The file is the
+same for every framework:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -54,16 +55,30 @@ Then point to the file from the `<application>` element of your manifest:
     android:resource="@xml/app_restrictions" />
 ```
 
-| `restrictionType` | The value | Getter |
+Where the two files are in each kind of project:
+
+| Project | `app_restrictions.xml` | The manifest |
 |---|---|---|
-| `string` | Text | `string(key)` |
-| `integer` | A 32-bit whole number | `int(key)` |
-| `bool` | `true` or `false` | `bool(key)` |
-| `choice` | One of `entryValues` | `string(key)` |
-| `multi-select` | Some of `entryValues` | `strings(key)` |
-| `hidden` | Text, entered as a secret (see [Secrets](#secrets)) | `string(key)` |
-| `bundle` | A group of settings | `bundle(key)` |
-| `bundle_array` | A list of groups. Its one child is the `bundle` each item repeats | `bundles(key)` |
+| Android (Kotlin, Java) | `app/src/main/res/xml/` | `app/src/main/AndroidManifest.xml` |
+| Flutter | `android/app/src/main/res/xml/` | `android/app/src/main/AndroidManifest.xml` |
+| React Native | `android/app/src/main/res/xml/` | `android/app/src/main/AndroidManifest.xml` |
+| .NET MAUI | `Platforms/Android/Resources/xml/` | `Platforms/Android/AndroidManifest.xml` |
+| .NET for Android | `Resources/xml/` | `AndroidManifest.xml` |
+
+An Expo app generates its `android` directory with `npx expo prebuild`, which replaces what you
+put there. Add the file and the `<meta-data>` element with a config plugin of your own, or keep the
+`android` directory in your repository. The Device SDK's config plugin only sets `minSdkVersion`.
+
+| `restrictionType` | The value | Kotlin, Java | Dart, TypeScript | C# |
+|---|---|---|---|---|
+| `string` | Text | `string(key)` | `string(key)` | `GetString(key)` |
+| `integer` | A 32-bit whole number | `int(key)` (`getInt` from Java) | `integer(key)` | `GetInt(key)` |
+| `bool` | `true` or `false` | `bool(key)` | `boolean(key)` | `GetBool(key)` |
+| `choice` | One of `entryValues` | `string(key)` | `string(key)` | `GetString(key)` |
+| `multi-select` | Some of `entryValues` | `strings(key)` | `strings(key)` | `GetStrings(key)` |
+| `hidden` | Text, entered as a secret (see [Secrets](#secrets)) | `string(key)` | `string(key)` | `GetString(key)` |
+| `bundle` | A group of settings | `bundle(key)` | `bundle(key)` in Dart, `values()` in TypeScript | `GetValues()` |
+| `bundle_array` | A list of groups. Its one child is the `bundle` each item repeats | `bundles(key)` | `bundles(key)` in Dart, `values()` in TypeScript | `GetValues()` |
 
 Bundles nest up to 4 levels deep.
 
@@ -90,56 +105,116 @@ settings. `GET /v1/apps/{appId}/config-schema` returns that declaration:
 
 ## Read the values
 
-`sdk.config` returns the value set for a key. If no value is set, it returns the default your XML
+`OhrConfig` returns the value set for a key. If no value is set, it returns the default your XML
 declares, and if there is none, the fallback you pass.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val config = sdk.config                        // or OhrConfig(context), without connecting
-
-val server = config.string("server_url")       // "https://pos.example.com" unless the fleet sets it
-val store = config.int("store_number")
-val kiosk = config.bool("kiosk_on_start")
-val features = config.strings("features")      // List<String>
-val apiKey = config.string("api_key")          // the secret, in the clear
-val printer = config.bundle("printer")         // Bundle?, null unless the fleet sets it
-val lanes = config.bundles("lanes").map { it.getString("name") }
+val server = OhrConfig.string("server_url")       // "https://pos.example.com" unless the fleet sets it
+val store = OhrConfig.int("store_number")
+val kiosk = OhrConfig.bool("kiosk_on_start")
+val features = OhrConfig.strings("features")      // List<String>
+val apiKey = OhrConfig.string("api_key")          // the secret, in the clear
+val printer = OhrConfig.bundle("printer")         // Bundle?, null unless the fleet sets it
+val lanes = OhrConfig.bundles("lanes").map { it.getString("name") }
 
 // Every change while the app runs, as the new values:
-config.changes.collect { values -> reload(values) }
+OhrConfig.changes.collect { values -> reload(values) }
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-OhrConfig config = new OhrConfig(context);     // or sdk.getConfig()
+import android.os.Bundle;
 
-String server = config.string("server_url");
-int store = config.getInt("store_number");     // int(...) in Kotlin
-boolean kiosk = config.bool("kiosk_on_start");
-List<String> features = config.strings("features");
-Bundle printer = config.bundle("printer");
-List<Bundle> lanes = config.bundles("lanes");
+String server = OhrConfig.string("server_url");
+int store = OhrConfig.getInt("store_number");     // int(...) in Kotlin
+boolean kiosk = OhrConfig.bool("kiosk_on_start");
+List<String> features = OhrConfig.strings("features");
+Bundle printer = OhrConfig.bundle("printer");
+List<Bundle> lanes = OhrConfig.bundles("lanes");
 
-// Every change while the app runs; close it to stop:
-Closeable watch = config.listen(context.getMainExecutor(), values -> reload(values));
+// Every change while the app runs, on the executor you pass; close it to stop:
+Closeable watch = OhrConfig.listen(context.getMainExecutor(), values -> reload(values));
 ```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final server = await OhrConfig.string('server_url');   // 'https://pos.example.com' unless the fleet sets it
+final store = await OhrConfig.integer('store_number');
+final kiosk = await OhrConfig.boolean('kiosk_on_start');
+final features = await OhrConfig.strings('features');   // List<String>
+final apiKey = await OhrConfig.string('api_key');       // the secret, in the clear
+final printer = await OhrConfig.bundle('printer');      // a map, null unless the fleet sets it
+final lanes = [for (final lane in await OhrConfig.bundles('lanes')) lane['name'] as String?];
+
+// Every change while the app runs, as the new values; cancel the subscription to stop:
+final watch = OhrConfig.changes.listen((values) => reload(values));
+```
+
+Bundles are `Map<String, Object?>`, bundle arrays lists of them.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const server = await OhrConfig.string('server_url'); // 'https://pos.example.com' unless the fleet sets it
+const store = await OhrConfig.integer('store_number');
+const kiosk = await OhrConfig.boolean('kiosk_on_start');
+const features = await OhrConfig.strings('features'); // string[]
+const apiKey = await OhrConfig.string('api_key'); // the secret, in the clear
+
+// Bundles are objects in values(), bundle arrays arrays of objects:
+let config = await OhrConfig.values();
+const printer = config['printer'] as { host?: string; port?: number } | undefined;
+const lanes = ((config['lanes'] ?? []) as { name?: string }[]).map((lane) => lane.name);
+
+// Every change while the app runs, as the new values; remove() to stop:
+const watch = OhrConfig.addChangeListener((values) => {
+  config = values;
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var server = OhrConfig.GetString("server_url");    // "https://pos.example.com" unless the fleet sets it
+var store = OhrConfig.GetInt("store_number");
+var kiosk = OhrConfig.GetBool("kiosk_on_start");
+var features = OhrConfig.GetStrings("features");   // IReadOnlyList<string>
+var apiKey = OhrConfig.GetString("api_key");       // the secret, in the clear
+
+// Bundles are objects in GetValues(), bundle arrays arrays of objects:
+var config = OhrConfig.GetValues();
+var printerHost = (string?)config["printer"]?["host"];
+var lanes = config["lanes"]?.AsArray().Select(lane => (string?)lane?["name"]).ToList() ?? [];
+
+// Every change while the app runs, as the new values:
+OhrConfig.Changed += (_, e) => config = e.Values;
+```
+
+The getters read Android's application restrictions directly, so they are synchronous. `Changed` is
+raised on the synchronization context it was subscribed from (the UI thread in MAUI), otherwise on
+the thread pool.
 
 </TabItem>
 </Tabs>
 
-| Method | |
-|---|---|
-| `values()` | Every value set, as a `Bundle`. Keys the fleet doesn't set are absent |
-| `defaults()` | The settings the app declares, as Android `RestrictionEntry` objects with their defaults |
-| `isSet(key)` | Whether the fleet or the device sets `key` |
-| `string(key, fallback)`, `int(key, fallback)`, `bool(key, fallback)` | The value, else the declared default, else `fallback` (`null`, `0`, `false` if you pass none). From Java, `int` is `getInt` |
-| `strings(key)` | A `multi-select` value, else its declared default, else an empty list |
-| `bundle(key)`, `bundles(key)` | A `bundle` or `bundle_array` value. Declared defaults don't apply: `null` or an empty list when not set |
-| `changes` / `listen(executor, listener)` | The new values each time they change |
+| Kotlin, Java | Dart | TypeScript | C# | |
+|---|---|---|---|---|
+| `values()` | `values()` | `values()` | `GetValues()` | Every value set: a `Bundle` in Kotlin and Java, a map, object or `JsonObject` in the others. Keys the fleet doesn't set are absent |
+| `defaults()` | | | | The settings the app declares, as Android `RestrictionEntry` objects with their defaults |
+| `isSet(key)` | `isSet(key)` | `isSet(key)` | `IsSet(key)` | Whether the fleet or the device sets `key` |
+| `string`, `int`, `bool` | `string`, `integer`, `boolean` | `string`, `integer`, `boolean` | `GetString`, `GetInt`, `GetBool` | The value, else the declared default, else the fallback (`null`, `0`, `false` if you pass none). From Java, `int` is `getInt`; in Dart the fallback is a named argument, `fallback:` |
+| `strings(key)` | `strings(key)` | `strings(key)` | `GetStrings(key)` | A `multi-select` value, else its declared default, else an empty list |
+| `bundle(key)`, `bundles(key)` | `bundle(key)`, `bundles(key)` | | | A `bundle` or `bundle_array` value. Declared defaults don't apply: `null` or an empty list when not set |
+| `changes` / `listen(executor, listener)` | `changes` | `addChangeListener(listener, onError?)` | `Changed` | The new values each time they change |
 
 `OhrConfig` doesn't connect to the Agent, needs no fleet grant and can be called from any thread.
 Changes arrive through Android's `ACTION_APPLICATION_RESTRICTIONS_CHANGED` broadcast, which is

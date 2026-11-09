@@ -148,18 +148,24 @@ already true, so there is no need to call `requestPermission`:
 <TabItem label="Kotlin">
 
 ```kotlin
-val usbManager = context.getSystemService(UsbManager::class.java)
+import android.hardware.usb.UsbDeviceConnection
+import android.hardware.usb.UsbManager
 
-for (approved in sdk.usb.devices()) {               // off the main thread
-    if (approved.accessory) continue
-    val device = usbManager.deviceList[approved.deviceName] ?: continue
-    val connection = usbManager.openDevice(device)   // no "Allow access?"
-    printers.connect(approved.name, device, connection)
+val usbManager = context.getSystemService(UsbManager::class.java)
+val connections = mutableMapOf<String, UsbDeviceConnection>()
+
+// The approved devices attached now (a binder call: off the main thread):
+for (approved in withContext(Dispatchers.IO) { OhrUsb.devices() }) {
+    val name = approved.deviceName ?: continue                      // null for an accessory
+    val device = usbManager.deviceList[name] ?: continue
+    usbManager.openDevice(device)?.let { connections[name] = it }   // no "Allow access?"
 }
 
 // Approved devices as they come and go:
-sdk.usb.changes.collect { change ->
-    if (change.attached) connect(change.device) else disconnect(change.device)
+OhrUsb.changes.collect { change ->
+    val name = change.device.deviceName ?: return@collect
+    if (change.attached) usbManager.deviceList[name]?.let { d -> usbManager.openDevice(d)?.let { connections[name] = it } }
+    else connections.remove(name)?.close()
 }
 ```
 
@@ -167,45 +173,154 @@ sdk.usb.changes.collect { change ->
 <TabItem label="Java">
 
 ```java
-UsbManager usbManager = context.getSystemService(UsbManager.class);
+import android.hardware.usb.UsbDevice;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbManager;
 
-for (OhrUsb.Device approved : sdk.getUsb().devices()) {     // off the main thread
+// Off the main thread.
+UsbManager usbManager = context.getSystemService(UsbManager.class);
+Map<String, UsbDeviceConnection> connections = new ConcurrentHashMap<>();
+
+for (OhrUsb.Device approved : OhrUsb.devices()) {
     if (approved.getAccessory()) continue;
     UsbDevice device = usbManager.getDeviceList().get(approved.getDeviceName());
     if (device == null) continue;
     UsbDeviceConnection connection = usbManager.openDevice(device);   // no "Allow access?"
-    printers.connect(approved.getName(), device, connection);
+    if (connection != null) connections.put(device.getDeviceName(), connection);
 }
 
 // Approved devices as they come and go; close it to stop:
-Closeable watch = sdk.getUsb().listen(executor, change -> {
-    if (change.getAttached()) connect(change.getDevice()); else disconnect(change.getDevice());
+Closeable watch = OhrUsb.listen(executor, change -> {
+    String name = change.getDevice().getDeviceName();
+    if (name == null) return;
+    if (change.getAttached()) {
+        UsbDevice device = usbManager.getDeviceList().get(name);
+        UsbDeviceConnection connection = device == null ? null : usbManager.openDevice(device);
+        if (connection != null) connections.put(name, connection);
+    } else {
+        UsbDeviceConnection connection = connections.remove(name);
+        if (connection != null) connection.close();
+    }
 });
 ```
 
 </TabItem>
+<TabItem label="Dart">
+
+```dart
+import 'package:flutter/services.dart';
+
+// Your app's own Kotlin code opens the device with UsbManager (as in the Kotlin tab), behind a channel:
+const usb = MethodChannel('com.example.pos/usb');
+
+for (final device in await OhrUsb.devices()) {
+  if (!device.accessory) await usb.invokeMethod('open', device.deviceName);
+}
+
+// Approved devices as they come and go; cancel the subscription to stop:
+final subscription = OhrUsb.changes.listen((change) {
+  if (change.device.accessory) return;
+  usb.invokeMethod(change.attached ? 'open' : 'close', change.device.deviceName);
+});
+```
+
+`ohrtech_device` lists the approved devices and tells you as they come and go; it doesn't open
+them. Opening one is Android's `UsbManager`, which Dart can't call: use a USB plugin that opens a
+device by its Android device name, or a platform channel to Kotlin code of your app's own, as here.
+If the plugin asks for permission first, Android answers at once, without a prompt, since the app
+already has it.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+import { TurboModuleRegistry, type TurboModule } from 'react-native';
+
+// Your app's own native module, which opens the device with UsbManager (as in the Kotlin tab):
+interface PosUsb extends TurboModule {
+  open(deviceName: string): Promise<void>;
+  close(deviceName: string): Promise<void>;
+}
+const posUsb = TurboModuleRegistry.getEnforcing<PosUsb>('PosUsb');
+
+for (const device of await OhrUsb.devices()) {
+  if (device.deviceName !== null) await posUsb.open(device.deviceName);   // null for an accessory
+}
+
+// Approved devices as they come and go; remove() to stop:
+const subscription = OhrUsb.addChangeListener(({ attached, device }) => {
+  if (device.deviceName === null) return;
+  if (attached) posUsb.open(device.deviceName);
+  else posUsb.close(device.deviceName);
+});
+```
+
+`@ohrtech/device-sdk-react-native` lists the approved devices and tells you as they come and go;
+it doesn't open them. Opening one is Android's `UsbManager`, which JavaScript can't call: use a USB
+library that opens a device by its Android device name, or a native module of your app's own, as
+here. If the library asks for permission first, Android answers at once, without a prompt, since
+the app already has it.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using Android.Hardware.Usb;
+
+var usbManager = (UsbManager)context.GetSystemService(Android.Content.Context.UsbService)!;
+var connections = new Dictionary<string, UsbDeviceConnection>();
+
+foreach (var approved in await OhrUsb.GetDevicesAsync())
+{
+    if (approved.DeviceName is not { } name) continue;                       // null for an accessory
+    if (usbManager.DeviceList?.TryGetValue(name, out var device) != true) continue;
+    if (usbManager.OpenDevice(device) is { } connection) connections[name] = connection;   // no "Allow access?"
+}
+
+// Approved devices as they come and go:
+OhrUsb.Changed += (_, e) =>
+{
+    if (e.Device.DeviceName is not { } name) return;
+    if (!e.Attached) { if (connections.Remove(name, out var gone)) gone.Close(); }
+    else if (usbManager.DeviceList?.TryGetValue(name, out var device) == true && usbManager.OpenDevice(device) is { } connection)
+        connections[name] = connection;
+};
+```
+
+`Android.Hardware.Usb.UsbManager` is Android's, bound for .NET. `Changed` is raised on the
+`SynchronizationContext` you subscribed from: the UI thread, when you subscribe there.
+
+</TabItem>
 </Tabs>
 
-For an accessory, find it in `usbManager.accessoryList` by `manufacturer` and `model`, and open it
-with `openAccessory`.
+For an accessory, find it in `UsbManager`'s accessory list by `manufacturer` and `model`, and open
+it with `openAccessory`.
 
-`sdk.usb` needs no fleet grant. It shows the app only the attached peripherals approved for it:
+`OhrUsb` needs no fleet grant. It shows the app only the attached peripherals approved for it:
 
-| `sdk.usb` | |
-|---|---|
-| `devices()` | The approved devices and accessories attached now |
-| `changes` / `listen(executor, listener)` | A `Change` each time one is attached (`attached` true) or detached, with its `device` |
+| | Kotlin, Java | Dart | TypeScript | C# |
+|---|---|---|---|---|
+| The approved devices and accessories attached now | `devices()` | `devices()` | `devices()` | `GetDevicesAsync()` |
+| A change each time one is attached (`attached` true) or detached, with its `device` | `changes` (a `Flow<Change>`) / `listen(executor, listener)` | `changes` (a broadcast `Stream<OhrUsbChange>`) | `addChangeListener(listener, onError?)` | the `Changed` event (`Attached`, `Device`) |
 
-| `OhrUsb.Device` | |
+Changes go on after the Agent restarts, but one that happened while it was away isn't reported:
+call `devices()` again when the connection is back (see [access](/device-sdk/access/)).
+
+A device is an `OhrUsb.Device` in Kotlin and Java, and an `OhrUsbDevice` in Dart, TypeScript and
+C# (with the same fields, capitalised, in C#):
+
+| Field | |
 |---|---|
 | `accessory` | `false` for a USB device, `true` for an accessory |
-| `deviceName` | A device's name in `UsbManager.deviceList`, such as `/dev/bus/usb/001/004` |
+| `deviceName` | A device's name in `UsbManager`'s device list, such as `/dev/bus/usb/001/004`; null for an accessory |
 | `vendorId`, `productId` | A device's ids; `-1` for an accessory |
 | `manufacturer`, `product`, `serial` | What the peripheral reports |
 | `model`, `version` | An accessory's model and version |
 | `name` | Your label for it from the approval, if it has one |
 | `hasPermission` | Whether the app may open it now |
 
-On an Agent older than 1061, `devices()`, `changes` and `listen` throw `OhrException.Unsupported`
-with `needsAgent = 1061`. See [access](/device-sdk/access/) for the errors and for Flow and
-listeners.
+On an Agent older than 1061, `devices()` and the changes throw `OhrException.Unsupported`
+(`OhrUnsupported` in Dart and TypeScript, `OhrUnsupportedException` in C#) with `needsAgent = 1061`.
+In Dart the error arrives on the stream, in TypeScript on `onError`, and in C# on
+`OhrDeviceSdk.EventFailed`. See [access](/device-sdk/access/) for the errors and for flows,
+streams, listeners and events.

@@ -1,130 +1,266 @@
 ---
 title: Quickstart
-description: Add the Device SDK to your Android app, connect to the OhrTech Agent, make a first call, and build a kiosk app that reads its managed configuration.
+description: Add the Device SDK to your Kotlin, Java, Flutter, React Native or .NET app, make a first call to the OhrTech Agent, and build a kiosk app that reads its managed configuration.
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-In a few minutes your app will connect to the OhrTech Agent on the device, read who the device is,
-and, in the worked example, start kiosk mode when its fleet says so.
+In a few minutes your app will ask the OhrTech Agent on the device who the device is, and, in the
+worked example, start kiosk mode when its fleet says so.
 
 ## Add the dependency
 
-The library is on Maven Central:
+Pick your language. Every SDK needs Android 13 (API 33) or later, so each tab also sets your app's
+minimum to 33.
 
-<Tabs>
-<TabItem label="Kotlin DSL">
+<Tabs syncKey="lang">
+<TabItem label="Kotlin">
 
-```kotlin
+`net.ohrtech:device-sdk` is on Maven Central:
+
+```kts
 // build.gradle.kts of your app module
+android {
+    defaultConfig { minSdk = 33 }
+}
 dependencies {
-    implementation("net.ohrtech:device-sdk:0.2.0")
+    implementation("net.ohrtech:device-sdk:0.3.1")
+}
+```
+
+Make sure `mavenCentral()` is among your repositories (new Android projects have it). The library
+brings `kotlinx-coroutines-android` and AndroidX App Startup with it, and its own R8 rules: you need
+no ProGuard rules of your own.
+
+</TabItem>
+<TabItem label="Java">
+
+`net.ohrtech:device-sdk` is on Maven Central:
+
+```groovy
+// build.gradle of your app module
+android {
+    defaultConfig { minSdk 33 }
+}
+dependencies {
+    implementation 'net.ohrtech:device-sdk:0.3.1'
+}
+```
+
+Make sure `mavenCentral()` is among your repositories (new Android projects have it). The library
+brings AndroidX App Startup with it, and its own R8 rules: you need no ProGuard rules of your own.
+
+</TabItem>
+<TabItem label="Dart">
+
+`ohrtech_device` is a Flutter plugin, for Android:
+
+```yaml
+# pubspec.yaml
+dependencies:
+  ohrtech_device: ^0.1.0
+```
+
+Set the app's minimum in `android/app/build.gradle.kts`:
+
+```kts
+android {
+    defaultConfig { minSdk = 33 }
 }
 ```
 
 </TabItem>
-<TabItem label="Groovy">
+<TabItem label="TypeScript">
 
-```groovy
-// build.gradle of your app module
-dependencies {
-    implementation 'net.ohrtech:device-sdk:0.2.0'
-}
+`@ohrtech/device-sdk-react-native` is for React Native's New Architecture (a Turbo Module and a
+Fabric component), on Android:
+
+```sh
+npm install @ohrtech/device-sdk-react-native
 ```
+
+Set `minSdkVersion = 33` in `android/build.gradle`. With Expo, add the module's config plugin, which
+does it, to `app.json`, and use a development build (Expo Go doesn't have the module):
+
+```json
+{ "expo": { "plugins": ["@ohrtech/device-sdk-react-native"] } }
+```
+
+</TabItem>
+<TabItem label="C#">
+
+`OhrTech.Device` is for .NET for Android and .NET MAUI (`net10.0-android`). MAUI apps add
+`OhrTech.Device.Maui` too, for the Wi-Fi screen as a MAUI control and `UseOhrTechDevice()`:
+
+```sh
+dotnet add package OhrTech.Device
+dotnet add package OhrTech.Device.Maui   # MAUI apps
+```
+
+Set the app's minimum in its project file:
+
+```xml
+<SupportedOSPlatformVersion>33</SupportedOSPlatformVersion>
+```
+
+The package is trim- and NativeAOT-safe.
 
 </TabItem>
 </Tabs>
 
-Make sure `mavenCentral()` is among your repositories (new Android projects have it). The library
-brings `kotlinx-coroutines-android` with it, and its own R8 rules: you need no ProGuard rules of
-your own.
+The Flutter, React Native and .NET packages wrap the Kotlin library, so the Agent and its checks are
+the same for every app.
 
 ## What the app needs
 
-- **Android 13 (API 33) or later**: the library's `minSdk` is 33. OhrTech devices run Android 17.
-- **An OhrTech device.** Elsewhere there is no OhrTech Agent, and connecting throws
-  `OhrException.Unsupported`. `OhrDeviceSdk.isAvailable(context)` tells you beforehand.
+- **Android 13 (API 33) or later**, as above. OhrTech devices run Android 17.
+- **An OhrTech device.** Elsewhere there is no OhrTech Agent, and calls throw
+  `OhrException.Unsupported`. `OhrDeviceSdk.isAvailable()` tells you beforehand.
 - **Installed through OhrTech by your organisation.** Upload the APK and assign the app to a fleet,
   in the portal or with the [Management API](/management-api/guides/apps/). The Agent answers only
   apps the hub installed on that device, signed with the key they were installed with; any other app
   gets `OhrException.NotManaged`. An update you install yourself during development, signed with
-  the same key, keeps working; `session.appVersion` is then null.
+  the same key, keeps working; `OhrAccess.info().appVersion` is then null.
+
+Exceptions are named as in Kotlin here. Dart and TypeScript name them `OhrUnsupported`,
+`OhrNotManaged`, ...; C# `OhrUnsupportedException`, `OhrNotManagedException`, ...
+([errors](/device-sdk/access/#errors)).
 
 ## Connect
 
-`OhrDeviceSdk.connect` binds the Agent and asks it who your app is. In Kotlin it suspends, and is
-safe to call from the main thread. From Java, call `connectBlocking` on a background thread: it
-throws `IllegalStateException` on the main thread.
+There is nothing to connect, and nothing to close. Each area is an object you call directly:
+`OhrDevice`, `OhrWifi`, `OhrKiosk` and the rest. The library binds the Agent on the first call, from
+any thread, and keeps the binding for the life of your app's process. The application context comes
+from AndroidX App Startup, which the library sets up in its manifest.
+
+To know at app start whether the Device SDK is there, connect up front. It binds the Agent and asks
+it who your app is:
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-lifecycleScope.launch {
-    if (!OhrDeviceSdk.isAvailable(this@MainActivity)) return@launch   // not an OhrTech device
-    try {
-        val sdk = OhrDeviceSdk.connect(this@MainActivity)              // waits up to 10 s
-        Log.i(TAG, "app ${sdk.session.app}, Agent ${sdk.session.agentVersion}, may use ${sdk.session.areas}")
-    } catch (e: OhrException.NotManaged) {
-        // Not installed through OhrTech on this device
-    } catch (e: OhrException) {
-        Log.w(TAG, "Device SDK: ${e.message}")
-    }
+// In a coroutine, at app start
+if (!OhrDeviceSdk.isAvailable()) return                  // not an OhrTech device
+try {
+    OhrDeviceSdk.connect()                               // waits up to 10 s
+    val access = OhrAccess.infoAsync()
+    show("app ${access.app}, Agent ${access.agentVersion}, may use ${access.areas}")
+} catch (e: OhrException.NotManaged) {
+    // Not installed through OhrTech on this device
+} catch (e: OhrException) {
+    show("Device SDK: ${e.message}")
 }
 ```
 
-`lifecycleScope` is from `androidx.lifecycle:lifecycle-runtime-ktx`; any coroutine scope works.
+`connect` suspends, and is safe to call from the main thread. If your app removes the library's
+App Startup initializer, call `OhrDeviceSdk.init(context)` in your `Application.onCreate`.
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-ExecutorService io = Executors.newSingleThreadExecutor();
-
-io.execute(() -> {
-    if (!OhrDeviceSdk.isAvailable(this)) return;   // not an OhrTech device
-    try {
-        OhrDeviceSdk sdk = OhrDeviceSdk.connectBlocking(this);   // waits up to 10 s
-        OhrDeviceSdk.Session session = sdk.getSession();
-        Log.i(TAG, "app " + session.getApp() + ", Agent " + session.getAgentVersion());
-    } catch (OhrException.NotManaged e) {
-        // Not installed through OhrTech on this device
-    } catch (OhrException e) {
-        Log.w(TAG, "Device SDK: " + e.getMessage());
-    }
-});
+// On a background thread, at app start
+if (!OhrDeviceSdk.isAvailable()) return;                 // not an OhrTech device
+try {
+    OhrDeviceSdk.connectBlocking();                      // waits up to 10 s
+    OhrAccess.Info access = OhrAccess.info();
+    show("app " + access.getApp() + ", Agent " + access.getAgentVersion() + ", may use " + access.getAreas());
+} catch (OhrException.NotManaged e) {
+    // Not installed through OhrTech on this device
+} catch (OhrException e) {
+    show("Device SDK: " + e.getMessage());
+}
 ```
 
-`OhrException` is unchecked, so Java catches it without declaring `throws`.
+`OhrException` is unchecked, so Java catches it without declaring `throws`. If your app removes the
+library's App Startup initializer, call `OhrDeviceSdk.init(context)` in your `Application.onCreate`.
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+if (!await OhrDeviceSdk.isAvailable()) return;           // not an OhrTech device
+try {
+  await OhrDeviceSdk.connect();                          // waits up to 10 s
+  final access = await OhrAccess.info();
+  show('app ${access.app}, Agent ${access.agentVersion}, may use ${access.areas}');
+} on OhrNotManaged {
+  // Not installed through OhrTech on this device
+} on OhrException catch (e) {
+  show('Device SDK: ${e.message}');
+}
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+if (!(await OhrDeviceSdk.isAvailable())) return;         // not an OhrTech device
+try {
+  await OhrDeviceSdk.connect();                          // waits up to 10 s
+  const access = await OhrAccess.info();
+  console.log(`app ${access.app}, Agent ${access.agentVersion}, may use ${access.areas.join(', ')}`);
+} catch (e) {
+  if (e instanceof OhrNotManaged) {
+    // Not installed through OhrTech on this device
+  } else if (e instanceof OhrException) {
+    console.warn(`Device SDK: ${e.message}`);
+  }
+}
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+if (!OhrDeviceSdk.IsAvailable) return;                   // not an OhrTech device
+try
+{
+    await OhrDeviceSdk.ConnectAsync();                   // waits up to 10 s
+    var access = await OhrAccess.GetInfoAsync();
+    label.Text = $"app {access.App}, Agent {access.AgentVersion}, may use {string.Join(", ", access.Areas)}";
+}
+catch (OhrNotManagedException)
+{
+    // Not installed through OhrTech on this device
+}
+catch (OhrException e)
+{
+    label.Text = $"Device SDK: {e.Message}";
+}
+```
 
 </TabItem>
 </Tabs>
 
-`connect` throws:
+`connect` throws, and so does the first call when you don't connect up front:
 
 | Exception | When |
 |---|---|
 | `OhrException.Unsupported` | The device has no OhrTech Agent with the Device SDK |
 | `OhrException.NotManaged` | Your organisation didn't install this app on this device through OhrTech |
-| `OhrException.Failed` | The Agent didn't answer within the timeout (`timeoutMs`, 10 seconds by default) |
+| `OhrException.Failed` | The Agent didn't answer within the timeout (10 seconds by default) |
 
-`sdk.session` says who the Agent takes your app for: `app` (your app's `app_…` id), `packageName`,
-`appVersion`, `agentVersion`, `agentInterface`, and `areas`, what the fleet lets it do.
-`session.mayUse("kiosk")` is true when the fleet grants kiosk mode. See
+`OhrAccess.info()` says who the Agent takes your app for: `app` (your app's `app_…` id),
+`packageName`, `appVersion`, `agentVersion`, `agentInterface`, and `areas`, what the fleet lets it
+do. It asks the Agent each time, so it shows a change of the fleet's grants at once.
+`OhrAccess.mayUse("kiosk")` is true when the fleet grants kiosk mode. See
 [access](/device-sdk/access/) for what each area needs.
 
 ## A first call
 
-Read who the device is. Calls into the Agent are binder calls that wait for its answer: make them
-off the main thread, or use the suspending `…Async` versions where there is one
-([threading](/device-sdk/access/#threading)).
+Read who the device is. Calls into the Agent are binder calls that wait for its answer. In Kotlin
+and Java, make them off the main thread, or use the suspending `…Async` versions where there is one
+([threading](/device-sdk/access/#threading)). In Dart, TypeScript and C# every call is asynchronous
+already.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val info = sdk.device.infoAsync()   // or sdk.device.info() off the main thread
-Log.i(TAG, "${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android ${info.osRelease}, " +
+val info = OhrDevice.infoAsync()   // or OhrDevice.info() off the main thread
+show("${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android ${info.osRelease}, " +
     "patch ${info.securityPatch}, online: ${info.online}")
 ```
 
@@ -132,11 +268,38 @@ Log.i(TAG, "${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android
 <TabItem label="Java">
 
 ```java
-// On the background thread
-OhrDevice.Info info = sdk.getDevice().info();
+// On a background thread
+OhrDevice.Info info = OhrDevice.info();
 String fleet = info.getFleet() == null ? "no fleet" : info.getFleet().getName();
-Log.i(TAG, info.getDeviceId() + " in " + fleet + ", Android " + info.getOsRelease()
+show(info.getDeviceId() + " in " + fleet + ", Android " + info.getOsRelease()
     + ", patch " + info.getSecurityPatch() + ", online: " + info.getOnline());
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final info = await OhrDevice.info();
+show('${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android ${info.osRelease}, '
+    'patch ${info.securityPatch}, online: ${info.online}');
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const info = await OhrDevice.info();
+console.log(`${info.deviceId} in ${info.fleet?.name} (${info.org?.name}), Android ${info.osRelease}, ` +
+  `patch ${info.securityPatch}, online: ${info.online}`);
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var info = await OhrDevice.GetInfoAsync();
+label.Text = $"{info.DeviceId} in {info.Fleet?.Name} ({info.Org?.Name}), Android {info.OsRelease}, " +
+    $"patch {info.SecurityPatch}, online: {info.Online}";
 ```
 
 </TabItem>
@@ -151,38 +314,16 @@ Log.i(TAG, info.getDeviceId() + " in " + fleet + ", Android " + info.getOsReleas
 | `agentVersion` | The OhrTech Agent's version |
 | `online` | Whether the Agent is connected to the OhrTech hub now |
 
-## Close
+In C# the fields are properties: `DeviceId`, `Serial`, `Fleet`, ...
 
-Connect once, for example when your app starts, and keep the `OhrDeviceSdk` while you use it. Close
-it when you are done:
+## When the Agent restarts
 
-<Tabs syncKey="lang">
-<TabItem label="Kotlin">
-
-```kotlin
-override fun onDestroy() {
-    sdk?.close()
-    super.onDestroy()
-}
-```
-
-</TabItem>
-<TabItem label="Java">
-
-```java
-@Override
-protected void onDestroy() {
-    if (sdk != null) sdk.close();
-    super.onDestroy();
-}
-```
-
-</TabItem>
-</Tabs>
-
-A closed SDK throws `OhrException.Failed` on every call. It doesn't reconnect by itself: if the
-Agent restarts (it is updated, say), `sdk.isConnected` turns false and calls throw
-`OhrException.Failed` ("The OhrTech Agent stopped; connect again"). Connect again then.
+The Agent stops now and then: it is updated, say. The library notices and binds again by itself.
+Calls made while the Agent is away wait for it, up to 10 seconds; a call the Agent was answering
+when it stopped throws `OhrException.Failed`, and you can try it again. Every flow, stream, listener
+and event you set up goes on, and the ones that follow a state (Wi-Fi, network, battery, kiosk mode,
+updates) get the current state when the Agent is back. To show how the connection stands, follow
+[the connection](/device-sdk/access/#the-connection).
 
 ## Worked example: a kiosk app
 
@@ -191,8 +332,10 @@ things for it: the server it talks to, and whether it starts in kiosk mode.
 
 ### 1. Declare the managed configuration
 
-Declare the settings your app reads, with their defaults, in `res/xml/app_restrictions.xml`. The
-portal shows a form for them on the fleet's and the device's pages.
+Declare the settings your app reads, with their defaults, in `res/xml/app_restrictions.xml` of your
+Android app (`android/app/src/main/res/xml/` in a Flutter or React Native app,
+`Platforms/Android/Resources/xml/` in a MAUI app). The portal shows a form for them on the fleet's
+and the device's pages.
 
 ```xml
 <restrictions xmlns:android="http://schemas.android.com/apk/res/android">
@@ -203,7 +346,7 @@ portal shows a form for them on the fleet's and the device's pages.
 </restrictions>
 ```
 
-Point the manifest at it, in `<application>`:
+Point the app's `AndroidManifest.xml` at it, in `<application>`:
 
 ```xml
 <meta-data android:name="android.content.APP_RESTRICTIONS" android:resource="@xml/app_restrictions" />
@@ -211,84 +354,90 @@ Point the manifest at it, in `<application>`:
 
 ### 2. Read it and start kiosk mode
 
-`OhrConfig` reads the values the fleet set, or the declared defaults. It needs no connection to the
-Agent and no grant. Starting kiosk mode needs the fleet's `kiosk` grant.
+`OhrConfig` reads the values the fleet set, or the declared defaults. It doesn't call the Agent and
+needs no grant. Starting kiosk mode needs the fleet's `kiosk` grant.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
+import android.os.Bundle
+import android.util.Log
+import android.webkit.WebView
+import androidx.activity.ComponentActivity
+import androidx.lifecycle.lifecycleScope
+
 class PosActivity : ComponentActivity() {
-    private var sdk: OhrDeviceSdk? = null
-    private lateinit var config: OhrConfig
+    private lateinit var web: WebView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.pos)
-        config = OhrConfig(this)
-        show(config.string("server_url")!!)
+        web = WebView(this)
+        setContentView(web)
+        show(OhrConfig.string("server_url")!!)
 
         lifecycleScope.launch {
             // The fleet changed the configuration: follow it.
-            config.changes.collect { show(config.string("server_url")!!) }
+            OhrConfig.changes.collect { show(OhrConfig.string("server_url")!!) }
         }
         lifecycleScope.launch {
             try {
-                val s = OhrDeviceSdk.connect(this@PosActivity).also { sdk = it }
-                if (config.bool("kiosk_on_start") && s.session.mayUse("kiosk")) {
+                if (OhrConfig.bool("kiosk_on_start") && OhrAccess.mayUseAsync("kiosk")) {
                     withContext(Dispatchers.IO) {
-                        if (!s.kiosk.state().pinned) s.kiosk.start(this@PosActivity)
+                        if (!OhrKiosk.state().pinned) OhrKiosk.start(this@PosActivity)
                     }
                 }
             } catch (e: OhrException) {
-                Log.w(TAG, "Kiosk mode: ${e.message}")
+                Log.w("Pos", "Kiosk mode: ${e.message}")
             }
         }
     }
 
-    private fun show(url: String) { /* load url in your WebView */ }
-
-    override fun onDestroy() {
-        sdk?.close()
-        super.onDestroy()
-    }
+    private fun show(url: String) = web.loadUrl(url)
 }
 ```
+
+`lifecycleScope` is from `androidx.lifecycle:lifecycle-runtime-ktx`; any coroutine scope works.
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
+import android.os.Bundle;
+import android.util.Log;
+import android.webkit.WebView;
+import java.io.IOException;
+
 public class PosActivity extends Activity {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
-    private volatile OhrDeviceSdk sdk;
-    private OhrConfig config;
+    private WebView web;
     private Closeable configWatch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.pos);
-        config = new OhrConfig(this);
-        show(config.string("server_url"));
+        web = new WebView(this);
+        setContentView(web);
+        show(OhrConfig.string("server_url"));
 
         // The fleet changed the configuration: follow it, on the main thread.
-        configWatch = config.listen(getMainExecutor(), values -> show(config.string("server_url")));
+        configWatch = OhrConfig.listen(getMainExecutor(), values -> show(OhrConfig.string("server_url")));
 
         io.execute(() -> {
             try {
-                sdk = OhrDeviceSdk.connectBlocking(this);
-                if (config.bool("kiosk_on_start") && sdk.getSession().mayUse("kiosk")
-                        && !sdk.getKiosk().state().getPinned()) {
-                    sdk.getKiosk().start(this);
+                if (OhrConfig.bool("kiosk_on_start") && OhrAccess.mayUse("kiosk")
+                        && !OhrKiosk.state().getPinned()) {
+                    OhrKiosk.start(this);
                 }
             } catch (OhrException e) {
-                Log.w(TAG, "Kiosk mode: " + e.getMessage());
+                Log.w("Pos", "Kiosk mode: " + e.getMessage());
             }
         });
     }
 
-    private void show(String url) { /* load url in your WebView */ }
+    private void show(String url) {
+        web.loadUrl(url);
+    }
 
     @Override
     protected void onDestroy() {
@@ -296,7 +445,6 @@ public class PosActivity extends Activity {
             configWatch.close();
         } catch (IOException ignored) {
         }
-        if (sdk != null) sdk.close();
         io.shutdown();
         super.onDestroy();
     }
@@ -304,11 +452,153 @@ public class PosActivity extends Activity {
 ```
 
 </TabItem>
+<TabItem label="Dart">
+
+```dart
+class PosPage extends StatefulWidget {
+  const PosPage({super.key});
+
+  @override
+  State<PosPage> createState() => _PosPageState();
+}
+
+class _PosPageState extends State<PosPage> {
+  String? _url;
+  StreamSubscription<Map<String, Object?>>? _config;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    // The fleet changed the configuration: follow it.
+    _config = OhrConfig.changes.listen((_) => _load());
+    _startKiosk();
+  }
+
+  Future<void> _load() async {
+    final url = await OhrConfig.string('server_url');
+    if (mounted) setState(() => _url = url);
+  }
+
+  Future<void> _startKiosk() async {
+    try {
+      if (await OhrConfig.boolean('kiosk_on_start') &&
+          await OhrAccess.mayUse('kiosk') &&
+          !(await OhrKiosk.state()).pinned) {
+        await OhrKiosk.start();
+      }
+    } on OhrException catch (e) {
+      debugPrint('Kiosk mode: ${e.message}');
+    }
+  }
+
+  @override
+  void dispose() {
+    _config?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Text(_url ?? '');   // your WebView, loading _url
+}
+```
+
+`OhrKiosk.start()` pins the plugin's activity, the one Flutter runs in.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```tsx
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+
+function PosScreen() {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = () => OhrConfig.string('server_url').then(setUrl);
+    load();
+    // The fleet changed the configuration: follow it.
+    const config = OhrConfig.addChangeListener(load);
+
+    (async () => {
+      try {
+        if ((await OhrConfig.boolean('kiosk_on_start')) &&
+            (await OhrAccess.mayUse('kiosk')) &&
+            !(await OhrKiosk.state()).pinned) {
+          await OhrKiosk.start();
+        }
+      } catch (e) {
+        if (e instanceof OhrException) console.warn(`Kiosk mode: ${e.message}`);
+      }
+    })();
+    return () => config.remove();
+  }, []);
+
+  return <Text>{url}</Text>;   // your WebView, loading url
+}
+```
+
+`OhrKiosk.start()` pins the activity React Native runs in.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using Android.App;
+using Android.OS;
+using Android.Webkit;
+
+[Activity(Label = "POS", MainLauncher = true)]
+public class PosActivity : Activity
+{
+    private WebView web = null!;
+
+    protected override async void OnCreate(Bundle? savedInstanceState)
+    {
+        base.OnCreate(savedInstanceState);
+        web = new WebView(this);
+        SetContentView(web);
+        Show(OhrConfig.GetString("server_url")!);
+
+        // The fleet changed the configuration: follow it. Raised on the UI thread, where it was added.
+        OhrConfig.Changed += OnConfigChanged;
+
+        try
+        {
+            if (OhrConfig.GetBool("kiosk_on_start") && await OhrAccess.MayUseAsync("kiosk")
+                && !(await OhrKiosk.GetStateAsync()).Pinned)
+            {
+                await OhrKiosk.StartAsync(this);
+            }
+        }
+        catch (OhrException e)
+        {
+            Android.Util.Log.Warn("Pos", $"Kiosk mode: {e.Message}");
+        }
+    }
+
+    private void OnConfigChanged(object? sender, OhrConfigChangedEventArgs e) => Show(OhrConfig.GetString("server_url")!);
+
+    private void Show(string url) => web.LoadUrl(url);
+
+    protected override void OnDestroy()
+    {
+        OhrConfig.Changed -= OnConfigChanged;   // a static event holds its handlers
+        base.OnDestroy();
+    }
+}
+```
+
+In a MAUI app, do the same from your page, and pass `Platform.CurrentActivity!` to `StartAsync`.
+
+</TabItem>
 </Tabs>
 
-`kiosk.start` pins the activity's task with Android's lock task, as the system: the app can't be
+`OhrKiosk.start` pins the activity's task with Android's lock task, as the system: the app can't be
 left, not even by itself. By default the power menu and the status bar's system information stay
-available; pass `OhrKiosk.Feature` flags to choose. `kiosk.stop()` ends it only if the fleet lets
+available; pass `OhrKiosk.Feature` flags to choose (`OhrKioskFeature` in Dart and TypeScript,
+`OhrKioskFeatures` in C#). `OhrKiosk.stop()` ends it only if the fleet lets
 kiosk apps leave; otherwise it throws `OhrException.NotAllowed`. The
 [kiosk guide](/device-sdk/guides/kiosk/) covers the exit PIN and the watchdog.
 
@@ -322,16 +612,18 @@ kiosk apps leave; otherwise it throws `OhrException.NotAllowed`. The
    ([managed configuration](/device-sdk/guides/managed-config/)).
 
 The device gets the grant and the configuration when it is next online, usually within seconds.
-Without the grant, `session.mayUse("kiosk")` is false and the app runs without kiosk mode.
+Without the grant, `OhrAccess.mayUse("kiosk")` is false and the app runs without kiosk mode.
 
 ## Next
 
 - [Access, errors and versions](/device-sdk/access/): what needs a grant, every exception, threading,
-  following changes, and which Agent each area needs
+  following changes, the connection, and which Agent each area needs
 - [Kiosk mode](/device-sdk/guides/kiosk/), [Wi-Fi and networks](/device-sdk/guides/wifi-and-networks/),
   [device, power and settings](/device-sdk/guides/device-power-settings/)
 - [Managed configuration](/device-sdk/guides/managed-config/): every setting type, bundles, secrets
 - [Push](/device-sdk/guides/push/) and [device attestation](/device-sdk/guides/attestation/), with
   your own server
-- The [sample app](https://github.com/OhrTech/device-sdk-android/tree/main/sample): a kiosk app
-  that uses most of the library
+- The sample apps: [Kotlin](https://github.com/OhrTech/device-sdk-android/tree/main/sample), a kiosk
+  app that uses most of the library; [Flutter](https://github.com/OhrTech/device-sdk-flutter/tree/main/example),
+  [React Native](https://github.com/OhrTech/device-sdk-react-native/tree/main/example) and
+  [.NET](https://github.com/OhrTech/device-sdk-dotnet/tree/main/samples)

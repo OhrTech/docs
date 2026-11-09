@@ -13,10 +13,10 @@ for your app.
 
 | Algorithm | Public key | Ciphertext (`enc`) | Operations | HPKE KEM id |
 |---|---|---|---|---|
-| `ML_KEM_768` (ML-KEM-768) | 1,184 bytes | 1,088 bytes | decapsulate, encapsulate, HPKE, attest | `0x0041` |
-| `ML_KEM_1024` (ML-KEM-1024) | 1,568 bytes | 1,568 bytes | decapsulate, encapsulate, HPKE, attest | `0x0042` |
-| `X_WING` (X-Wing: ML-KEM-768 and X25519) | 1,216 bytes | 1,120 bytes | decapsulate, encapsulate, HPKE, attest | `0x647a` |
-| `X25519` | 32 bytes | 32 bytes | HPKE, attest | `0x0020` |
+| ML-KEM-768 | 1,184 bytes | 1,088 bytes | decapsulate, encapsulate, HPKE, attest | `0x0041` |
+| ML-KEM-1024 | 1,568 bytes | 1,568 bytes | decapsulate, encapsulate, HPKE, attest | `0x0042` |
+| X-Wing (ML-KEM-768 and X25519) | 1,216 bytes | 1,120 bytes | decapsulate, encapsulate, HPKE, attest | `0x647a` |
+| X25519 | 32 bytes | 32 bytes | HPKE, attest | `0x0020` |
 
 The shared secret is always 32 bytes. X-Wing is the hybrid: it stays secure as long as either of its
 two halves is.
@@ -31,46 +31,107 @@ the TEE too.
 
 ## Make a key and use it
 
-Each call goes to the OhrTech Agent and the TEE, so make it on a worker thread.
+Each call goes to the OhrTech Agent and the TEE. In Kotlin and Java the calls block: make them on a
+worker thread. The other languages' calls are asynchronous.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val keys = sdk.keys
-if (!keys.isAvailable()) return
+withContext(Dispatchers.IO) {
+    if (OhrKeys.isAvailable()) {
+        // A new key under "orders" (replacing any key of that alias); its public key, to give your server
+        val publicKey = OhrKeys.generate("orders", OhrKeys.Algorithm.X_WING)
 
-// A new key under "orders" (replacing any key of that alias); its public key, to give your server
-val publicKey = keys.generate("orders", OhrKeys.Algorithm.X_WING)
+        // Your server encapsulated to publicKey and sent you the ciphertext:
+        val secret = OhrKeys.decapsulate("orders", ciphertext)       // 32 bytes
 
-// Your server encapsulated to publicKey and sent you the ciphertext:
-val secret = keys.decapsulate("orders", ciphertext)          // 32 bytes
-
-// The other way: encapsulate to someone's public key (no key of yours needed)
-val e = keys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey)
-send(e.ciphertext)                                            // keep e.sharedSecret
+        // The other way: encapsulate to someone's public key (no key of yours needed)
+        val e = OhrKeys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey)
+        sendToServer(e.ciphertext)                                    // keep e.sharedSecret
+    }
+}
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-OhrKeys keys = sdk.getKeys();
-if (!keys.isAvailable()) return;
+executor.execute(() -> {             // a background thread
+    if (!OhrKeys.isAvailable()) return;
+
+    // A new key under "orders" (replacing any key of that alias); its public key, to give your server
+    byte[] publicKey = OhrKeys.generate("orders", OhrKeys.Algorithm.X_WING);
+
+    // Your server encapsulated to publicKey and sent you the ciphertext:
+    byte[] secret = OhrKeys.decapsulate("orders", ciphertext);       // 32 bytes
+
+    // The other way: encapsulate to someone's public key (no key of yours needed)
+    OhrKeys.Encapsulated e = OhrKeys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey);
+    sendToServer(e.getCiphertext());                                  // keep e.getSharedSecret()
+});
+```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+if (!await OhrKeys.isAvailable()) return;
 
 // A new key under "orders" (replacing any key of that alias); its public key, to give your server
-byte[] publicKey = keys.generate("orders", OhrKeys.Algorithm.X_WING);
+final publicKey = await OhrKeys.generate('orders', OhrKeyAlgorithm.xWing);
 
 // Your server encapsulated to publicKey and sent you the ciphertext:
-byte[] secret = keys.decapsulate("orders", ciphertext);       // 32 bytes
+final secret = await OhrKeys.decapsulate('orders', ciphertext);      // 32 bytes
 
 // The other way: encapsulate to someone's public key (no key of yours needed)
-OhrKeys.Encapsulated e = keys.encapsulate(OhrKeys.Algorithm.ML_KEM_768, theirPublicKey);
-send(e.getCiphertext());                                      // keep e.getSharedSecret()
+final e = await OhrKeys.encapsulate(OhrKeyAlgorithm.mlKem768, theirPublicKey);
+await sendToServer(e.ciphertext);                                    // keep e.sharedSecret
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+if (!(await OhrKeys.isAvailable())) return;
+
+// A new key under "orders" (replacing any key of that alias); its public key, to give your server
+const publicKey = await OhrKeys.generate('orders', 'X-Wing');
+
+// Your server encapsulated to publicKey and sent you the ciphertext:
+const secret = await OhrKeys.decapsulate('orders', ciphertext);      // 32 bytes
+
+// The other way: encapsulate to someone's public key (no key of yours needed)
+const e = await OhrKeys.encapsulate('ML-KEM-768', theirPublicKey);
+await sendToServer(e.ciphertext);                                    // keep e.sharedSecret
+```
+
+Keys, ciphertexts and secrets are `Uint8Array`s.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+if (!await OhrKeys.IsAvailableAsync()) return;
+
+// A new key under "orders" (replacing any key of that alias); its public key, to give your server
+var publicKey = await OhrKeys.GenerateAsync("orders", OhrKeyAlgorithm.XWing);
+
+// Your server encapsulated to publicKey and sent you the ciphertext:
+var secret = await OhrKeys.DecapsulateAsync("orders", ciphertext);   // 32 bytes
+
+// The other way: encapsulate to someone's public key (no key of yours needed)
+var e = await OhrKeys.EncapsulateAsync(OhrKeyAlgorithm.MlKem768, theirPublicKey);
+await SendToServer(e.Ciphertext);                                    // keep e.SharedSecret
 ```
 
 </TabItem>
 </Tabs>
+
+The algorithms are `OhrKeys.Algorithm.ML_KEM_768`, `ML_KEM_1024`, `X_WING` and `X25519` in Kotlin
+and Java; `OhrKeyAlgorithm.mlKem768`, `mlKem1024`, `xWing` and `x25519` in Dart;
+`OhrKeyAlgorithm.MlKem768`, `MlKem1024`, `XWing` and `X25519` in C#; and in TypeScript their
+standard names: `'ML-KEM-768'`, `'ML-KEM-1024'`, `'X-Wing'` and `'X25519'`.
 
 Public keys are raw: ML-KEM keys as FIPS 203 encodes them, an X-Wing key as the ML-KEM-768 key
 followed by the X25519 key.
@@ -84,12 +145,17 @@ of an authenticated cipher.
 | `isAvailable()` | Whether the device's OS has the OhrTech KEM app |
 | `generate(alias, algorithm)` | A new key; returns its public key. Replaces any key of that alias |
 | `publicKey(alias)` | The key's public key, or `null` if there's no such key |
-| `list()` | The app's keys: `alias`, `algorithm`, `createdAtMs` |
+| `list()` | The app's keys: `alias`, `algorithm`, `createdAtMs` (Dart: `createdAt`, a `DateTime`) |
 | `delete(alias)` | Deletes the key. No error if there is none |
 | `decapsulate(alias, ciphertext)` | The 32-byte shared secret. ML-KEM and X-Wing keys |
 | `encapsulate(algorithm, publicKey)` | `ciphertext` and `sharedSecret`, to any public key of an ML-KEM or X-Wing algorithm |
-| `hpkeOpen(alias, kdf, aead, enc, info, aad, ciphertext)` | Opens an HPKE message (see [HPKE](#open-hpke-messages)) |
+| `hpkeOpen(alias, …)` | Opens an HPKE message (see [HPKE](#open-hpke-messages)) |
 | `attest(alias, challenge)` | Proof for your server (see [prove a key](#prove-a-key-to-your-server)) |
+
+The names are the same in Dart and TypeScript. In C# they end in `Async`: `IsAvailableAsync`,
+`GenerateAsync`, `GetPublicKeyAsync`, `ListAsync`, `DeleteAsync`, `DecapsulateAsync`,
+`EncapsulateAsync`, `HpkeOpenAsync` and `AttestAsync`, and the results' properties are capitalised
+(`Ciphertext`, `SharedSecret`, `CreatedAt`).
 
 ### Aliases
 
@@ -103,49 +169,97 @@ An app has at most 32 keys, its push key included.
 
 With HPKE (RFC 9180), your server seals a message to the key's public half with any HPKE library,
 and the app opens it in the TEE. The KEM is the key's own (see the ids in the table above), the KDF
-HKDF-SHA256. Base mode, one message per sender context.
+HKDF-SHA256. Base mode, one message per sender context. `enc` and `ciphertext` come from your
+server's library; `info` and `aad` are what both sides agreed on, here an `info` string and no
+`aad`.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val plaintext = sdk.keys.hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM,
-    enc, info, aad, ciphertext)
+val info = "orders v1".toByteArray()
+val plaintext = withContext(Dispatchers.IO) {
+    OhrKeys.hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM, enc, info, ByteArray(0), ciphertext)
+}
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-byte[] plaintext = sdk.getKeys().hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM,
-        enc, info, aad, ciphertext);
+import java.nio.charset.StandardCharsets;
+
+byte[] info = "orders v1".getBytes(StandardCharsets.UTF_8);
+byte[] plaintext = OhrKeys.hpkeOpen("orders", OhrHpke.KDF_HKDF_SHA256, OhrHpke.AEAD_AES_128_GCM,
+        enc, info, new byte[0], ciphertext);   // on a worker thread
 ```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final plaintext = await OhrKeys.hpkeOpen('orders', enc, ciphertext,
+    info: utf8.encode('orders v1'), aead: OhrHpke.aeadAes128Gcm);
+```
+
+`kdf`, `aead`, `info` and `aad` are named and optional: HKDF-SHA256, AES-128-GCM and empty by
+default.
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const info = Uint8Array.from('orders v1', (c) => c.charCodeAt(0));
+const plaintext = await OhrKeys.hpkeOpen('orders', enc, ciphertext, {
+  info,
+  aead: OhrHpke.AEAD_AES_128_GCM,
+});
+```
+
+The last argument's `kdf`, `aead`, `info` and `aad` are optional: HKDF-SHA256, AES-128-GCM and
+empty by default.
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var plaintext = await OhrKeys.HpkeOpenAsync("orders", enc, ciphertext,
+    info: System.Text.Encoding.UTF8.GetBytes("orders v1"), aead: OhrHpke.AeadAes128Gcm);
+```
+
+`info`, `aad`, `kdf` and `aead` are optional: empty, HKDF-SHA256 and AES-128-GCM by default.
 
 </TabItem>
 </Tabs>
 
-| AEAD | |
-|---|---|
-| `OhrHpke.AEAD_AES_128_GCM` | `0x0001` |
-| `OhrHpke.AEAD_AES_256_GCM` | `0x0002` |
-| `OhrHpke.AEAD_CHACHA20_POLY1305` | `0x0003` |
+| AEAD | Kotlin, Java, TypeScript | Dart | C# |
+|---|---|---|---|
+| AES-128-GCM, `0x0001` | `OhrHpke.AEAD_AES_128_GCM` | `OhrHpke.aeadAes128Gcm` | `OhrHpke.AeadAes128Gcm` |
+| AES-256-GCM, `0x0002` | `OhrHpke.AEAD_AES_256_GCM` | `OhrHpke.aeadAes256Gcm` | `OhrHpke.AeadAes256Gcm` |
+| ChaCha20-Poly1305, `0x0003` | `OhrHpke.AEAD_CHACHA20_POLY1305` | `OhrHpke.aeadChaCha20Poly1305` | `OhrHpke.AeadChaCha20Poly1305` |
 
 The plaintext can be up to 8,192 bytes. A message that wasn't sealed to this key, or with other
-`info` or `aad`, throws `OhrException.Failed` ("does not open"). `OhrHpke.kemId(algorithm)` gives
-the KEM id for your server's library.
+`info` or `aad`, throws `OhrException.Failed` ("does not open"; `OhrFailed` in Dart and
+TypeScript, `OhrFailedException` in C#). In Kotlin and Java, `OhrHpke.kemId(algorithm)` gives the
+KEM id for your server's library.
 
 ## Through the JCA
 
-The library also offers the keys through the Java Cryptography Architecture, under the provider name
-`OhrTech`: a `KeyPairGenerator` for each algorithm, a read-only `KeyStore`, and two classes shaped
-like the JDK's: `OhrKem` (like `javax.crypto.KEM`) and `OhrHpke` (an HPKE recipient).
+The Kotlin library also offers the keys through the Java Cryptography Architecture, under the
+provider name `OhrTech`: a `KeyPairGenerator` for each algorithm, a read-only `KeyStore`, and two
+classes shaped like the JDK's: `OhrKem` (like `javax.crypto.KEM`) and `OhrHpke` (an HPKE recipient).
+It is for Kotlin and Java only.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-OhrTechProvider.install(sdk)
+import java.security.KeyPairGenerator
+import java.security.KeyStore
 
+OhrTechProvider.install()
+
+// On a worker thread: each operation is a call into the Agent and the TEE
 // Make a key: the private key is a handle, its material stays in the TEE
 val kpg = KeyPairGenerator.getInstance("ML-KEM-768", "OhrTech")
 kpg.initialize(OhrKeyGenParameterSpec("orders"))
@@ -161,16 +275,23 @@ val kem = OhrKem.getInstance("ML-KEM-768")
 val (secretKey, encapsulation) = kem.newEncapsulator(theirPublicKey).encapsulate()   // the sender
 val secret = kem.newDecapsulator(key).decapsulate(encapsulation)                    // the key's owner
 
-// HPKE
-val plaintext = OhrHpke.recipient(key).open(enc, info, aad, ciphertext)
+// HPKE (with an X-Wing, ML-KEM or X25519 key)
+val plaintext = OhrHpke.recipient(key).open(enc, "orders v1".toByteArray(), ByteArray(0), ciphertext)
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-OhrTechProvider.install(sdk);
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import javax.crypto.SecretKey;
 
+OhrTechProvider.install();
+
+// On a worker thread: each operation is a call into the Agent and the TEE
 // Make a key: the private key is a handle, its material stays in the TEE
 KeyPairGenerator kpg = KeyPairGenerator.getInstance("ML-KEM-768", "OhrTech");
 kpg.initialize(new OhrKeyGenParameterSpec("orders"));
@@ -187,15 +308,38 @@ OhrKem kem = OhrKem.getInstance("ML-KEM-768");
 OhrKem.Encapsulated e = kem.newEncapsulator(theirPublicKey).encapsulate();   // the sender
 SecretKey secret = kem.newDecapsulator(key).decapsulate(e.encapsulation());  // the key's owner
 
-// HPKE
-byte[] plaintext = OhrHpke.recipient(key).open(enc, info, aad, ciphertext);
+// HPKE (with an X-Wing, ML-KEM or X25519 key)
+byte[] plaintext = OhrHpke.recipient(key).open(enc, "orders v1".getBytes(StandardCharsets.UTF_8),
+        new byte[0], ciphertext);
 ```
+
+</TabItem>
+<TabItem label="Dart">
+
+The JCA is Java's, so the Flutter plugin has no such layer. Use `OhrKeys` directly, as
+[above](#make-a-key-and-use-it): `generate` makes a key, `decapsulate` and `encapsulate` are the KEM,
+and `hpkeOpen` [opens HPKE](#open-hpke-messages).
+
+</TabItem>
+<TabItem label="TypeScript">
+
+The JCA is Java's, so the React Native module has no such layer. Use `OhrKeys` directly, as
+[above](#make-a-key-and-use-it): `generate` makes a key, `decapsulate` and `encapsulate` are the KEM,
+and `hpkeOpen` [opens HPKE](#open-hpke-messages).
+
+</TabItem>
+<TabItem label="C#">
+
+The JCA is Java's, so `OhrTech.Device` has no such layer. Use `OhrKeys` directly, as
+[above](#make-a-key-and-use-it): `GenerateAsync` makes a key, `DecapsulateAsync` and
+`EncapsulateAsync` are the KEM, and `HpkeOpenAsync` [opens HPKE](#open-hpke-messages).
 
 </TabItem>
 </Tabs>
 
-- **Install the provider** with a connected SDK before you use it, and again after you connect again.
-  Name the provider in `KeyPairGenerator.getInstance`, as above, so Android doesn't pick another one.
+- **Install the provider** once per process, before you use it: `OhrTechProvider.install()` adds it
+  to the JCA, and does nothing if it is there already. Name the provider in
+  `KeyPairGenerator.getInstance`, as above, so Android doesn't pick another one.
 - **Algorithms:** `ML-KEM-768`, `ML-KEM-1024`, `X-Wing` and `X25519`. `OhrKem` takes the first
   three; an X25519 key has no raw KEM, so open HPKE with it instead.
 - **`KeyPairGenerator`** needs an `OhrKeyGenParameterSpec` with the alias; `initialize(keysize)`
@@ -210,40 +354,91 @@ byte[] plaintext = OhrHpke.recipient(key).open(enc, info, aad, ciphertext);
 ## Prove a key to your server
 
 `attest` proves that a key was made in this device's TEE, for your app, and binds the proof to a
-challenge from your server, so it can't be replayed.
+challenge from your server, so it can't be replayed. Send the proof to your server with the
+device's id. Here `challenge` is your server's nonce, at most 128 bytes.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
 
 ```kotlin
-val challenge = myServer.newChallenge()                      // your server's nonce, at most 128 bytes
-val a = sdk.keys.attest("orders", challenge)
+import java.util.Base64
+
+val (a, device) = withContext(Dispatchers.IO) { OhrKeys.attest("orders", challenge) to OhrDevice.info() }
 val b64 = Base64.getEncoder()
-myServer.verifyKey(
-    deviceId = sdk.device.info().deviceId,
-    alg = a.algorithm.standardName,
-    publicKey = b64.encodeToString(a.publicKey),
-    owner = a.owner,
-    coseSign1 = b64.encodeToString(a.coseSign1),
-    diceChain = b64.encodeToString(a.diceChain),
-)
+sendToServer(mapOf(
+    "deviceId" to device.deviceId,
+    "alg" to a.algorithm.standardName,
+    "publicKey" to b64.encodeToString(a.publicKey),
+    "owner" to a.owner,
+    "coseSign1" to b64.encodeToString(a.coseSign1),
+    "diceChain" to b64.encodeToString(a.diceChain),
+))
 ```
 
 </TabItem>
 <TabItem label="Java">
 
 ```java
-byte[] challenge = myServer.newChallenge();                  // your server's nonce, at most 128 bytes
-OhrKeys.Attestation a = sdk.getKeys().attest("orders", challenge);
+// On a worker thread
+OhrKeys.Attestation a = OhrKeys.attest("orders", challenge);
 Base64.Encoder b64 = Base64.getEncoder();
-myServer.verifyKey(
-        sdk.getDevice().info().getDeviceId(),
-        a.getAlgorithm().getStandardName(),
-        b64.encodeToString(a.getPublicKey()),
-        a.getOwner(),
-        b64.encodeToString(a.getCoseSign1()),
-        b64.encodeToString(a.getDiceChain()));
+sendToServer(Map.of(
+        "deviceId", OhrDevice.info().getDeviceId(),
+        "alg", a.getAlgorithm().getStandardName(),
+        "publicKey", b64.encodeToString(a.getPublicKey()),
+        "owner", a.getOwner(),
+        "coseSign1", b64.encodeToString(a.getCoseSign1()),
+        "diceChain", b64.encodeToString(a.getDiceChain())));
 ```
+
+</TabItem>
+<TabItem label="Dart">
+
+```dart
+final a = await OhrKeys.attest('orders', challenge);
+await sendToServer({
+  'deviceId': (await OhrDevice.info()).deviceId,
+  'alg': a.algorithm.standardName,
+  'publicKey': base64Encode(a.publicKey),
+  'owner': a.owner,
+  'coseSign1': base64Encode(a.coseSign1),
+  'diceChain': base64Encode(a.diceChain),
+});
+```
+
+</TabItem>
+<TabItem label="TypeScript">
+
+```ts
+const a = await OhrKeys.attest('orders', challenge);
+await sendToServer({
+  deviceId: (await OhrDevice.info()).deviceId,
+  alg: a.algorithm,              // its standard name, such as 'X-Wing'
+  publicKey: a.publicKey,        // the proof's fields are base64 already
+  owner: a.owner,
+  coseSign1: a.coseSign1,
+  diceChain: a.diceChain,
+});
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var a = await OhrKeys.AttestAsync("orders", challenge);
+await SendToServer(new
+{
+    deviceId = (await OhrDevice.GetInfoAsync()).DeviceId,
+    alg = "X-Wing",                // the key's algorithm, by its standard name
+    publicKey = Convert.ToBase64String(a.PublicKey),
+    owner = a.Owner,
+    coseSign1 = Convert.ToBase64String(a.CoseSign1),
+    diceChain = Convert.ToBase64String(a.DiceChain),
+});
+```
+
+`a.Algorithm` is an `OhrKeyAlgorithm`; the server wants its standard name (`ML-KEM-768`,
+`ML-KEM-1024`, `X-Wing` or `X25519`).
 
 </TabItem>
 </Tabs>
@@ -285,7 +480,7 @@ curl https://api.ohrtech.net/v1/devices/dev_3swt6f457299btzpw1bxx4wf0q/key-attes
 
 | Field | |
 |---|---|
-| `alg` | `ML-KEM-768`, `ML-KEM-1024`, `X-Wing` or `X25519` (`algorithm.standardName`) |
+| `alg` | `ML-KEM-768`, `ML-KEM-1024`, `X-Wing` or `X25519`: the key's algorithm, by its standard name |
 | `publicKey` | The key's public key, base64 |
 | `owner` | The app, as the TEE names it: `app:<app id>:<package>` |
 | `challenge` | The challenge your server issued, base64 |
@@ -324,5 +519,11 @@ Fields that aren't base64 give `400`.
 | `OhrException.InvalidConfig` (`challenge`) | The challenge is over 128 bytes |
 | `OhrException.InvalidConfig` (`value`) | The TEE refused an input as invalid; `reason` says which |
 | `OhrException.Failed` | `does not open` for HPKE. `This key can no longer be used on this device; generate it again` when the TEE can't use a stored key |
+
+The table names the Kotlin and Java classes. In Dart and TypeScript they are `OhrUnsupported`,
+`OhrInvalidConfig` (with `field` and `reason`) and `OhrFailed`; in C#, `OhrUnsupportedException`,
+`OhrInvalidConfigException` (`Field`, `Reason`) and `OhrFailedException`. The JCA classes throw
+the JDK's exceptions for what they check themselves, such as `InvalidKeyException` for a key that
+isn't an OhrTech TEE key, and these for what the TEE refuses.
 
 See [access](/device-sdk/access/) for errors every area shares.
