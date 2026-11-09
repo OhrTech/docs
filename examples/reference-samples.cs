@@ -494,6 +494,22 @@ static async Task ClearUsbDevices(OhrManagementClient api, string adbPublicKey, 
     var usb = await api.ClearUsbDevicesAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
 }
 
+static async Task GetResponseTimeout(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timeout = await api.GetResponseTimeoutAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
+static async Task SetResponseTimeout(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timeout = await api.SetResponseTimeoutAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+        new SetResponseTimeoutRequest { Seconds = 30 });
+}
+
+static async Task ClearResponseTimeout(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var timeout = await api.ClearResponseTimeoutAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
 static async Task ListDevicePeripherals(OhrManagementClient api, string adbPublicKey, string clientKey)
 {
     var peripherals = await api.ListDevicePeripheralsAsync("dev_3swt6f457299btzpw1bxx4wf0q");

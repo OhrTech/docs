@@ -162,6 +162,12 @@ const samples = {
 		"var usb = await api.SetUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new SetUsbDevicesRequest\n{\n    Devices =\n    [\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"vendorId\": \"0x05e0\", \"productId\": \"0x1200\", \"name\": \"Barcode scanner\"}\"\"\")!,\n        System.Text.Json.Nodes.JsonNode.Parse(\"\"\"{\"manufacturer\": \"Ingenico\", \"model\": \"Lane/3000\", \"name\": \"Payment terminal\"}\"\"\")!,\n    ],\n});",
 	ClearUsbDevices:
 		"var usb = await api.ClearUsbDevicesAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	GetResponseTimeout:
+		"var timeout = await api.GetResponseTimeoutAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
+	SetResponseTimeout:
+		"var timeout = await api.SetResponseTimeoutAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\",\n    new SetResponseTimeoutRequest { Seconds = 30 });",
+	ClearResponseTimeout:
+		"var timeout = await api.ClearResponseTimeoutAsync(\"flt_2dn47a2xa58j1txv8m28spkmyb\", \"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\");",
 	ListDevicePeripherals:
 		"var peripherals = await api.ListDevicePeripheralsAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");",
 	ListDeviceEvents:
