@@ -1,0 +1,12 @@
+# The Device SDK pages' Dart snippets (scripts/check-device-snippets.mjs writes lib/generated). OHR_FLUTTER_PATH: a local
+# ohrtech_device checkout instead of pub.dev (scripts/check-device-snippets.sh writes pubspec_overrides.yaml).
+name: device_snippets
+publish_to: none
+environment:
+  sdk: ^3.9.0
+  flutter: '>=3.35.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.5.0
+  ohrtech_device: ^0.1.0

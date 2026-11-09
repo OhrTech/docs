@@ -1,7 +1,8 @@
-// Collects every C# snippet written into the pages (```csharp blocks, and the home page's hero) into
-// examples/.page-snippets.cs, one function each, so CI compiles them against the published SDK
+// Collects every server C# snippet written into the pages (```csharp blocks, and the home page's hero) into
+// examples/.page-snippets.cs, one function each, so CI compiles them against the published Management SDK
 // like the complete examples. A snippet that is not meant to compile on its own gets the fence
-// meta `nocheck` (```csharp nocheck).
+// meta `nocheck` (```csharp nocheck). On the Device SDK's device-side pages, C# is app code (OhrTech.Device,
+// checked by scripts/check-device-snippets.mjs) unless the fence says `server` (```csharp server).
 //
 //   node scripts/check-snippets.mjs && dotnet build examples/.page-snippets.cs
 import { readFile, writeFile, readdir } from 'node:fs/promises';
@@ -23,8 +24,10 @@ async function* files(dir) {
 const snippets = [];
 for await (const file of files(join(root, 'src/content/docs'))) {
 	const text = await readFile(file, 'utf8');
+	const devicePage = /\/device-sdk\/(?!server\/)/.test(file);
 	for (const m of text.matchAll(/^([ \t]*)```(?:csharp|cs)(?!\w)([^\n]*)\n([\s\S]*?)^\1```/gm)) {
 		if (/\bnocheck\b/.test(m[2])) continue;
+		if (devicePage && !/\bserver\b/.test(m[2])) continue;
 		const indent = m[1];
 		const code = m[3].split('\n').map((l) => (l.startsWith(indent) ? l.slice(indent.length) : l)).join('\n');
 		snippets.push({ where: `${relative(root, file)}:${text.slice(0, m.index).split('\n').length}`, code });

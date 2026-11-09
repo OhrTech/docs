@@ -1,0 +1,12 @@
+{
+  "name": "device-snippets",
+  "private": true,
+  "description": "The Device SDK pages' TypeScript snippets, type-checked (scripts/check-device-snippets.mjs writes src/generated).",
+  "devDependencies": {
+    "@ohrtech/device-sdk-react-native": "^0.1.0",
+    "@types/react": "^19.2.0",
+    "react": "19.2.0",
+    "react-native": "0.88.0",
+    "typescript": "^6.0.3"
+  }
+}

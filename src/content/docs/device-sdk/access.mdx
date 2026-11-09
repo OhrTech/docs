@@ -52,7 +52,7 @@ and to the fleets below it, unless a fleet below has a grant of its own for that
 <Tabs syncKey="lang">
 <TabItem label="C#">
 
-```csharp
+```csharp server
 var access = await api.SetSdkAccessAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
     new SetSdkAccessRequest { Areas = ["wifi", "kiosk"] });
 Console.WriteLine(string.Join(", ", access.Areas)); // "wifi, kiosk"

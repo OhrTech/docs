@@ -15,5 +15,22 @@ npm-debug.log*
 # written by scripts/check-snippets.mjs
 examples/.page-snippets.cs
 
+# written by scripts/check-device-snippets.mjs, and the builds of examples/device
+examples/device/android/src/main/java/snippets/generated/
+examples/device/android/build/
+examples/device/android/.gradle/
+examples/device/android/local.properties
+examples/device/flutter/lib/generated/
+examples/device/flutter/.dart_tool/
+examples/device/flutter/pubspec.lock
+examples/device/flutter/pubspec_overrides.yaml
+examples/device/flutter/.flutter-plugins-dependencies
+examples/device/rn/src/generated/
+examples/device/rn/node_modules/
+examples/device/rn/tsconfig.local.json
+examples/device/dotnet/Snippets.g.cs
+examples/device/dotnet/bin/
+examples/device/dotnet/obj/
+
 .DS_Store
 .idea/

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Device SDK pages' C# snippets (scripts/check-device-snippets.mjs writes Snippets.g.cs). OhrDeviceProject: a local
+       OhrTech.Device project instead of NuGet (with OhrDeviceSdkAar, the Kotlin library it binds). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>33</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <NoWarn>$(NoWarn);CS8321;CS0168;CS0219;CS1998</NoWarn>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(OhrDeviceProject)' == ''">
+    <PackageReference Include="OhrTech.Device" Version="$(OhrDeviceVersion)" Condition="'$(OhrDeviceVersion)' != ''" />
+    <PackageReference Include="OhrTech.Device" Version="0.1.*" Condition="'$(OhrDeviceVersion)' == ''" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(OhrDeviceProject)' != ''">
+    <ProjectReference Include="$(OhrDeviceProject)" />
+  </ItemGroup>
+</Project>

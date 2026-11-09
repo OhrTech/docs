@@ -46,3 +46,27 @@ jobs:
             dotnet build "$f"
             echo "::endgroup::"
           done
+
+  device-snippets:
+    # The Device SDK pages' app code: Kotlin and Java, Dart, TypeScript and C#, against the published SDKs.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet workload install android
+      - name: React Native's types
+        run: npm install --no-save --no-audit --no-fund
+        working-directory: examples/device/rn
+      - run: scripts/check-device-snippets.sh
