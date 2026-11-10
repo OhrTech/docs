@@ -12,6 +12,40 @@ library keeps working. `OhrAccess.info().agentVersion` tells you which Agent a d
 The Flutter, React Native and .NET SDKs wrap the Kotlin library, `net.ohrtech:device-sdk`; entries
 named by a version alone are that library's.
 
+## 0.3.2 (unreleased): no push message lost silently; diagnostics never wait
+
+```kts
+implementation("net.ohrtech:device-sdk:0.3.2")
+```
+
+- A push message the app doesn't take is reported, not lost: if `OhrPushService.onMessage` throws,
+  your server sees the message as `dropped` (`app_handler`, or `app_` and the reason of an
+  `OhrPushService.NotHandled`), and the library forgets its `id`, so your server may send it again.
+  Before, it was logged and counted as `delivered`. See [push](/device-sdk/guides/push/#dropped-messages).
+- `OhrDiagnostics.event` and `log` never wait for the Agent: they check their arguments at once and
+  the library sends them from its own thread. In 0.3.1 they waited while the Agent restarted.
+- `OhrPush.tokenAsync()` and `unregisterAsync()`.
+- A bad AEAD for `OhrHpke.recipient`, or an encapsulation of the wrong size for `OhrKem`, is
+  `OhrException.InvalidConfig` (fields `aead`, `encapsulation`), not `IllegalArgumentException`.
+
+## ohrtech_device, @ohrtech/device-sdk-react-native, OhrTech.Device 0.1.1 (unreleased)
+
+All three build on 0.3.2.
+
+- A push message that doesn't reach your handler is reported, not lost: your server sees it as
+  `dropped`, with why: `app_no_handler` (no handlers set), `app_no_engine` (Flutter's background
+  isolate or React Native didn't start), `app_handler_timeout` (over 25 seconds) or `app_handler`
+  (the handler threw). The library forgets its `id`, so your server may send it again.
+- The TLS setup the Dart client, `OhrCertificates.fetch` and the .NET handler keep is dropped when
+  the fleet changes the app's certificates (trusted CAs, bundles), not only after a request or
+  renewal.
+- Dart and TypeScript: every connection listener starts with how the connection stands, not only
+  the first one.
+- TypeScript: `OhrKiosk.heartbeat` returns a Promise, which rejects with `OhrUnsupported` on an
+  Agent older than 1061 instead of beating into nothing.
+- C#: `OhrPushSuite.WireName` and `OhrKeyAlgorithm.StandardName`, the names the Management API uses,
+  with `OhrPushSuiteNames.FromWireName` and `OhrKeyAlgorithmNames.FromStandardName`.
+
 ## 0.3.1 (2026-11-09): the kiosk heartbeat never stalls the main thread
 
 ```kts
@@ -148,6 +182,27 @@ watchdog).
   (`OhrPush.SetHandlers` when the process starts).
 - `OhrCertificates.CreateHttpHandler()`: an `HttpClient` handler with the app's client certificate
   and trusted CAs.
+
+## OhrTech Agent 1063 (unreleased): limits the Agent enforces itself; the heartbeat and short fleet timeouts
+
+Nothing to change in your app. The Agent now checks what the library checks, for apps that call it
+without the library, and bounds what it passes on:
+
+- **Heartbeat.** A fleet [response timeout](/device-sdk/guides/kiosk/#response-timeouts) shorter
+  than half the app's own heartbeat timeout no longer takes a healthy kiosk app for a hung one: the
+  watchdog waits at least half the app's own timeout (two beats). The fleet's value still applies in
+  full as the app's ANR time.
+- **Rates, per app:** 10 certificate requests an hour, 5 push registrations an hour, 30 new TEE
+  keys a minute. Past them the call throws `Failed` ("try again later"). A certificate request the
+  hub doesn't answer in 120 seconds is refused with reason `timeout`.
+- **Sizes:** `OhrKeys` ciphertexts, public keys and HPKE inputs must have their algorithm's sizes,
+  push envelopes theirs; Wi-Fi configurations are capped (EAP identities and passwords 256
+  characters, 10 CA certificates of 16 KB, a PKCS#12 of 64 KB, 64 proxy exclusions, an SSID 32
+  bytes); reboot reasons are up to 64 of A-Z a-z 0-9, space, `.`, `_` and `-`; at most 32 languages
+  and 16 keyboards; at most 64 listeners per app and area. These throw `InvalidConfig`.
+- Kiosk `NOTIFICATIONS` and `OVERVIEW` need `HOME`, as in Android; an update already installing
+  isn't started twice; one app's managed configuration that doesn't fit its schema no longer stops
+  the others'.
 
 ## OhrTech Agent 1062 (2026-11-09): per-app response timeouts, kiosk hangs not counted while the screen is off
 

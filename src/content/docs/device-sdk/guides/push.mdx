@@ -220,6 +220,8 @@ public class MainApplication(IntPtr handle, JniHandleOwnership ownership) : Appl
 In MAUI, set them in `MauiProgram`, which runs when the process starts:
 
 ```csharp nocheck
+using OhrTech.Device.Maui;
+
 builder.UseMauiApp<App>()
        .UseOhrTechDevice(o => o.OnPushMessage(OnPushMessage).OnPushDropped(OnPushDropped));
 ```
@@ -242,9 +244,14 @@ the last message. In Flutter, React Native and .NET the service waits for each h
 seconds, so the process stays up while it works. For longer work, start a foreground service or
 WorkManager work.
 
-In Flutter, React Native and .NET, set the handlers before any message arrives, as above. A message
-that finds no handler was already accepted by the library: it is logged and lost, not dropped, and
-your server sees it as `delivered`.
+In Flutter, React Native and .NET, set the handlers before any message arrives, as above.
+
+A message that doesn't reach your handler isn't lost silently: your server sees it as `dropped`,
+and the library forgets its `id`, so your server may send it again (net.ohrtech:device-sdk 0.3.2
+and the 0.1.1 wrappers). That covers no handler set, a handler that throws or takes longer than 25
+seconds, and React Native or the Flutter background isolate failing to start; see
+[dropped messages](#dropped-messages) for the reasons. In Kotlin and Java, throw from `onMessage`
+when the app couldn't take the message; throw `OhrPushService.NotHandled(reason)` to say why.
 
 | Handler | |
 |---|---|
@@ -271,7 +278,8 @@ The class is `OhrPushMessage` in every language. In C# its properties are `Id`, 
 
 Register once, with your server's sender public keys, and send the token to your server. The sender
 keys are public; build them into the app, or deliver them with
-[managed configuration](/device-sdk/guides/managed-config/).
+[managed configuration](/device-sdk/guides/managed-config/). An app may register 5 times an hour
+(Agent 1063, and the hub allows 10): past that, `register` throws `Failed`; try again later.
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
@@ -339,8 +347,7 @@ OhrSenderKey[] senderKeys = [OhrSenderKey.FromBase64(ed25519PublicKey)];
 
 OhrPush.SetSenderKeys(senderKeys);
 var token = await OhrPush.GetTokenAsync() ?? await OhrPush.RegisterAsync(senderKeys);
-var suite = token.Suite == OhrPushSuite.X25519 ? "x25519" : "xwing-mldsa65";
-await SendToServer(token.Token, suite, token.PublicKeyBase64);
+await SendToServer(token.Token, token.Suite.WireName, token.PublicKeyBase64);
 ```
 
 </TabItem>
@@ -398,8 +405,8 @@ Send your server three things from the token:
 
 - the token (`psh_…`): what your server sends to;
 - the suite's name, `x25519` or `xwing-mldsa65`: `suite.wireName` in Kotlin and Java,
-  `suite.wire` in Dart, `suite` in TypeScript. In C#, `Suite` is an enum, `OhrPushSuite.X25519`
-  or `OhrPushSuite.XWingMlDsa65`;
+  `suite.wire` in Dart, `suite` in TypeScript, `Suite.WireName` in C# (`Suite` is the enum
+  `OhrPushSuite`);
 - the public key, base64: what your server seals to. `publicKeyBase64` (C#: `PublicKeyBase64`);
   in TypeScript, `publicKey` is base64 already.
 
@@ -470,6 +477,14 @@ hub why, and calls `onDropped`.
 | `expired` | Its expiry passed, plus 2 minutes |
 | `duplicate` | Its `id` was seen before |
 | `agent` | The OhrTech Agent failed while opening it, for example because it stopped |
+| `handler` | Your handler threw (or, in Flutter, its callback wasn't found after an update) |
+| `handler_timeout` | Flutter, React Native and .NET: your handler took longer than 25 seconds |
+| `no_handler` | Flutter, React Native and .NET: no handlers were set when it arrived |
+| `no_engine` | Flutter and React Native: the background isolate or React Native didn't start |
+| your own | Kotlin and Java: the reason of the `OhrPushService.NotHandled` your `onMessage` threw |
+
+The last five never reach `onDropped`: the message passed every check, and the app didn't take it.
+The library forgets its `id`, so sending it again isn't a duplicate.
 
 Your server sees these as the message's `dropped` status, with `app_` before the reason (for example
 `app_signature`). The Agent also drops some messages before they reach the app, for example when

@@ -163,7 +163,7 @@ An alias is 1 to 64 of `A-Z a-z 0-9 . _ -`. Aliases that start with `ohr.` are r
 OhrTech Agent's own keys for your app, such as its [push](/device-sdk/guides/push/) key: you can't
 make, use or delete them, and `list()` doesn't show them.
 
-An app has at most 32 keys, its push key included.
+An app has at most 32 keys, its push key included, and makes at most 30 a minute (Agent 1063; past that, `generate` throws `Failed`).
 
 ## Open HPKE messages
 
@@ -429,7 +429,7 @@ var a = await OhrKeys.AttestAsync("orders", challenge);
 await SendToServer(new
 {
     deviceId = (await OhrDevice.GetInfoAsync()).DeviceId,
-    alg = "X-Wing",                // the key's algorithm, by its standard name
+    alg = a.Algorithm.StandardName,   // "X-Wing", "ML-KEM-768", ...
     publicKey = Convert.ToBase64String(a.PublicKey),
     owner = a.Owner,
     coseSign1 = Convert.ToBase64String(a.CoseSign1),
@@ -437,8 +437,9 @@ await SendToServer(new
 });
 ```
 
-`a.Algorithm` is an `OhrKeyAlgorithm`; the server wants its standard name (`ML-KEM-768`,
-`ML-KEM-1024`, `X-Wing` or `X25519`).
+`a.Algorithm` is an `OhrKeyAlgorithm`; `StandardName` gives the name the server wants
+(`ML-KEM-768`, `ML-KEM-1024`, `X-Wing` or `X25519`), and `OhrKeyAlgorithmNames.FromStandardName`
+goes the other way.
 
 </TabItem>
 </Tabs>

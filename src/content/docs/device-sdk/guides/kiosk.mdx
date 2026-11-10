@@ -21,8 +21,8 @@ the [exit PIN](#the-exit-pin) lets staff leave kiosk mode for a while.
 
 `start`, `stop` and `state` need OhrTech Agent 1059 or later. The watchdog, the exit PIN, the Kiosk
 app setting, `requestExit` and `heartbeat` need Agent 1061 or later. On an older Agent, `requestExit`
-and `heartbeat` throw `Unsupported` with `needsAgent` 1061 (in TypeScript, `heartbeat` has no
-effect instead). [Response timeouts](#response-timeouts)
+and `heartbeat` throw `Unsupported` with `needsAgent` 1061 (in TypeScript, `heartbeat`'s Promise
+rejects with it, from @ohrtech/device-sdk-react-native 0.1.1). [Response timeouts](#response-timeouts)
 and the watchdog's pause while the screen is off need Agent 1062 or later.
 
 In Kotlin and Java, `start`, `stop`, `state` and `requestExit` are blocking calls into the Agent:
@@ -124,7 +124,9 @@ the power menu and the status bar's information (`GLOBAL_ACTIONS` and `SYSTEM_IN
 
 These are Android's lock task features (`DevicePolicyManager.LOCK_TASK_FEATURE_*`), with the same
 values. When the exit PIN's power menu item is on, the device keeps the power menu available
-whatever you pass, since the item is in it.
+whatever you pass, since the item is in it. As in Android, `NOTIFICATIONS` and `OVERVIEW` need `HOME` too: without
+it, `start` throws `InvalidConfig` (`field` `features`; from net.ohrtech:device-sdk 0.3.2, and
+Agent 1063 refuses it whatever the app sends).
 
 <Tabs syncKey="lang">
 <TabItem label="Kotlin">
@@ -412,9 +414,11 @@ OhrKiosk.Heartbeat(TimeSpan.FromSeconds(15));
   TypeScript, a `Duration` or `TimeSpan` in Dart and C#. Outside that, `heartbeat` throws
   `InvalidConfig` (`field` `timeoutMs`; `timeout` in Dart).
 - With Agent 1062 or later, the fleet's [response timeout](#response-timeouts) for the app, when it
-  sets one, replaces the timeout the app passes. The library still beats 4 times per the app's own
-  timeout, so keep the fleet's at least a quarter of it: a shorter one takes a healthy app for a
-  hung one.
+  sets one, replaces the timeout the app passes. The library beats 4 times per the app's own
+  timeout, so from Agent 1063 the watchdog never waits less than half of it (two beats) for the
+  next beat: a shorter wait would take a healthy app for a hung one. The fleet's value still applies
+  in full as the app's ANR time. (Agent 1062 waits only the fleet's value: keep it at least half the
+  app's own timeout there.)
 - It counts only while your app is pinned. Call it after `start`, and again each time your app
   starts: after a restart it is a new process.
 - One heartbeat per app: calling it again replaces the last one. `stopHeartbeat()` ends it, before

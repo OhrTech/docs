@@ -277,7 +277,8 @@ await foreach (var b in OhrPower.BatteryChanges(cancellationToken))
 ### Reboot
 
 `reboot(reason)` reboots the device about 3 seconds later. The hub records `reason`; an empty one
-is recorded as `app`.
+is recorded as `app`. A reason is up to 64 of A-Z a-z 0-9, space, `.`, `_` and `-`; another throws
+`InvalidConfig` (`field` `reason`; net.ohrtech:device-sdk 0.3.2 checks it, and Agent 1063 refuses it).
 
 `scheduleReboot(schedule)` reboots the device on a schedule, in the device's own time zone:
 
@@ -330,7 +331,7 @@ await OhrPower.ScheduleRebootAsync(new OhrRebootSchedule("03:30", new HashSet<in
 |---|---|
 | `time` | `HH:mm`, 24-hour |
 | `days` | 1 to 7, Monday = 1; at least one day |
-| `reason` | What the hub records for each reboot |
+| `reason` | What the hub records for each reboot: up to 64 of A-Z a-z 0-9, space, `.`, `_` and `-` |
 
 The schedule is `OhrPower.Schedule` in Kotlin and Java, `OhrRebootSchedule` in Dart, TypeScript and
 C#. A device has one schedule: the last app to set it wins. It is kept across reboots.
@@ -627,7 +628,7 @@ OhrSettings.Changed += (_, e) =>
 |---|---|
 | `NotAllowed("power")`, `NotAllowed("settings")` | A change without the fleet's grant |
 | `FleetLocked(key)` | The fleet locks the setting |
-| `InvalidConfig(field, reason)` | A setting value, screen timeout, brightness or reboot schedule that isn't valid |
+| `InvalidConfig(field, reason)` | A setting value, screen timeout, brightness, reboot reason or reboot schedule that isn't valid |
 | `Unsupported` | `install` with nothing offered; `get` or `set` of a key apps can't use |
 | `Failed(reason)` | The device couldn't apply it |
 

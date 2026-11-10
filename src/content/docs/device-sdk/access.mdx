@@ -527,7 +527,8 @@ A watch the Agent refuses raises `OhrDeviceSdk.EventFailed`, whose `Event` names
 </Tabs>
 
 - A watch gives the changes from then on, not the current value: read the current state first, as
-  above.
+  above. The connection's own stream and listener in Dart and TypeScript are the exception: each
+  listener starts with how the connection stands (from the 0.1.1 wrappers).
 - In Kotlin and Java, each `collect` and each `listen` is a watch of its own with the Agent. In Dart,
   TypeScript and C#, one watch per stream or event serves every listener, from the first to the last
   one removed; in C#, each `await foreach` is one of its own.
@@ -635,6 +636,7 @@ and Java).
 | `OhrConfig` | Agent 1061 or later sets the values. `OhrConfig` never calls the Agent and never throws `Unsupported`: with an older Agent it gives the declared defaults |
 | `OhrAttestation` | Doesn't call the Agent: it uses your app's Android Keystore. See [device attestation](/device-sdk/guides/attestation/) for what the device needs |
 | The fleet's response timeout for an app, and the kiosk watchdog not counting hangs while the screen is off | Agent 1062 or later. Nothing to call: the Agent applies them ([kiosk mode](/device-sdk/guides/kiosk/)) |
+| A fleet response timeout shorter than half the app's heartbeat timeout not taking a healthy kiosk app for a hung one | Agent 1063 or later ([heartbeat](/device-sdk/guides/kiosk/#heartbeat)) |
 
 On an Agent older than 1061, the interface 2 calls throw `OhrException.Unsupported` with
 `needsAgent = 1061`, so you can tell an old Agent from a device that can't do it:

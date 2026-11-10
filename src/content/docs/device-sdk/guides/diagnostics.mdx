@@ -169,10 +169,12 @@ await OhrDiagnostics.EventAsync("shift_started");
   `OhrInvalidConfigException` in C#).
 - Each app can send 60 events a minute. The Agent drops the ones over that.
 
-`event` is a one-way call: it doesn't wait for the Agent to handle the event, so in Kotlin and Java
-you can call it from any thread, including the main thread. It waits only when the library has to
-bind the Agent first: on the first call to the Agent in your app's process, or while the Agent
-restarts (up to 10 seconds). In Dart,
+`event` never waits for the Agent, so in Kotlin and Java you can call it from any thread, including
+the main thread: it checks its arguments at once, and the library sends it from its own thread, in
+order. While the Agent restarts, up to 1,000 events and log lines wait for it; beyond that the
+newest are dropped. Only the first call to the Agent in your app's process waits, while the library
+binds it. (In net.ohrtech:device-sdk 0.3.1 and before, a call also waited while the Agent
+restarted, up to 10 seconds.) In Dart,
 TypeScript and C#, `event` runs off the UI thread and its `Future`, `Promise` or `Task` completes
 once the event is sent.
 

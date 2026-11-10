@@ -139,6 +139,8 @@ OhrTech to certify it. The timeout is how long it waits for OhrTech, 60 seconds 
 (`timeoutMs` in Kotlin, Java and TypeScript, a `Duration` or `TimeSpan` in Dart and C#). It takes a
 few seconds and needs the device online. The alias is your name for it: 1 to 64 of
 `A-Z a-z 0-9 . _ -`. A new request under the same alias replaces the key and certificate before it.
+An app may make 10 requests an hour (Agent 1063, and the hub): past that, `request` throws `Failed`;
+try again later.
 
 `canRequest()` says whether the fleet gives your app an issuing CA, so that `request` can work.
 
@@ -165,8 +167,9 @@ In Kotlin and Java, `keyManager` and `sslContext` take the certificates as they 
 them. After a `request` or a renewal, make a new `SSLContext` (and a new OkHttp client).
 
 The Dart client, `OhrCertificates.fetch` and the .NET handler keep their TLS setup for up to five
-minutes. A `request` or a renewal starts it afresh, so the next request presents the new
-certificate; other changes from the fleet reach them within five minutes.
+minutes. A `request`, a renewal, or a change from the fleet (a new trusted CA, a removed bundle)
+starts it afresh, so the next request uses it. (Before the 0.1.1 wrappers, a change from the fleet
+took up to five minutes; with an Agent before 1061, which sends no change events, it still does.)
 
 ### Two paths to two roots
 
