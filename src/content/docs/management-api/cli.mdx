@@ -41,6 +41,7 @@ pipeline or another unattended job, put a [service account](/management-api/sign
 | `ohr settings` | `catalog`, `get`, `set`, `unset`, `apply`, `push` ([guide](/management-api/guides/settings/)) |
 | `ohr shell DEVICE COMMAND` | A [shell command](/management-api/guides/shell-commands/) on a device, or on a whole fleet with `--fleet` |
 | `ohr message DEVICE TEXT` | Show a message on a device's screen, or a fleet's with `--fleet` |
+| `ohr push` | [Push](/device-sdk/server/send-push/): `keygen` your sender key, `send` a sealed message to an app's token or a [web app's subscription](/web-apps/notifications-and-push/#send), `status` of a message |
 | `ohr tasks DEVICE` | What a device was asked to do, and how it went |
 | `ohr rc open DEVICE` | [Remote control](/management-api/guides/remote-control/) in your browser |
 | `ohr adb connect DEVICE` | [Remote ADB](/management-api/guides/remote-adb/) for adb and Android Studio |
@@ -56,7 +57,10 @@ ohr shell A0000A00042 dumpsys battery
 ohr shell --fleet flt_2dn47a2xa58j1txv8m28spkmyb -- df -h /data
 ohr settings set A0000A00042 display.brightness=80 --lock
 ohr apps upload app_44n36syg958kyv8gzmq6f59tkq app-release.apk --enforce --wait
+ohr push send --sender sender.json --subscription subscription.json --text '{"order": 42}'
 ```
+
+`ohr push` needs ohr 1.1.0 or later.
 
 ## In scripts
 

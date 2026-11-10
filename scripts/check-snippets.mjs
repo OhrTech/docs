@@ -51,6 +51,9 @@ const prelude = {
 	challenge: 'var challenge = new byte[32];',
 	attestation: 'var attestation = new { Ec = new List<string>(), MlDsa65 = (List<string>?)null };',
 	attestationJson: 'var attestationJson = "{}";',
+	// What a web app's page sent your server (PushSubscription.toJSON()), and your push sender key.
+	subscriptionJson: 'var subscriptionJson = "{}";',
+	sender: 'using var sender = OhrTech.Management.Push.PushSenderKey.Generate(postQuantum: false);',
 	// Yours: the app's signing certificate, and where you keep a device's keys.
 	MySigningCertSha256: 'var MySigningCertSha256 = "";',
 	device: 'var device = new { EcPublicKey = new byte[65], MlDsa65PublicKey = (byte[]?)null };',

@@ -1,0 +1,183 @@
+---
+title: The Device SDK for sites
+description: One script lets your site use the device when it runs as an OhrTech web app, and does nothing anywhere else. Where it answers, what the site declares, frames, errors and versions.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In mode `sdk` or `packaged`, your site can use the device as an app can: Wi-Fi, the network, kiosk
+mode, power, settings, managed configuration, USB devices, diagnostics, attestation, client
+certificates and TEE keys. The calls are the [Device SDK](/device-sdk/)'s, in the shape of its
+React Native SDK. The same site still runs in any browser; there, the SDK says it isn't on a device.
+
+## Add the script
+
+The SDK is one file, `@ohrtech/device-sdk-web` on npm, also attached to each
+[GitHub release](https://github.com/OhrTech/device-sdk-web/releases) with its integrity value. Host it
+next to your pages and pin it with `integrity`: a script from someone else's server would run with
+the SDK's powers.
+
+<Tabs>
+<TabItem label="Script">
+
+```html
+<script src="/js/ohrtech-device-sdk-1.0.0.min.js"
+  integrity="sha384-…the value from the release…" crossorigin="anonymous"></script>
+<script>
+  if (OhrTech.isDevice()) {
+    OhrTech.OhrDevice.info().then((d) => console.log(d.deviceId));
+  }
+</script>
+```
+
+The script defines the global `OhrTech`.
+
+</TabItem>
+<TabItem label="npm">
+
+```sh
+npm install @ohrtech/device-sdk-web
+```
+
+```ts
+import { isDevice, OhrDevice, OhrWifi, OhrNotAllowed } from '@ohrtech/device-sdk-web';
+
+if (isDevice()) {
+  const device = await OhrDevice.info();
+  console.log(device.deviceId);
+}
+```
+
+The package is an ES module with TypeScript types.
+
+</TabItem>
+</Tabs>
+
+`isDevice()` answers at once: true in an OhrTech web app. `environment()` says more:
+
+```json
+{ "onDevice": true, "shellVersion": 11, "interfaces": [1], "mode": "sdk" }
+```
+
+`mode` is the web app's mode: in `locked`, `isDevice()` is true but every call is refused with
+`OhrNotAllowed` (area `sdk`). Off the device, every call fails with `OhrNotManaged`.
+
+## The calls
+
+| Area | Calls |
+|---|---|
+| `OhrDeviceSdk` | `isAvailable()`, `connect()`, `connection()`, `addConnectionListener()` |
+| `OhrAccess` | `info()`, `mayUse(area)` |
+| `OhrDevice` | `info()` |
+| `OhrUpdates` | `available()`, `install()`, `addChangeListener()` |
+| `OhrWifi` | `state()`, `networks()`, `scan()`, `saved()`, `save()`, `connect()`, `connectConfig()`, `disconnect()`, `forget()`, `setEnabled()`, `connectQr()`, `showScreen()`, `addStateListener()`, `addNetworksListener()` |
+| `OhrNetwork` | `state()`, `setMobileData()`, `setAirplaneMode()`, `setDataRoaming()`, `addChangeListener()` |
+| `OhrKiosk` | `start()`, `stop()`, `state()`, `requestExit()`, `addModeListener()` |
+| `OhrPower` | `battery()`, `reboot()`, `scheduleReboot()`, `rebootSchedule()`, `setScreenTimeout()`, `setBrightness()`, `addBatteryListener()` |
+| `OhrSettings` | `keys()`, `get()`, `set()`, `addChangeListener()` |
+| `OhrConfig` | `values()`, `string()`, `integer()`, `boolean()`, `strings()`, `isSet()`, `addChangeListener()` |
+| `OhrUsb` | `devices()`, `addChangeListener()` |
+| `OhrDiagnostics` | `event()`, `log()`, `i()`, `w()`, `e()` |
+| `OhrAttestation` | `attest()`, `token()`, `suite()` |
+| `OhrCertificates` | `canRequest()`, `request()`, `renewIfDue()`, `list()`, `addChangeListener()` |
+| `OhrKeys` | `isAvailable()`, `generate()`, `list()`, `publicKey()`, `delete()`, `decapsulate()`, `encapsulate()`, `hpkeOpen()`, `attest()` |
+| `OhrApp` | `reload()`, `clearData()`, and for a packaged web app `bundle()`, `checkForUpdate()`, `applyUpdate()`, `addUpdateListener()` |
+
+Each call does what it does for an app: see the [Device SDK guides](/device-sdk/guides/wifi-and-networks/).
+What differs for a site:
+
+- `OhrWifi.showScreen()` opens Android's Wi-Fi screen over the page and resolves with the network
+  joined, or null, when the person closes it.
+- `OhrApp.reload()` loads the start URL again; `clearData()` clears the app's cookies, storage and
+  cache first, as the idle reset does.
+- Push isn't here: the site uses the standard Push API (see
+  [notifications and push](/web-apps/notifications-and-push/)).
+- The kiosk heartbeat is the app's own: the shell beats for the site.
+
+Listeners return a subscription with `remove()`. They end when the page navigates.
+
+## Where it answers
+
+The SDK answers only:
+
+- **On the app's own origins:** the origin of the web app's start URL, and the manifest's
+  `scope_extensions` that agreed. A start URL set in the [settings](/web-apps/settings/) never adds
+  an origin.
+- **In the top frame.** Frames get nothing unless an administrator lists their origin (below).
+- **In mode `sdk` or `packaged`.**
+
+Everywhere else, on another origin the app is allowed to open, say, `isDevice()` is false and
+nothing is offered.
+
+On top of that, every call needs what an app's call needs: the fleet's grant for the areas that
+change the device. See [access](/device-sdk/access/). `OhrAccess.mayUse(area)` tells you before you
+offer a button.
+
+## Declare what the site uses
+
+The site can say in its Web App Manifest the most it may use, with `ohrtech_device_sdk`: each area
+and the origins that may use it. Anything not declared is refused with `OhrNotAllowed`, whatever the
+fleet grants. A site that declares nothing has every area the fleet grants.
+
+```json title="manifest.webmanifest"
+{
+  "name": "Store kiosk",
+  "start_url": "/",
+  "ohrtech_device_sdk": {
+    "device": ["self"],
+    "wifi": ["self"],
+    "config": ["self", "https://admin.example.com"]
+  }
+}
+```
+
+The areas are `device`, `updates`, `wifi`, `network`, `kiosk`, `power`, `settings`, `config`,
+`usb`, `diagnostics`, `attestation`, `certificates` and `keys`. `self` is the start URL's origin, `*`
+any of the app's origins. `OhrDeviceSdk`, `OhrAccess` and `OhrApp` need no declaration.
+
+The app reads the manifest it was made from each time it starts (for a web app made from fields,
+the one its page links; for a packaged web app, the one in its bundle), and keeps the last one it
+read, so a server that is down doesn't widen what the site may do. Calls wait for it, up to 10
+seconds, at start.
+
+The declaration protects the site's users from the site's own mistakes: a script injected into a
+page can do no more than the site declared.
+
+## Frames
+
+A frame from another origin, a payment form for instance, gets nothing by default. List its origin
+in the web app's `sdkFrameOrigins` setting to let it use the SDK, within the site's declaration. A
+frame from the app's own origin is treated the same way.
+
+## Errors
+
+Every failure is one of the SDK's error classes, each an `OhrException` with a `code`:
+
+| Class | `code` | When |
+|---|---|---|
+| `OhrNotManaged` | `NotManaged` | Not on an OhrTech device, or not on the app's own origins |
+| `OhrNotAllowed` | `NotAllowed` | The mode is `locked` (`area` is `sdk`), the site didn't declare the area, or the fleet doesn't grant it (`area` says which) |
+| `OhrFleetLocked` | `FleetLocked` | The fleet locks the setting (`key`) |
+| `OhrUnsupported` | `Unsupported` | Not on this device, or the Agent is too old (`needsAgent`) |
+| `OhrInvalidConfig` | `InvalidConfig` | A bad argument (`field`, `reason`) |
+| `OhrRefused` | `Refused` | Android or the Agent refused (`reason`) |
+| `OhrFailed` | `Failed` | It went wrong (`reason`) |
+
+```ts
+try {
+  await OhrTech.OhrKiosk.start();
+} catch (e) {
+  if (e instanceof OhrTech.OhrNotAllowed) showMessage(`Kiosk mode isn't allowed here (${e.area})`);
+  else throw e;
+}
+```
+
+## Versions
+
+The file you pin is a facade for one interface version: `1` for every `1.x` release. On the device,
+the web app's shell gives it the device's implementation of that interface, so OhrTech can improve
+the implementation without your site changing, and the file you pinned with `integrity` never
+changes. `environment().interfaces` lists the interfaces the shell has.
+
+A new interface comes with a new major version of the file. OhrTech keeps at least two interfaces
+working, and announces the end of an old one at least 12 months ahead.

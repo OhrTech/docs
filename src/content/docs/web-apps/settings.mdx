@@ -1,0 +1,124 @@
+---
+title: Settings
+description: Every setting of a web app (mode, display, URL filters, permissions, downloads, the idle reset, client certificates, notifications, packaged updates), and how to set it for a fleet or a device.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+A web app's settings are its [managed configuration](/device-sdk/guides/managed-config/), set the
+same way as any app's, with three levels:
+
+1. **The web app's own:** its mode, display, scope rule and, for a packaged web app, its bundle
+   policy. You set them on the web app's page in the portal, or with `PATCH /v1/apps/{appId}/web`.
+2. **A fleet's**, for its devices and the fleets below it.
+3. **A device's**, for that device alone.
+
+A level below overrides the one above, key by key. A change reaches the devices at once, with no new
+version of the app.
+
+## Set them for a fleet
+
+In the portal, open the fleet, go to its **Applications** tab and choose **Change** next to the web
+app: **Configuration** has a form with every key below. With the API, `PUT /v1/fleets/{fleetId}/apps/{appId}/config` (or
+`/v1/devices/{deviceId}/apps/{appId}/config` for one device). `PUT` replaces everything that level
+sets for the app, so send every key you want it to set.
+
+This kiosk opens on the store's page, allows the payment provider's pages, lets the site use the
+camera, and starts again after 5 minutes nobody used it:
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+using System.Text.Json.Nodes;
+
+await api.SetFleetAppConfigAsync("flt_2dn47a2xa58j1txv8m28spkmyb", "app_7h2m9q4x1c8v3k5n6p0r2s4t6w",
+    new SetAppConfigRequest
+    {
+        Values = new()
+        {
+            ["startUrl"] = "https://kiosk.example.com/store/42",
+            ["URLAllowlist"] = "pay.example.net",
+            ["cameraOrigins"] = "https://kiosk.example.com",
+            ["idleResetMinutes"] = 5,
+            ["buttons"] = new JsonArray("back", "home"),
+        },
+    });
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/config \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "values": {
+      "startUrl": "https://kiosk.example.com/store/42",
+      "URLAllowlist": "pay.example.net",
+      "cameraOrigins": "https://kiosk.example.com",
+      "idleResetMinutes": 5,
+      "buttons": ["back", "home"]
+    }
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+To run the web app as the fleet's kiosk, set the fleet's `kiosk.app` setting to the web app's
+package name (see [kiosk mode from the fleet](/device-sdk/guides/kiosk/#kiosk-mode-from-the-fleet)).
+
+Lists of origins and URL filters are text, one per line.
+
+## The site and its pages
+
+| Key | Values | Default |
+|---|---|---|
+| `mode` | `locked`, `sdk` or `packaged` (see the [overview](/web-apps/#three-modes)) | The web app's |
+| `displayMode` | `MINIMAL_UI`: a toolbar with the page's title and buttons. `STANDALONE`: the status bar, no controls. `FULL_SCREEN`: nothing but the site | The web app's |
+| `ignoreManifestScope` | The site's whole origin is the app, not only the manifest's `scope` | `false` |
+| `startUrl` | Where the app opens instead of the manifest's start URL: https, inside the app | The manifest's |
+| `URLAllowlist` | More pages the app may open besides its own: [Chrome's URL filters](https://support.google.com/chrome/a/answer/9942583) (`example.com`, `.example.com`, `https://example.com/path`, `*`). Plain http only with a filter that names `http://` | None |
+| `URLBlocklist` | Pages the app may not open, its own included. A more specific allowlist filter wins | None |
+| `newWindows` | `here`: links that open a new window load in the app, under the same rules. `refuse`: they don't open | `here` |
+| `schemes` | Which of `tel`, `mailto` and `sms` links open the device's app for them. Other schemes never do | None |
+| `buttons` | The `MINIMAL_UI` toolbar's buttons: `back`, `forward`, `home`, `reload`, `wifi` (Android's Wi-Fi screen, with the fleet's Wi-Fi grant) | `back`, `forward`, `reload` |
+| `idleResetMinutes` | After this many minutes nobody used the app, its cookies, storage and cache are cleared and it opens the start URL again. 0: never | `0` |
+| `userAgentSuffix` | Added to the user agent, so the site can tell it runs here | None |
+
+The app never shows an address bar, and a page outside the app is refused, not opened elsewhere.
+
+## What the site may use
+
+| Key | Values | Default |
+|---|---|---|
+| `cameraOrigins`, `microphoneOrigins`, `locationOrigins` | The origins that may use it (`https://host[:port]`), or `*` for any origin of the app | None |
+| `downloads` | `off`: refused. `app`: saved in the app's own Download folder | `off` |
+| `fileChooser` | The site's file inputs open the device's file picker | `true` |
+| `printing` | `window.print()` opens Android's print dialog | `false` |
+| `dialogs` | `alert`, `confirm` and `prompt` show. Off: they are dismissed, and `confirm` and `prompt` answer cancel | `true` |
+| `textSelection` | Off: text can't be selected, except in fields | `true` |
+| `longPress` | Off: a long press does nothing | `true` |
+| `clientCertificateAlias` | The app's [client certificate](/device-sdk/guides/certificates/) to present to servers that ask for one (mutual TLS). Empty: one the server accepts | Empty |
+| `sdkFrameOrigins` | Frames from these origins may use the [Device SDK](/web-apps/device-sdk/#frames) too | None |
+| `notifications` | `granted`: the site's notifications show and it may subscribe to push. `denied`: they don't | `granted` |
+| `serviceWorkers` | Off: the site can't register service workers, and those it had go | `true` |
+
+The app trusts the certificate authorities the fleet gives it, as other apps do (see
+[certificates](/device-sdk/guides/certificates/)): a site on your own network with your own
+certificate opens without warnings.
+
+## Packaged web apps
+
+These apply in mode `packaged`; see [packaged web apps](/web-apps/packaged/).
+
+| Key | Values | Default |
+|---|---|---|
+| `webBundleIds` | The Signed Web Bundle IDs the app runs, one per line | The web app's |
+| `updateManifestUrl` | The update manifest the app follows (https) | The web app's |
+| `updateChannel` | The update manifest's channel | `default` |
+| `pinnedVersion` | Exactly this version. Empty: the newest on the channel | Empty |
+| `allowDowngrades` | An older version may replace a newer one | `false` |
+| `updateCheckMinutes` | How often the app reads the update manifest, 5 to 10,080. It also reads it at every launch | `360` |
+| `updateApply` | When a downloaded version replaces the running one: `launch` (the app's next launch), `idle` (after 2 minutes nobody used it) or `now` (the page reloads) | `launch` |

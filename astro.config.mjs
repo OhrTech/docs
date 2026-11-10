@@ -4,8 +4,9 @@ import starlight from '@astrojs/starlight';
 import starlightSidebarTopics from 'starlight-sidebar-topics';
 import starlightLinksValidator from 'starlight-links-validator';
 
-// docs.ohrtech.net: the OhrTech SDK's two parts, each with its own sidebar. The Management API is
-// called from customers' servers and tools; the Device SDK from apps on the device.
+// docs.ohrtech.net: the OhrTech SDK's parts, each with its own sidebar. The Management API is called
+// from customers' servers and tools; the Device SDK from apps on the device; web apps are customers'
+// websites made apps on the device.
 export default defineConfig({
 	site: 'https://docs.ohrtech.net',
 	trailingSlash: 'always',
@@ -133,6 +134,28 @@ export default defineConfig({
 									],
 								},
 								{ label: 'Reference', items: ['device-sdk/changelog'] },
+							],
+						},
+						{
+							label: 'Web apps',
+							link: '/web-apps/',
+							icon: 'external',
+							id: 'web-apps',
+							items: [
+								{
+									label: 'Start here',
+									items: [{ label: 'Overview', slug: 'web-apps' }, 'web-apps/create'],
+								},
+								{
+									label: 'Guides',
+									items: [
+										'web-apps/settings',
+										'web-apps/device-sdk',
+										'web-apps/notifications-and-push',
+										'web-apps/packaged',
+									],
+								},
+								{ label: 'Reference', items: ['web-apps/changelog'] },
 							],
 						},
 					],

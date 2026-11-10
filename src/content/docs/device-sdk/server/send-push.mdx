@@ -8,7 +8,9 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 Your server sends a push message to one app on one device. It seals the message to the app's public
 key, signs it with your sender key, and posts it to `POST /v1/push`. The OhrTech hub queues it and
 the device's OhrTech Agent delivers it. Neither can read it, and the app accepts it only with your
-signature. The app side is in [push messages](/device-sdk/guides/push/).
+signature. The app side is in [push messages](/device-sdk/guides/push/). To push to a web app,
+see [notifications and push](/web-apps/notifications-and-push/#send): its subscription names the token
+and key.
 
 You need:
 

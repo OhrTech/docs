@@ -1,0 +1,234 @@
+---
+title: Notifications and push
+description: Website notifications as Android notifications, the Push API over OhrTech push with your server's sender key, Declarative Web Push, the app badge, sharing and orientation, in every mode.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+A web app gives the site the web platform's notification APIs in every mode, `locked` included. The
+site uses the standard APIs, as in a browser; the shell shows the notifications as the app's own and
+brings push through OhrTech. A site that already sends notifications in browsers needs one change,
+the key it subscribes with.
+
+## Notifications
+
+What the site can show:
+
+- **From a page:** `new Notification(title, options)`, with its `show`, `click`, `close` and `error`
+  events.
+- **From a service worker:** `registration.showNotification(title, options)`, with up to 2
+  `actions`, and `getNotifications()`. A tap sends `notificationclick` to the service worker, with
+  the `action` tapped; a dismissal sends `notificationclose`. Both reach the service worker when the
+  app isn't open.
+
+`body`, `tag`, `icon`, `badge`, `image`, `data`, `requireInteraction`, `renotify`, `silent` and
+`timestamp` work as on the web. A notification with the same `tag` replaces the one showing, and
+alerts again only with `renotify`. Images load as the site's pages load them, with its cookies and
+client certificate. `data` must be JSON.
+
+In the service worker, `clients.openWindow(url)` opens the page in the app (within the app's URL
+rules) and brings the app to the front; `WindowClient.focus()` brings it to the front.
+
+**Permission is the administrator's.** `Notification.permission` is the web app's `notifications`
+setting, `granted` by default; `requestPermission()` answers with it and never asks the person.
+With `denied`, nothing shows and push subscriptions are refused. See [settings](/web-apps/settings/).
+
+## Push
+
+The Push API works as on the web, with one difference: there is no Web Push service. Push comes from
+your server through [OhrTech push](/device-sdk/server/send-push/), sealed to the device's TEE key and
+signed with your sender key, so neither OhrTech nor anyone between can read or forge it.
+
+### Subscribe
+
+Make a sender key once, on your server:
+
+```sh
+ohr push keygen sender.json     # keeps the private seeds: keep the file secret
+# ed25519  BcVwzrNirgcxOOzM+0WMX2DNWrwidlVmYGcLyBE0hUo=
+# mldsa65  …
+```
+
+The page subscribes with the Ed25519 public key as `applicationServerKey`, where a browser takes a
+VAPID key, and sends the subscription to your server:
+
+```js
+const registration = await navigator.serviceWorker.register('/sw.js');
+const subscription = await registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: 'BcVwzrNirgcxOOzM+0WMX2DNWrwidlVmYGcLyBE0hUo=', // your OhrTech sender key
+});
+await fetch('/api/push-subscriptions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(subscription),
+});
+```
+
+`applicationServerKey` takes the key as bytes or as base64 (either alphabet). A 65-byte VAPID key is
+refused with `InvalidAccessError`, so a site can tell the two apart:
+
+```js
+const key = isOhrTech ? OHRTECH_SENDER_KEY : VAPID_PUBLIC_KEY;
+```
+
+For the post-quantum suite, give the ML-DSA-65 public key too:
+`subscribe({ userVisibleOnly: true, applicationServerKey, ohrtech: { mlDsa65: ML_DSA_65_PUBLIC_KEY } })`.
+
+The subscription's JSON is what your server keeps:
+
+```json
+{
+  "endpoint": "https://api.ohrtech.net/v1/web-push/psh_43nq4xq0d68nssxssfdcw41vpm",
+  "expirationTime": null,
+  "keys": { "ohrtech": "I8nRYwVmM_r2aa1z9feQuhWrl3SOf28UuIF8XdHKbgY", "suite": "x25519" }
+}
+```
+
+The endpoint names the app's push token (`psh_…`); `keys.ohrtech` is the token's public key
+(base64url) and `keys.suite` its suite. The endpoint isn't a Web Push endpoint: a Web Push library
+that posts to it gets 400 with how to send instead. `getSubscription()` and `unsubscribe()` work as
+usual. The app has one push token, which all its service worker registrations share.
+
+### Send
+
+Seal the message for the subscription with your sender key, and post it to `POST /v1/push` with the
+subscription (or its token) in place of `token`. Your service account needs `SendPush`.
+
+<Tabs syncKey="lang">
+<TabItem label="ohr">
+
+```sh
+ohr push send --sender sender.json --subscription subscription.json --text '{"id": 42, "summary": "2 items"}'
+# pmsg_4negvv5j2h9a9rqj1bv7pspp5q
+ohr push status pmsg_4negvv5j2h9a9rqj1bv7pspp5q
+```
+
+`--data-file` sends a file's bytes; `--high`, `--ttl` and `--id` are as for `POST /v1/push`. See the
+[CLI](/management-api/cli/).
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+using System.Text;
+using OhrTech.Management;
+using OhrTech.Management.Push;
+
+// subscriptionJson: what the page sent your server
+using var sender = PushSenderKey.Import(
+    Convert.FromBase64String(Environment.GetEnvironmentVariable("OHR_PUSH_ED25519_SEED")!), null);
+var message = PushSealer.SealForSubscription(subscriptionJson, sender,
+    id: "order-42", expires: DateTimeOffset.UtcNow.AddHours(1), data: Encoding.UTF8.GetBytes("""{"id":42,"summary":"2 items"}"""));
+
+var response = await api.SendPushAsync(new PushRequest
+{
+    Messages = [new PushRequestMessage { Token = WebPushSubscription.Parse(subscriptionJson).Token, Message = message, Ttl = 3600 }],
+});
+Console.WriteLine(response.Results[0].Id ?? response.Results[0].Error);
+```
+
+`WebPushSubscription` and `SealForSubscription` need OhrTech.Management 2.4.0 or later, on .NET 10.
+
+</TabItem>
+<TabItem label="Node, Go, Python">
+
+Use the samples in [send push messages](/device-sdk/server/send-push/#seal-and-send) with the
+subscription's parts: the token is the endpoint's last part, the public key is `keys.ohrtech`
+(base64url: decode it, then encode it as base64), and the suite is `keys.suite`.
+
+</TabItem>
+</Tabs>
+
+The message's data, at most 4,096 bytes, reaches the service worker's `push` event:
+
+```js title="sw.js"
+self.addEventListener('push', (event) => {
+  const order = event.data.json();
+  event.waitUntil(self.registration.showNotification(`Order ${order.id}`, {
+    body: order.summary,
+    tag: `order-${order.id}`,
+    data: { url: `/orders/${order.id}` },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data.url));
+});
+```
+
+`event.data` has `text()`, `json()`, `arrayBuffer()`, `bytes()` and `blob()`. When the app isn't
+open, the shell starts the service worker to handle the message. Finish within about 8 seconds:
+Android may stop longer work.
+
+Follow a message with `GET /v1/push/{id}` or `ohr push status`. A message the app couldn't take is
+`dropped`, with a reason: `app_no_subscription` (the app has no subscription), `app_no_service_worker`
+(no service worker took it), or `app_notifications_off` (a declarative message, with notifications
+turned off).
+
+### Declarative Web Push
+
+A message in the [Declarative Web Push](https://github.com/WebKit/explainers/tree/main/DeclarativeWebPush)
+format is shown at once, with no service worker: a tap opens its `navigate` page in the app.
+
+```json
+{
+  "web_push": 8030,
+  "notification": {
+    "title": "Order 42 is ready",
+    "body": "Collect it at desk 3",
+    "navigate": "https://kiosk.example.com/orders/42",
+    "tag": "order-42"
+  },
+  "app_badge": 3
+}
+```
+
+<Tabs syncKey="lang">
+<TabItem label="ohr">
+
+```sh
+ohr push send --sender sender.json --subscription subscription.json \
+  --notification "Order 42 is ready" --navigate https://kiosk.example.com/orders/42 --body "Collect it at desk 3"
+```
+
+</TabItem>
+<TabItem label="C#">
+
+```csharp
+var data = DeclarativeWebPush.Create("Order 42 is ready", new Uri("https://kiosk.example.com/orders/42"),
+    body: "Collect it at desk 3", tag: "order-42", appBadge: 3);
+var message = PushSealer.SealForSubscription(subscriptionJson, sender, "order-42-ready", DateTimeOffset.UtcNow.AddHours(1), data);
+```
+
+</TabItem>
+</Tabs>
+
+The notification's `actions` may each have a `navigate` too.
+
+### When the subscription changes
+
+If the app's push token ends, the app makes a new one and sends `pushsubscriptionchange` to the service worker, with `oldSubscription` and
+`newSubscription`. Send the new one to your server:
+
+```js
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(fetch('/api/push-subscriptions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ old: event.oldSubscription, new: event.newSubscription }),
+  }));
+});
+```
+
+## The app badge, sharing and orientation
+
+- **`navigator.setAppBadge(n)` and `clearAppBadge()`**, in pages and service workers: Android shows
+  the number on the app's notifications.
+- **`navigator.share()` and `canShare()`**, from a tap: Android's share sheet, with `title`, `text`,
+  `url` and up to 10 files (20 MB in all).
+- **`screen.orientation.lock()` and `unlock()`**, and the manifest's `orientation`. Android 16 and
+  later ignore an app's orientation on large screens, so there it has no effect: to keep the screen
+  still, turn off the fleet's auto-rotate setting (`display.auto_rotate`).
+- **`navigator.permissions.query()`** answers for `notifications` and `push` with the setting.

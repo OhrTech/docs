@@ -1,0 +1,62 @@
+---
+title: Web apps
+description: Make a website an app on your OhrTech devices, from a locked site to a site that uses the Device SDK to a packaged site that runs from a signed bundle, with notifications and push.
+---
+
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+A web app is a website your organisation gives to its devices as an app. It has its own icon on the
+home screen, its own storage, and its own place in your fleets, like any app you upload. A kiosk can
+run it. You don't need to change the site to make it one.
+
+OhrTech makes the app from the site's [Web App Manifest](https://www.w3.org/TR/appmanifest/) (or
+from a few fields, for a site without one), builds its APK and signs it with your organisation's
+web app key. You give it to fleets as you give any app.
+
+## Three modes
+
+A web app runs in one of three modes. You choose the mode for each web app, and a fleet or a device
+can choose a different one.
+
+| Mode | What runs | Device SDK | For |
+|---|---|---|---|
+| `locked` (the default) | The live site, kept to its own pages | No | A site you don't control, or one that needs nothing from the device |
+| `sdk` | The live site | Yes, on the site's own origins | Your site, when it needs the device: Wi-Fi, kiosk mode, settings, keys |
+| `packaged` | The site's own files from a Signed Web Bundle, under its real origin | Yes | Your site, when each device must run a version you choose, offline too |
+
+In every mode:
+
+- **The app stays on the site.** It opens only the site's pages (its manifest's scope), and any
+  others you allow with URL filters. Other links don't open.
+- **The device's admin decides.** Camera, microphone, location, downloads, printing, new windows,
+  the toolbar, client certificates and the idle reset are the web app's
+  [settings](/web-apps/settings/), set per fleet or per device.
+- **Notifications and push work as on the web.** The site uses the standard Notification and Push
+  APIs. On an OhrTech device, push comes from your server through OhrTech push: see
+  [notifications and push](/web-apps/notifications-and-push/).
+
+## How a web app reaches devices
+
+1. You [make the web app](/web-apps/create/) in the portal or with the Management API. OhrTech
+   reads the site's manifest for the name, icon, start URL and scope.
+2. OhrTech builds the app's APK, usually within a minute or two. Its package name is
+   `net.ohrtech.web.w` and 20 letters and digits, derived from your organisation and the manifest's
+   `id`, so the same site is always the same app.
+3. You add it to fleets. Their devices install it like any of your apps.
+
+A new name or icon in the site's manifest reaches devices only after you approve it: OhrTech checks
+the manifest when you open the web app in the portal. A change to the web app's settings needs no
+new version: devices get it at once.
+
+When OhrTech improves the app's shell (the part around your site), it builds your web app again,
+and devices update as they update your other apps.
+
+## Next
+
+<CardGrid>
+	<LinkCard title="Make a web app" href="/web-apps/create/" description="From the site's manifest or from fields, in the portal or with the API." />
+	<LinkCard title="Settings" href="/web-apps/settings/" description="What the admin sets for a web app, per fleet or per device." />
+	<LinkCard title="The Device SDK for sites" href="/web-apps/device-sdk/" description="One script lets your site use the device, only on your devices." />
+	<LinkCard title="Notifications and push" href="/web-apps/notifications-and-push/" description="The standard APIs, and push from your server through OhrTech." />
+	<LinkCard title="Packaged web apps" href="/web-apps/packaged/" description="Your site's files in a Signed Web Bundle, with versions you control." />
+</CardGrid>

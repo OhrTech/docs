@@ -1,0 +1,203 @@
+---
+title: Packaged web apps
+description: Run your site's own files from a Signed Web Bundle under its real origin, offered in an update manifest, with the trusted IDs, channel, pinned version and update timing you choose.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In mode `packaged`, the web app runs your site's own files from a **Signed Web Bundle**, the format
+of Chrome's Isolated Web Apps, served under the site's real origin. Your pages, scripts and styles
+come from the bundle, so they work offline and are exactly the version you chose; anything not in
+the bundle, your API for instance, goes to the network as usual. The Device SDK, notifications and
+push work as in mode `sdk`.
+
+Each version is a bundle with a version number. The device follows an **update manifest** that
+lists the versions, downloads the one your policy picks, checks its signature, and switches to it
+when you say.
+
+## Build a bundle
+
+Build the site as usual, then bundle it with the standard tools: `wbn` and `wbn-sign`, or the
+webbundle plugins for Rollup, Vite and Webpack. Two things matter:
+
+- **The site's real origin** as the base URL: the bundle's URLs are the site's.
+- **A version** in `/.well-known/manifest.webmanifest`: dot-separated whole numbers, such as
+  `1.4.2`. The device checks it against the update manifest.
+
+```sh
+npm install wbn wbn-sign
+openssl genpkey -algorithm ed25519 -out key.pem      # once; keep it secret
+
+npx wbn --dir dist --baseURL https://kiosk.example.com/ --output kiosk.wbn
+npx wbn-sign sign kiosk.wbn key.pem --output kiosk-1.4.2.swbn
+npx wbn-dump-id --key key.pem                        # the Web Bundle ID
+```
+
+The signing key may be Ed25519 or ECDSA P-256. The Web Bundle ID is derived from it, and is what
+devices trust. The [web SDK's repository](https://github.com/OhrTech/device-sdk-web/tree/main/examples/packaged)
+has a build script that also writes the version into the manifest.
+
+## Offer it to devices
+
+Either upload each bundle to OhrTech, which keeps an update manifest for the web app, or publish the
+bundles with an update manifest of your own.
+
+### Upload to OhrTech
+
+In the portal, open the web app, set its mode to **Packaged site** and save; **Versions** then has
+an upload. With the API, `POST /v1/apps/{appId}/web/bundles` takes the `.swbn` file as the body, and
+`channels` (default `default`) in the query.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+await api.UpdateWebAppAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", new UpdateWebAppRequest { Mode = "packaged" });
+
+await using var file = File.OpenRead("kiosk-1.4.2.swbn");
+var bundle = await api.UploadWebBundleAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", file, channels: "default,beta");
+Console.WriteLine($"{bundle.Version} {bundle.BundleId}");
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl -X PATCH https://api.ohrtech.net/v1/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/web \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" -d '{"mode": "packaged"}'
+
+curl -X POST "https://api.ohrtech.net/v1/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/web/bundles?channels=default,beta" \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/octet-stream" \
+  --data-binary @kiosk-1.4.2.swbn
+```
+
+</TabItem>
+</Tabs>
+
+OhrTech checks the bundle as the devices will, and refuses it with the reason:
+
+| Status | Why |
+|---|---|
+| 422 | A signature doesn't hold, its Web Bundle ID isn't one the web app trusts, no trusted key signed it, a URL is outside the site's origin, or its manifest has no version |
+| 409 | That version was uploaded already |
+| 413 | Larger than 256 MB |
+
+The first upload sets the trusted Web Bundle ID when the web app has none. `GET` on the same path
+lists the uploads; `DELETE /v1/apps/{appId}/web/bundles/{version}` takes a version out of the update
+manifest. Uploads need `ManageApps`.
+
+Devices download the bundles straight from OhrTech's storage. The update manifest's address is
+unguessable, and the download addresses in it last a day.
+
+### Your own update manifest
+
+Publish the bundles and an update manifest in the Isolated Web Apps format, over https:
+
+```json title="update.json"
+{
+  "versions": [
+    { "version": "1.4.1", "src": "https://kiosk.example.com/app/kiosk-1.4.1.swbn" },
+    { "version": "1.4.2", "src": "https://kiosk.example.com/app/kiosk-1.4.2.swbn", "channels": ["default", "beta"] }
+  ]
+}
+```
+
+`src` may be relative to the manifest. A version without `channels` is on `default`. Then set the
+web app's update manifest and trusted IDs:
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+await api.UpdateWebAppAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", new UpdateWebAppRequest
+{
+    Mode = "packaged",
+    UpdateManifestUrl = "https://kiosk.example.com/app/update.json",
+    WebBundleIds = ["5rdhqpfr36xpmn27enf2yomfahq4hndtpmytnwg7zv3kbqomu4zqaaic"],
+});
+```
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl -X PATCH https://api.ohrtech.net/v1/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w/web \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "mode": "packaged",
+    "updateManifestUrl": "https://kiosk.example.com/app/update.json",
+    "webBundleIds": ["5rdhqpfr36xpmn27enf2yomfahq4hndtpmytnwg7zv3kbqomu4zqaaic"]
+  }'
+```
+
+</TabItem>
+</Tabs>
+
+The devices read the manifest and download the bundles as the site's pages would: with its cookies,
+and with the app's client certificate when the server asks for one, so they can be private.
+`GET /v1/apps/{appId}/web/versions` shows what the manifest the devices follow offers now.
+
+## Which version a device runs
+
+The web app's policy, on its page in the portal or with `PATCH /v1/apps/{appId}/web`, follows the
+Isolated Web Apps policy:
+
+| Field | |
+|---|---|
+| `webBundleIds` | The Web Bundle IDs the app trusts, up to 8. A bundle must carry one and be signed by a key of one |
+| `updateManifestUrl` | Your update manifest; empty when you upload to OhrTech |
+| `updateChannel` | The channel to follow: the newest version on it. Default `default` |
+| `pinnedVersion` | Exactly this version instead |
+| `allowDowngrades` | An older version may replace a newer one. Without it, a pin to an older version waits |
+
+A fleet or a device can set its own (`pinnedVersion` for a test fleet, say): they are the web app's
+[settings](/web-apps/settings/#packaged-web-apps), with the update check's interval and timing.
+
+The device refuses a bundle whose signature doesn't hold, whose ID isn't trusted, whose version isn't
+the one the update manifest named, or that holds a URL outside the site's origin. It keeps the
+version it runs.
+
+### Rotate the signing key
+
+Sign the bundle with the old key and the new one (`wbn-sign sign kiosk.wbn old.pem new.pem`), add the
+new key's ID to `webBundleIds`, and offer it. Once every device runs it, sign with the new key alone
+and drop the old ID.
+
+## When it changes
+
+On its first launch, the app installs the newest version (it shows **Installing** meanwhile). Then
+it reads the update manifest at every launch and every `updateCheckMinutes` (6 hours by default), and
+downloads and checks a newer version in the background. The new version takes over:
+
+- at the app's next launch (`updateApply`: `launch`, the default),
+- after 2 minutes nobody used it (`idle`),
+- or at once, reloading the page (`now`).
+
+Before switching, the app unregisters the site's service workers and deletes its caches, so nothing
+answers with the old version's files; the site's service worker registers again from the new
+bundle. The version before stays on the device until the new one has loaded.
+
+### From the page
+
+The page can follow and apply updates itself, with the [Device SDK](/web-apps/device-sdk/):
+
+```js
+const { OhrApp } = OhrTech;
+
+const info = await OhrApp.bundle();      // { version: "1.4.1", bundleId: "5rdh…", staged: null }
+
+OhrApp.addUpdateListener(async (info) => {
+  // A newer version is downloaded and checked: apply it when the person is done
+  if (await askToRestart(`Version ${info.staged} is ready`)) await OhrApp.applyUpdate();
+});
+
+await OhrApp.checkForUpdate();           // read the update manifest now
+```
+
+`applyUpdate()` fails with `OhrFailed` when no version is waiting.
+
+### Who runs what
+
+Each device reports the version it switches to. The web app's **Versions** in the portal shows how
+many devices run each version. Each switch is a device event (`area` `app`, `action`
+`webapp.bundle`, `detail` with `version` and `bundleId`) in `GET /v1/devices/{deviceId}/events`.

@@ -559,6 +559,62 @@ static async Task ExitKiosk(OhrManagementClient api, string adbPublicKey, string
     var task = await api.ExitKioskAsync("dev_3swt6f457299btzpw1bxx4wf0q", new ExitKioskRequest { Minutes = 15 });
 }
 
+static async Task PreviewWebApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var preview = await api.PreviewWebAppAsync(new PreviewWebAppRequest { Url = "https://kiosk.example.com/" });
+}
+
+static async Task CreateWebApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var web = await api.CreateWebAppAsync("org_4b60p9zf168jxsyx98w8wstk29", new CreateWebAppRequest { Url = "https://kiosk.example.com/", Mode = "sdk" });
+}
+
+static async Task GetWebApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var web = await api.GetWebAppAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
+static async Task UpdateWebApp(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var web = await api.UpdateWebAppAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", new UpdateWebAppRequest { Mode = "packaged", PinnedVersion = "1.4.2" });
+}
+
+static async Task GetWebAppManifestChanges(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var changes = await api.GetWebAppManifestChangesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
+static async Task ApproveWebAppManifestChanges(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var web = await api.ApproveWebAppManifestChangesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
+static async Task GetWebSigningKey(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var key = await api.GetWebSigningKeyAsync("org_4b60p9zf168jxsyx98w8wstk29");
+}
+
+static async Task UploadWebBundle(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    await using var file = File.OpenRead("kiosk-1.4.2.swbn");
+    var bundle = await api.UploadWebBundleAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", file, channels: "default,beta");
+}
+
+static async Task ListWebBundles(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var bundles = await api.ListWebBundlesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
+static async Task DeleteWebBundle(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    await api.DeleteWebBundleAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", "1.4.1");
+}
+
+static async Task GetWebAppVersions(OhrManagementClient api, string adbPublicKey, string clientKey)
+{
+    var versions = await api.GetWebAppVersionsAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");
+}
+
 static async Task SignIn()
 {
     // The SDK runs the device code flow and refreshes the access token for you.

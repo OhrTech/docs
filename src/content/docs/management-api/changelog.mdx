@@ -7,6 +7,24 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-10: web apps and web push
+
+[Web apps](/web-apps/): your websites as apps on your devices.
+
+- **Web apps:** `POST /v1/web-apps/preview` shows what a site's manifest gives;
+  `POST /v1/orgs/{orgId}/web-apps` makes a web app; `GET` and `PATCH /v1/apps/{appId}/web` read and
+  change its mode, display, scope rule and packaged policy; `GET /v1/apps/{appId}/web/manifest-changes`
+  and `POST /v1/apps/{appId}/web/manifest-changes/approve` take the manifest's new name and icon;
+  `GET /v1/orgs/{orgId}/web-signing-key` gives your organisation's web app certificate. See
+  [make a web app](/web-apps/create/).
+- **Packaged web apps:** `POST`, `GET /v1/apps/{appId}/web/bundles` and
+  `DELETE /v1/apps/{appId}/web/bundles/{version}` for Signed Web Bundles; `GET /v1/apps/{appId}/web/versions`.
+  See [packaged web apps](/web-apps/packaged/).
+- **Push:** a message in `POST /v1/push` may give `subscription`, a web app's push subscription, in
+  place of `token`. See [notifications and push](/web-apps/notifications-and-push/).
+- OhrTech.Management 2.4.0 has all of these, with `WebPushSubscription`,
+  `PushSealer.SealForSubscription` and `DeclarativeWebPush`; ohr 1.1.0 adds `ohr push`.
+
 ## 2026-11-08: the Device SDK's server side
 
 For apps that use the [Device SDK](/device-sdk/) on your devices:

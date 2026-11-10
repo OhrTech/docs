@@ -184,6 +184,21 @@ const samples = {
 		"var tokens = await api.ListPushTokensAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\");",
 	ExitKiosk:
 		"var task = await api.ExitKioskAsync(\"dev_3swt6f457299btzpw1bxx4wf0q\", new ExitKioskRequest { Minutes = 15 });",
+	PreviewWebApp:
+		"var preview = await api.PreviewWebAppAsync(new PreviewWebAppRequest { Url = \"https://kiosk.example.com/\" });",
+	CreateWebApp:
+		"var web = await api.CreateWebAppAsync(\"org_4b60p9zf168jxsyx98w8wstk29\", new CreateWebAppRequest { Url = \"https://kiosk.example.com/\", Mode = \"sdk\" });",
+	GetWebApp: 'var web = await api.GetWebAppAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");',
+	UpdateWebApp:
+		"var web = await api.UpdateWebAppAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", new UpdateWebAppRequest { Mode = \"packaged\", PinnedVersion = \"1.4.2\" });",
+	GetWebAppManifestChanges: 'var changes = await api.GetWebAppManifestChangesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");',
+	ApproveWebAppManifestChanges: 'var web = await api.ApproveWebAppManifestChangesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");',
+	GetWebSigningKey: 'var key = await api.GetWebSigningKeyAsync("org_4b60p9zf168jxsyx98w8wstk29");',
+	UploadWebBundle:
+		"await using var file = File.OpenRead(\"kiosk-1.4.2.swbn\");\nvar bundle = await api.UploadWebBundleAsync(\"app_7h2m9q4x1c8v3k5n6p0r2s4t6w\", file, channels: \"default,beta\");",
+	ListWebBundles: 'var bundles = await api.ListWebBundlesAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");',
+	DeleteWebBundle: 'await api.DeleteWebBundleAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w", "1.4.1");',
+	GetWebAppVersions: 'var versions = await api.GetWebAppVersionsAsync("app_7h2m9q4x1c8v3k5n6p0r2s4t6w");',
 };
 
 const signIn =
@@ -221,6 +236,17 @@ const titles = {
 	WithdrawOrgPermission: "Withdraw an organisation's approval",
 	ApproveAppPermission: 'Approve a permission for an OhrTech app',
 	WithdrawAppPermission: "Withdraw an OhrTech app's approval",
+	PreviewWebApp: "Preview a site's web app",
+	CreateWebApp: 'Make a web app',
+	GetWebApp: 'Get a web app',
+	UpdateWebApp: "Change a web app's mode and policy",
+	GetWebAppManifestChanges: "A web app's manifest changes",
+	ApproveWebAppManifestChanges: "Approve a web app's manifest changes",
+	GetWebSigningKey: "The organisation's web app key",
+	UploadWebBundle: 'Upload a Signed Web Bundle',
+	ListWebBundles: "A web app's uploaded bundles",
+	DeleteWebBundle: 'Remove an uploaded bundle',
+	GetWebAppVersions: 'What the update manifest offers',
 };
 const title = (id) =>
 	titles[id] ?? id.replace(/(?!^)([A-Z])/g, ' $1').replace(/ (\w)/g, (m) => m.toLowerCase()).replace(/\badb\b/, 'ADB');

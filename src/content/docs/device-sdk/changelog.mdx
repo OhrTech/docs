@@ -12,6 +12,23 @@ library keeps working. `OhrAccess.info().agentVersion` tells you which Agent a d
 The Flutter, React Native and .NET SDKs wrap the Kotlin library, `net.ohrtech:device-sdk`; entries
 named by a version alone are that library's.
 
+## 0.4.0 (2026-11-10): the Device SDK as JSON
+
+```kts
+implementation("net.ohrtech:device-sdk:0.4.0")
+```
+
+- `net.ohrtech.device.json.OhrJsonApi`: the Device SDK as JSON, for code that reaches the library
+  over a text bridge. Each method by name, `call(method, argsJson)`, with the area it belongs to
+  (`areaOf`); each kind of change, `watch(kind, executor, send)`; and errors as
+  `{code, message, details}` (`OhrJsonApi.error`). A host can add methods of its own. The React
+  Native SDK and [web apps](/web-apps/device-sdk/) use it.
+
+## @ohrtech/device-sdk-react-native 0.1.2 (2026-11-10)
+
+Builds on 0.4.0. The module's methods and changes are the library's `OhrJsonApi`: the same names,
+arguments and results as 0.1.1.
+
 ## 0.3.2 (2026-11-10): no push message lost silently; diagnostics never wait
 
 ```kts

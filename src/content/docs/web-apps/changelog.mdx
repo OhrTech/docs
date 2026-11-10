@@ -1,0 +1,40 @@
+---
+title: Changelog
+description: Changes to OhrTech web apps and to the Device SDK for sites (@ohrtech/device-sdk-web).
+---
+
+**Our promise:** the Device SDK file you pin keeps working. It is a facade for one interface
+version; OhrTech keeps at least two interfaces working on devices and announces the end of an old
+one at least 12 months ahead. See [versions](/web-apps/device-sdk/#versions).
+
+The shell around your site is OhrTech's: when it improves, OhrTech builds your web apps again, and
+devices update them as they update your other apps.
+
+## @ohrtech/device-sdk-web 1.0.0 (2026-11-10)
+
+```sh
+npm install @ohrtech/device-sdk-web@1.0.0
+```
+
+The first release: interface 1.
+
+- `isDevice()` and `environment()`: whether the page runs in an OhrTech web app, its shell's
+  version, the interfaces it has and the web app's mode.
+- The areas, in the shape of the React Native SDK: `OhrDevice`, `OhrUpdates`, `OhrWifi` (with
+  `showScreen()`), `OhrNetwork`, `OhrKiosk`, `OhrPower`, `OhrSettings`, `OhrConfig`, `OhrUsb`,
+  `OhrDiagnostics`, `OhrAttestation`, `OhrCertificates`, `OhrKeys`, `OhrAccess`, and `OhrApp`
+  (`reload()`, `clearData()`, and a packaged web app's `bundle()`, `checkForUpdate()`,
+  `applyUpdate()` and `addUpdateListener()`).
+- `ohrtech-device-sdk-1.0.0.min.js`, the global `OhrTech`, with its integrity value on the GitHub
+  release; the ES module with TypeScript types.
+
+## 2026-11-10: web apps
+
+- Any website as an app on your devices, made from its Web App Manifest or from fields, built and
+  signed by OhrTech, given to fleets like any app. See [make a web app](/web-apps/create/).
+- Three modes: `locked`, `sdk` (the [Device SDK for sites](/web-apps/device-sdk/)) and `packaged`
+  ([Signed Web Bundles](/web-apps/packaged/) with an update manifest, uploaded to OhrTech or your own).
+- Every [setting](/web-apps/settings/) per fleet and per device: URL filters, permissions,
+  downloads, the toolbar, the idle reset, client certificates.
+- [Notifications and push](/web-apps/notifications-and-push/) with the standard APIs, push through
+  OhrTech push with your server's sender key, and Declarative Web Push.

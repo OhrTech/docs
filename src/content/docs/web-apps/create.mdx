@@ -1,0 +1,128 @@
+---
+title: Make a web app
+description: Make a website an app from its Web App Manifest or from fields, in the portal or with the Management API, give it to fleets, and approve its manifest's changes.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+You make a web app from the site's Web App Manifest, as a browser installs it, or from a few fields
+for a site without one. Making and changing web apps needs `ManageApps`
+([permissions](/management-api/permissions/)).
+
+## From the portal
+
+Open **Apps** and choose **New web app**. Give the site's address: its manifest's URL, or a page that
+links its manifest (`<link rel="manifest">`). The portal shows what the manifest gives (name, icon,
+start URL, scope, display) before you make the app. For a site without a manifest, give a name, the
+start URL and a square icon.
+
+The web app's page has its mode, display and scope rule, and opens with any name or icon changes
+waiting for you to approve.
+
+## With the Management API
+
+`POST /v1/web-apps/preview` shows what a site's manifest gives without making anything.
+`POST /v1/orgs/{orgId}/web-apps` makes the web app.
+
+<Tabs syncKey="lang">
+<TabItem label="C#">
+
+```csharp
+var web = await api.CreateWebAppAsync("org_4b60p9zf168jxsyx98w8wstk29", new CreateWebAppRequest
+{
+    Url = "https://kiosk.example.com/",   // the manifest, or a page that links it
+    Mode = "sdk",
+});
+Console.WriteLine($"{web.AppId} {web.PackageName} {web.Title}");
+
+// Then give it to a fleet, as any app
+await api.AddFleetAppAsync("flt_2dn47a2xa58j1txv8m28spkmyb", web.AppId);
+```
+
+`CreateWebAppAsync` and the other web app calls need OhrTech.Management 2.4.0 or later.
+
+</TabItem>
+<TabItem label="curl">
+
+```sh
+curl -X POST https://api.ohrtech.net/v1/orgs/org_4b60p9zf168jxsyx98w8wstk29/web-apps \
+  -H "Authorization: Bearer $OHR_TOKEN" -H "Content-Type: application/json" \
+  -d '{"url": "https://kiosk.example.com/", "mode": "sdk"}'
+
+curl -X PUT https://api.ohrtech.net/v1/fleets/flt_2dn47a2xa58j1txv8m28spkmyb/apps/app_7h2m9q4x1c8v3k5n6p0r2s4t6w \
+  -H "Authorization: Bearer $OHR_TOKEN"
+```
+
+</TabItem>
+</Tabs>
+
+| Field | |
+|---|---|
+| `url` | The site's manifest, or a page that links it. With it, leave out `title`, `startUrl` and `scope` |
+| `manifestId` | The manifest's `id`, which must match, as `navigator.install()` checks it. Optional |
+| `title`, `startUrl`, `scope` | For a site without a manifest: the name (1 to 100 characters), where it opens (https), and the URL prefix that is the app (default: the start URL's directory) |
+| `iconPng` | A square PNG of at least 144 pixels, base64: needed without a manifest, or to replace the manifest's icon |
+| `displayMode` | `MINIMAL_UI` (back, forward, the page's title and reload), `STANDALONE` or `FULL_SCREEN`. Default: the manifest's `display` |
+| `mode` | `locked` (default), `sdk` or `packaged` (see [packaged web apps](/web-apps/packaged/)) |
+| `ignoreManifestScope` | The whole origin is the app, not only the manifest's `scope` |
+
+The answer is the web app, as `GET /v1/apps/{appId}/web` gives it: its `appId` and `packageName`,
+what it took from the manifest, its `versionCode`, and `builtVersionCode`, the version the newest
+APK was built from (null until the first build). If the build fails, `buildError` says why.
+
+A site that can't be a web app as asked is refused with 422 and the reason: no manifest at the
+address, no name, a start URL that isn't https, an icon too small, a manifest `id` that doesn't match.
+
+## What OhrTech reads from the manifest
+
+OhrTech reads the manifest over https, from public addresses only, as the device would.
+
+| Member | Becomes |
+|---|---|
+| `name`, `short_name` | The app's name |
+| `icons` | The launcher icon: a square PNG of at least 144 pixels; a `maskable` one too, if there is one |
+| `id`, `start_url`, `scope` | The app's identity, where it opens and which pages are the app |
+| `display` | The display: `fullscreen`, `standalone`, `minimal-ui` (and `browser`, which is `minimal-ui` here) |
+| `theme_color`, `background_color` | The status bar and the screen behind the page while it loads |
+| `scope_extensions` | Other origins that are part of the app. Each must agree: it serves `/.well-known/web-app-origin-association` naming the manifest's `id`. Origins that don't are left out |
+
+OhrTech keeps the manifest's `shortcuts` and `share_target` too, but web apps don't offer them on the
+device yet.
+
+On the device, the app reads the live manifest for what changes nothing in the APK: the
+[Device SDK declaration](/web-apps/device-sdk/#declare-what-the-site-uses) and the orientation.
+
+## Approve name and icon changes
+
+A new name or icon in the manifest needs a new APK, so it waits for you. OhrTech checks the manifest
+each time you open the web app in the portal, and shows what changed with an **Approve** button.
+
+With the API, `GET /v1/apps/{appId}/web/manifest-changes` reads the manifest now and returns the new
+`name`, `shortName`, `iconPng` and `iconMaskablePng` (null when unchanged), or an `error` when it
+can't be read. `POST /v1/apps/{appId}/web/manifest-changes/approve` takes them: the web app's
+version goes up and OhrTech builds the APK again.
+
+## Versions and builds
+
+A web app's versions are built by OhrTech: uploading an APK to a web app is refused with 409. Its
+version code is the shell's version times 1,000,000 plus the web app's own version, so a new shell
+and an approved change each make a newer APK. Rollouts, holds and timing work as for your other
+apps (see [apps](/management-api/guides/apps/)).
+
+## Your organisation's web app key
+
+OhrTech signs every web app of your organisation with one key, made the first time it is needed and
+kept sealed on OhrTech's servers. `GET /v1/orgs/{orgId}/web-signing-key` returns its certificate and
+its SHA-256 in the form `/.well-known/assetlinks.json` takes, for a site that names its apps in
+Digital Asset Links:
+
+```json
+[{
+  "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "net.ohrtech.web.wabcdefghij2345klmnop",
+    "sha256_cert_fingerprints": ["27:C0:4B:1B:…"]
+  }
+}]
+```
