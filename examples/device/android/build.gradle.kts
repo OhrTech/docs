@@ -16,7 +16,7 @@ android {
 
 dependencies {
     // OHR_DEVICE_SDK_VERSION: the version the pages document (the latest release by default).
-    implementation("net.ohrtech:device-sdk:${System.getenv("OHR_DEVICE_SDK_VERSION") ?: "0.3.1"}")
+    implementation("net.ohrtech:device-sdk:${System.getenv("OHR_DEVICE_SDK_VERSION") ?: "0.3.2"}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
