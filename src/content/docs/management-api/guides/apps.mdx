@@ -16,10 +16,15 @@ it, with no store and no one at the device.
   built for different fleets, each with its own id and versions.
 - Each **version** is one APK you uploaded. The API reads its version code, version name, signer and
   permissions from the APK itself.
-- An app goes to the devices of the **fleets** you assign it to: the devices directly in each fleet,
-  not those of the fleets below it. A device holds one app per package, so a fleet gets at most one
-  of the apps that share a package (409 "Package already in this fleet"). A device that leaves the
-  fleet, or a fleet you take the app from, uninstalls it.
+- An app goes to the devices of the **fleets** you assign it to, and of every fleet below them: a
+  child fleet gets its parent's apps, and can add its own. `GET /v1/fleets/{fleetId}/apps` lists all
+  the apps the fleet's devices get, including those from fleets above it. An app a fleet gets from a
+  parent is removed on that parent: removing it from the child answers 409 "Inherited from a parent
+  fleet", with the parent's `fleetId`.
+- A device holds one app per package, so no device gets two apps that share a package: adding one
+  that would clash with an app of the fleet, a fleet above it or a fleet below it answers 409
+  "Package already in this fleet". A device that leaves the fleet, or a fleet you take the app from,
+  uninstalls it.
 
 Each version is in one of three states:
 

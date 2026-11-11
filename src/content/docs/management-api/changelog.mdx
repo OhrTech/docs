@@ -7,6 +7,17 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-11: child fleets get their parent's apps and OS versions
+
+- A device gets the apps of its fleet and of every fleet above it, as it already did settings.
+  `GET /v1/fleets/{fleetId}/apps` lists them all. Until now a child fleet's devices got only the
+  apps added to that fleet.
+- A device follows its fleet's OS versions or, when the fleet has none, those of the nearest fleet
+  above with some.
+- Removing an app from a fleet that gets it from a parent answers 409 "Inherited from a parent
+  fleet". Adding an app checks package clashes with the fleets above and below as well.
+- See [devices and fleets](/management-api/guides/devices-and-fleets/#fleets).
+
 ## 2026-11-11: Unmanaged overrides a fleet
 
 - A device's settings may give a setting `{"mode": "Unmanaged"}`: the device leaves it alone even

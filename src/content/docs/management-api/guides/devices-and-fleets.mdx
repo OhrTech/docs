@@ -74,9 +74,17 @@ check-in.
 
 ## Fleets
 
-`GET /v1/fleets` lists your fleets with `parentFleetId` and `deviceCount`. Fleets nest: a device
-follows the settings of its fleet and of every fleet above it, top first, then its own overrides
-(see [settings](/management-api/guides/settings/)).
+`GET /v1/fleets` lists your fleets with `parentFleetId` and `deviceCount`. Fleets nest, and a child
+fleet gets everything its parent has, so a child fleet with nothing of its own (one that only groups
+devices) behaves exactly like its parent:
+
+- **Settings:** a device follows the settings of its fleet and of every fleet above it, top first,
+  then its own overrides (see [settings](/management-api/guides/settings/)).
+- **Apps:** a device gets the apps of its fleet and of every fleet above it (see
+  [apps](/management-api/guides/apps/)).
+- **Operating system versions:** a device follows the OS versions of its fleet or, when its fleet has
+  none, of the nearest fleet above that has some. A child fleet that releases its own versions
+  replaces its parent's.
 
 ### Move a device
 
