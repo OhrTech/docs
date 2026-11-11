@@ -18,10 +18,13 @@ Each setting a policy manages has a **mode**:
 |---|---|
 | `Set` | Applied, and the person using the device may change it afterwards |
 | `Locked` | Applied, and the person using the device can't change it |
-| `Unmanaged` | Left alone (only seen in what devices report) |
+| `Unmanaged` | Left alone, even when a fleet above manages it |
 
 A device follows, from lowest to highest priority: OhrTech's platform defaults, then its fleets
 from the top fleet down, then its own overrides. The API changes a device's **own overrides**.
+
+A setting the device's overrides leave out follows its fleets. To keep a setting a fleet manages
+off this device, override it with `Unmanaged` (no `value`): the device then leaves it as it is.
 
 ## The catalog
 
@@ -79,7 +82,8 @@ Build your UI from it, or look up a value's format.
 ## Change settings
 
 Needs `EditSettings`. `PATCH` changes the keys you send and leaves the rest. `null` removes an
-override, so the device falls back to its fleets. `PUT` replaces all of the device's overrides.
+override, so the device falls back to its fleets; `{"mode": "Unmanaged"}` stops managing the setting
+on this device whatever its fleets do. `PUT` replaces all of the device's overrides.
 
 <Tabs syncKey="lang">
 <TabItem label="curl">

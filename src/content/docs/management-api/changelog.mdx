@@ -7,6 +7,12 @@ description: Changes to the Management API. Within v1 the API only adds.
 Anything else becomes `v2`, served alongside `v1`. The OpenAPI document's history is in the
 [management-api repository](https://github.com/OhrTech/management-api/commits/main/openapi.json).
 
+## 2026-11-11: Unmanaged overrides a fleet
+
+- A device's settings may give a setting `{"mode": "Unmanaged"}`: the device leaves it alone even
+  when a fleet manages it. `null` still removes the override, so the device follows its fleets. Until
+  now, `Unmanaged` in a request was treated as `null`. See [settings](/management-api/guides/settings/).
+
 ## 2026-11-10: web apps and web push
 
 [Web apps](/web-apps/): your websites as apps on your devices.
